@@ -8,6 +8,8 @@
 
 #include <liburing.h>
 
+#include "util/utility.hpp"
+
 #include <concepts>
 #include <type_traits>
 #include <cstddef>
@@ -29,28 +31,6 @@ namespace iouxx {
 
     // Forward declaration
     class io_uring_xx;
-
-    namespace details {
-
-        inline ::__kernel_timespec to_kernel_timespec(std::chrono::nanoseconds stdtime) noexcept {
-            ::__kernel_timespec ts;
-            const auto sec
-                = std::chrono::duration_cast<std::chrono::seconds>(stdtime);
-            const auto nsec = stdtime - sec;
-            ts.tv_sec = sec.count();
-            ts.tv_nsec = nsec.count();
-            return ts;
-        }
-
-        // Pre: ev >= 0
-        inline std::error_code make_system_error_code(int ev) noexcept {
-            if (ev != 0) {
-                return std::error_code(ev, std::system_category());
-            }
-            return std::error_code();
-        }
-
-    } // namespace iouxx::details
 
     inline namespace iouops {
 
@@ -125,11 +105,11 @@ namespace iouxx {
                 if (::io_uring_sqe* sqe = self.to_sqe()) {
                     int ev = ::io_uring_submit(self.ring);
                     if (ev < 0) {
-                        return details::make_system_error_code(-ev);
+                        return utility::make_system_error_code(-ev);
                     }
                     return std::error_code();
                 }
-                return details::make_system_error_code(EAGAIN);
+                return utility::make_system_error_code(EAGAIN);
             }
 
             void callback(int ev, std::int32_t cqe_flags) {
@@ -168,39 +148,6 @@ namespace iouxx {
 
     } // namespace iouxx::iouops
 
-    template<typename T>
-    concept byte_unit = std::same_as<T, std::byte> || std::same_as<T, unsigned char>;
-
-    template<typename R>
-    concept buffer_like = std::constructible_from<std::span<std::byte>, std::remove_cvref_t<R>>
-        || std::constructible_from<std::span<unsigned char>, std::remove_cvref_t<R>>;
-
-    template<typename R>
-    concept buffer_range = std::ranges::input_range<std::remove_cvref_t<R>>
-        && buffer_like<std::ranges::range_value_t<std::remove_cvref_t<R>>>;
-
-    namespace details {
-
-        inline iouops::operation_base* from_user_data(void* data) noexcept {
-            return static_cast<iouops::operation_base*>(data);
-        }
-
-        template<byte_unit ByteType, std::size_t N>
-        inline ::iovec to_iovec(std::span<ByteType, N> buffer) noexcept {
-            return ::iovec{
-                .iov_base = buffer.data(),
-                .iov_len = buffer.size()
-            };
-        }
-
-        template<byte_unit ByteType>
-        inline std::span<ByteType> from_iovec(const ::iovec& iov) noexcept {
-            return std::span<ByteType>(
-                static_cast<ByteType*>(iov.iov_base), iov.iov_len);
-        }
-
-    } // namespace iouxx::details
-
     class operation_result
     {
     public:
@@ -220,9 +167,13 @@ namespace iouxx {
     private:
         friend io_uring_xx;
         explicit operation_result(io_uring_cqe* cqe) noexcept :
-            cb(details::from_user_data(::io_uring_cqe_get_data(cqe))),
+            cb(from_user_data(::io_uring_cqe_get_data(cqe))),
             res(cqe->res), cqe_flags(cqe->flags)
         {}
+
+        static iouops::operation_base* from_user_data(void* data) noexcept {
+            return static_cast<iouops::operation_base*>(data);
+        }
 
         iouops::operation_base* cb;
         std::int32_t res;
@@ -279,11 +230,11 @@ namespace iouxx {
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
             assert(valid());
             if (!sqe) {
-                return details::make_system_error_code(EAGAIN);
+                return utility::make_system_error_code(EAGAIN);
             }
             int ev = ::io_uring_submit(&ring);
             if (ev < 0) {
-                return details::make_system_error_code(-ev);
+                return utility::make_system_error_code(-ev);
             }
             return std::error_code();
         }
@@ -293,7 +244,7 @@ namespace iouxx {
             ::io_uring_cqe* cqe = nullptr;
             int ev = ::io_uring_peek_cqe(&ring, &cqe);
             if (ev < 0) {
-                return std::unexpected(details::make_system_error_code(-ev));
+                return std::unexpected(utility::make_system_error_code(-ev));
             }
             operation_result result(cqe);
             ::io_uring_cqe_seen(&ring, cqe);
@@ -306,40 +257,40 @@ namespace iouxx {
             ::io_uring_cqe* cqe = nullptr;
             int ev = 0;
             if (timeout.count() != 0) {
-                auto ts = details::to_kernel_timespec(timeout);
+                auto ts = utility::to_kernel_timespec(timeout);
                 ev = ::io_uring_wait_cqe_timeout(&ring, &cqe, &ts);
             } else {
                 ev = ::io_uring_wait_cqe(&ring, &cqe);
             }
             if (ev < 0) {
-                return std::unexpected(details::make_system_error_code(-ev));
+                return std::unexpected(utility::make_system_error_code(-ev));
             }
             operation_result result(cqe);
             ::io_uring_cqe_seen(&ring, cqe);
             return result;
         }
 
-        template<buffer_range Buffers>
+        template<utility::buffer_range Buffers>
         std::error_code register_buffers(Buffers&& buffers) noexcept {
             assert(valid());
             std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
                 | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
                     using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
-                    return details::to_iovec(
+                    return utility::to_iovec(
                         std::span<byte_type>(std::forward<Buffer>(buffer))
                     );
                 })
                 | std::ranges::to<std::vector<::iovec>>();
             int ev = ::io_uring_register_buffers(
                 &ring, iovecs.data(), iovecs.size());
-            return details::make_system_error_code(-ev);
+            return utility::make_system_error_code(-ev);
         }
 
         // TODO
         std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
             assert(valid());
             int ev = ::io_uring_register_files_sparse(&ring, size);
-            return details::make_system_error_code(-ev);
+            return utility::make_system_error_code(-ev);
         }
 
         ::io_uring& native() & noexcept {
@@ -357,7 +308,7 @@ namespace iouxx {
             int ev = ::io_uring_queue_init(queue_depth, &ring, 0);
             if (ev < 0) {
                 ring = invalid_ring();
-                return details::make_system_error_code(-ev);
+                return utility::make_system_error_code(-ev);
             } else {
                 return std::error_code();
             }

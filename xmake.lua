@@ -5,8 +5,8 @@ add_requires("liburing")
 set_languages("c++26")
 set_encodings("utf-8")
 
-local function scan_and_add_tests()
-    for _, testfile in ipairs(os.files("test/test_*.cpp")) do
+local function scan_and_add_tests(testdir)
+    for _, testfile in ipairs(os.files(testdir .. "/test_*.cpp")) do
         add_tests(path.basename(testfile), {
             files = testfile,
             remove_files = "src/main.cpp",
@@ -38,10 +38,10 @@ target("llvm")
     set_kind("binary")
     configure_toochains("clang")
     add_packages("liburing")
-    scan_and_add_tests()
+    scan_and_add_tests("test")
 
 target("gnu")
     set_kind("binary")
     configure_toochains("gcc")
     add_packages("liburing")
-    scan_and_add_tests()
+    scan_and_add_tests("test")

@@ -1,0 +1,68 @@
+#ifndef IOUXX_UTILITY_H
+#define IOUXX_UTILITY_H 1
+
+#include "linux/time_types.h"
+#include "bits/types/struct_iovec.h"
+
+#include <chrono>
+#include <system_error>
+#include <span>
+
+namespace iouxx::utility {
+
+    template<typename F>
+    struct defer {
+        ~defer() { this->f(); }
+        F f;
+    };
+
+    inline ::__kernel_timespec to_kernel_timespec(std::chrono::nanoseconds stdtime) noexcept {
+        ::__kernel_timespec ts;
+        const auto sec
+            = std::chrono::duration_cast<std::chrono::seconds>(stdtime);
+        const auto nsec = stdtime - sec;
+        ts.tv_sec = sec.count();
+        ts.tv_nsec = nsec.count();
+        return ts;
+    }
+
+    inline std::chrono::nanoseconds from_kernel_timespec(const ::__kernel_timespec& ts) noexcept {
+        return std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
+    }
+
+    // Pre: ev >= 0
+    inline std::error_code make_system_error_code(int ev) noexcept {
+        if (ev != 0) {
+            return std::error_code(ev, std::system_category());
+        }
+        return std::error_code();
+    }
+
+    template<typename T>
+    concept byte_unit = std::same_as<T, std::byte> || std::same_as<T, unsigned char>;
+
+    template<typename R>
+    concept buffer_like = std::constructible_from<std::span<std::byte>, std::remove_cvref_t<R>>
+        || std::constructible_from<std::span<unsigned char>, std::remove_cvref_t<R>>;
+
+    template<typename R>
+    concept buffer_range = std::ranges::input_range<std::remove_cvref_t<R>>
+        && buffer_like<std::ranges::range_value_t<std::remove_cvref_t<R>>>;
+
+    template<byte_unit ByteType, std::size_t N>
+    inline ::iovec to_iovec(std::span<ByteType, N> buffer) noexcept {
+        return ::iovec{
+            .iov_base = buffer.data(),
+            .iov_len = buffer.size()
+        };
+    }
+
+    template<byte_unit ByteType>
+    inline std::span<ByteType> from_iovec(const ::iovec& iov) noexcept {
+        return std::span<ByteType>(
+            static_cast<ByteType*>(iov.iov_base), iov.iov_len);
+    }
+
+} // namespace iouxx::utility
+
+#endif // IOUXX_UTILITY_H

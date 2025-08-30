@@ -28,7 +28,7 @@ namespace iouxx::inline iouops {
         }
 
         void do_callback(int ev, std::int32_t) {
-            std::invoke(callback, details::make_system_error_code(-ev));
+            std::invoke(callback, utility::make_system_error_code(-ev));
         }
 
         Callback callback;

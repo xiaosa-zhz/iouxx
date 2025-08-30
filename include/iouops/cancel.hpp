@@ -58,9 +58,9 @@ namespace iouxx::inline iouops {
                     }
                     ev = 0;
                 }
-                std::invoke(callback, details::make_system_error_code(-ev), cancelled_count);
+                std::invoke(callback, utility::make_system_error_code(-ev), cancelled_count);
             } else {
-                std::invoke(callback, details::make_system_error_code(-ev));
+                std::invoke(callback, utility::make_system_error_code(-ev));
             }
 		}
 
@@ -166,9 +166,9 @@ namespace iouxx::inline iouops {
                     }
                     ev = 0;
                 }
-                std::invoke(callback, details::make_system_error_code(-ev), cancelled_count);
+                std::invoke(callback, utility::make_system_error_code(-ev), cancelled_count);
             } else {
-                std::invoke(callback, details::make_system_error_code(-ev));
+                std::invoke(callback, utility::make_system_error_code(-ev));
             }
         }
 

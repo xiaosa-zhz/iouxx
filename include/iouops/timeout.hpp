@@ -73,7 +73,7 @@ namespace iouxx::inline iouops {
         auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{}) &
             noexcept -> timeout_operation& {
             details::is_supported_clock<Clock>();
-            ts = details::to_kernel_timespec(duration);
+            ts = utility::to_kernel_timespec(duration);
             details::set_clock_flag<Clock>(flags);
             flags &= ~IORING_TIMEOUT_ABS;
             return *this;
@@ -83,7 +83,7 @@ namespace iouxx::inline iouops {
         auto wait_until(std::chrono::time_point<Clock, Duration> time_point) &
             noexcept -> timeout_operation& {
             details::is_supported_clock<Clock>();
-            ts = details::to_kernel_timespec(time_point.time_since_epoch());
+            ts = utility::to_kernel_timespec(time_point.time_since_epoch());
             details::set_clock_flag<Clock>(flags);
             flags |= IORING_TIMEOUT_ABS;
             return *this;
@@ -99,7 +99,7 @@ namespace iouxx::inline iouops {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
             }
-            std::invoke(callback, details::make_system_error_code(-ev));
+            std::invoke(callback, utility::make_system_error_code(-ev));
         }
 
         ::__kernel_timespec ts{};
@@ -130,7 +130,7 @@ namespace iouxx::inline iouops {
         auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{})
             & noexcept -> multishot_timeout_operation& {
             details::is_supported_clock<Clock>();
-            ts = details::to_kernel_timespec(duration);
+            ts = utility::to_kernel_timespec(duration);
             details::set_clock_flag<Clock>(flags);
             return *this;
         }
@@ -158,9 +158,9 @@ namespace iouxx::inline iouops {
             }
             if constexpr (std::invocable<Callback, std::error_code, bool>) {
                 const bool more = cqe_flags & IORING_CQE_F_MORE;
-                std::invoke(callback, details::make_system_error_code(-ev), more);
+                std::invoke(callback, utility::make_system_error_code(-ev), more);
             } else {
-                std::invoke(callback, details::make_system_error_code(-ev));
+                std::invoke(callback, utility::make_system_error_code(-ev));
             }
         }
 
@@ -201,7 +201,7 @@ namespace iouxx::inline iouops {
 		}
 
 		void do_callback(int ev, std::int32_t) {
-			std::invoke(callback, details::make_system_error_code(-ev));
+			std::invoke(callback, utility::make_system_error_code(-ev));
 		}
 
 		operation_identifier id = operation_identifier();
