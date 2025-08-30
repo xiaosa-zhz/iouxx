@@ -15,7 +15,7 @@
 ## Completed
 - [x] ~~Rewrite operations~~
 - [x] ~~Add license file~~
-- [x] Add readme file
+- [x] ~~Add readme file~~
 
 ## Notes
 - Add any additional notes or context here
