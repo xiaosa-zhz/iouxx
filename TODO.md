@@ -10,12 +10,12 @@
 ## Low Priority
 - [ ] Add C++ module support
 - [ ] Remove fallback around chrono when libc++ implementation is complete
-- [ ] Add readme file
-- [ ] Add license file
 - [ ] Add CI/CD pipeline
 
 ## Completed
 - [x] ~~Rewrite operations~~
+- [x] ~~Add license file~~
+- [x] Add readme file
 
 ## Notes
 - Add any additional notes or context here

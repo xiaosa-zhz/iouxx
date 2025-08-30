@@ -1,28 +1,13 @@
 [
 {
   "directory": "/home/xiaosa/source/iouring",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-stdlib=libc++", "-DNDEBUG", "-o", "build/.objs/llvm/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
-  "file": "src/main.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouring",
   "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
   "file": "src/main.cpp"
 },
 {
   "directory": "/home/xiaosa/source/iouring",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-stdlib=libc++", "-DNDEBUG", "-o", "build/.objs/llvm_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
-  "file": "test/test_noop.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouring",
-  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
-  "file": "test/test_ip_utils.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouring",
-  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
-  "file": "test/test_noop.cpp"
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-stdlib=libc++", "-DNDEBUG", "-o", "build/.objs/llvm/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
+  "file": "src/main.cpp"
 },
 {
   "directory": "/home/xiaosa/source/iouring",
@@ -31,11 +16,26 @@
 },
 {
   "directory": "/home/xiaosa/source/iouring",
+  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
+  "file": "test/test_noop.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouring",
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-stdlib=libc++", "-DNDEBUG", "-o", "build/.objs/llvm_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
+  "file": "test/test_ip_utils.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouring",
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-stdlib=libc++", "-DNDEBUG", "-o", "build/.objs/llvm_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
+  "file": "test/test_noop.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouring",
   "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_timeout/linux/x86_64/release/test/test_timeout.cpp.o", "test/test_timeout.cpp"],
   "file": "test/test_timeout.cpp"
 },
 {
   "directory": "/home/xiaosa/source/iouring",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-stdlib=libc++", "-DNDEBUG", "-o", "build/.objs/llvm_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
+  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
   "file": "test/test_ip_utils.cpp"
 }]
