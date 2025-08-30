@@ -588,31 +588,15 @@ namespace std {
             // IPv4-compatible: ::d.d.d.d
             // IPv4-mapped: ::ffff:d.d.d.d
             // If all but last 16 bits are zeros, it will not be considered as mixed
-            bool is_ipv4_compatible = true;
-            bool is_ipv4_mapped = true;
-            // First 5 parts must be zero
             for (std::size_t i = 0; i < 5; ++i) {
                 if (local[i] != 0) {
-                    is_ipv4_compatible = false;
-                    is_ipv4_mapped = false;
-                    break;
-                }
-            }
-            if (is_ipv4_compatible) {
-                if (local[5] != 0) {
-                    is_ipv4_compatible = false;
-                } else if (local[6] == 0) {
-                    // All but last 16 bits are zeros, not considered as mixed
-                    // Looks like '::abcd'
                     return false;
                 }
             }
-            if (is_ipv4_mapped) {
-                if (local[5] != 0xffff) {
-                    is_ipv4_mapped = false;
-                }
+            if (local[5] != 0xffff && (local[5] != 0 || local[6] == 0)) {
+                return false;
             }
-            return is_ipv4_compatible || is_ipv4_mapped;
+            return true;
         }
 
         template<typename OutIt>
