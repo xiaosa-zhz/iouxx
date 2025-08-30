@@ -474,7 +474,9 @@ namespace std {
     //   - compressed
     //   - remove leading zeros
     //   - use lowercase hex digits
-    //   - and special rule for embedded IPv4, only when it is IPv4-compatible or IPv4-mapped
+    //   - and special rule for embedded IPv4, which is applied when:
+    //     - it is not that all but last 16 bits are zeros (::abcd)
+    //     - it is IPv4-mapped (::ffff:d.d.d.d) or IPv4-compatible (::d.d.d.d)
     //   (This special rule can not be achieved by other format spec combinations.)
     //  This character can only combine with 'n', 'N', 'u', 'U'.
     //   
