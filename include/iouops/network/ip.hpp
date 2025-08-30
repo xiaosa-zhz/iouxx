@@ -201,7 +201,7 @@ namespace iouxx::inline iouops::network::ip {
             : addr(net_order_raw)
         {}
 
-        v6raw raw() const noexcept { return addr; }
+        const v6raw& raw() const noexcept { return addr; }
 
         // Warning: invalid input results in UNDEFINED BEHAVIOR
         static constexpr address_v6 from_string_uncheck(const std::string_view ipv6_str) noexcept {
@@ -577,38 +577,47 @@ namespace std {
             const bool full = seen_f;
             const bool removed = !seen_z;
             const bool uppercase = seen_u;
-            if (recommended) {
-                // Examine if it is IPv4-compatible or IPv4-mapped
-                // IPv4-compatible: ::d.d.d.d
-                // IPv4-mapped: ::ffff:d.d.d.d
-                bool is_ipv4_compatible = true;
-                bool is_ipv4_mapped = true;
-                // First 5 parts must be zero
-                for (std::size_t i = 0; i < 5; ++i) {
-                    if (local[i] != 0) {
-                        is_ipv4_compatible = false;
-                        is_ipv4_mapped = false;
-                        break;
-                    }
+            const bool mixed = recommended
+                ? !seen_n && check_mixed(local)
+                : seen_m;
+            return do_format(out, addr, local, recommended, full, removed, mixed, uppercase);
+        }
+
+        static constexpr bool check_mixed(const iouxx::network::ip::v6raw& local) noexcept {
+            // Examine if it is IPv4-compatible or IPv4-mapped
+            // IPv4-compatible: ::d.d.d.d
+            // IPv4-mapped: ::ffff:d.d.d.d
+            // Special address (any and loopback) are always not mixed
+            bool is_ipv4_compatible = true;
+            bool is_ipv4_mapped = true;
+            // First 5 parts must be zero
+            for (std::size_t i = 0; i < 5; ++i) {
+                if (local[i] != 0) {
+                    is_ipv4_compatible = false;
+                    is_ipv4_mapped = false;
+                    break;
                 }
-                if (is_ipv4_compatible) {
-                    if (local[5] != 0) {
-                        is_ipv4_compatible = false;
-                    }
-                }
-                if (is_ipv4_mapped) {
-                    if (local[5] != 0xffff) {
-                        is_ipv4_mapped = false;
-                    }
-                }
-                const bool mixed = (is_ipv4_mapped || is_ipv4_compatible) && !seen_n;
-                return do_format(out, addr,
-                    local, recommended, full, removed, mixed, uppercase);
-            } else {
-                const bool mixed = seen_m;
-                return do_format(out, addr,
-                    local, recommended, full, removed, mixed, uppercase);
             }
+            if (is_ipv4_compatible) {
+                if (local[5] != 0) {
+                    is_ipv4_compatible = false;
+                }
+                if (local[6] == 0) {
+                    if (local[7] == 0) {
+                        // ::
+                        return false;
+                    } else if (local[7] == 1) {
+                        // ::1
+                        return false;
+                    }
+                }
+            }
+            if (is_ipv4_mapped) {
+                if (local[5] != 0xffff) {
+                    is_ipv4_mapped = false;
+                }
+            }
+            return is_ipv4_compatible || is_ipv4_mapped;
         }
 
         template<typename OutIt>
@@ -807,11 +816,13 @@ inline constexpr std::string iouxx::network::ip::address_v4::to_string() const {
     return result;
 }
 
+// Use RFC 5952 recommended form for IPv6 to_string()
 [[nodiscard]]
 inline constexpr std::string iouxx::network::ip::address_v6::to_string() const {
     std::string result;
     result.resize_and_overwrite(64, [this](char* data, std::size_t) {
         std::formatter<address_v6> formatter;
+        formatter.seen_r = true; // recommended form
         struct fake_context {
             char* out_ptr;
             char* out() const noexcept { return out_ptr; }

@@ -2,6 +2,8 @@
 #include <string_view>
 #include <print>
 
+#include <arpa/inet.h>
+
 #include "iouops/network/ip.hpp"
 
 #define TEST_EXPECT(...) do { \
@@ -188,13 +190,41 @@ void ip_parse_test() {
     roundtrip6("2001:db8:85a3::8a2e:370:7334");
     roundtrip6("2001:db8:85a3:ffff:8a2e:370:7334:eeee");
     roundtrip6("2001:db8:85a3:ffff:8a2e:370:192.168.0.1");
-    // Cases that not recommended by RFC 5952 but still valid
+    // cases that not recommended by RFC 5952 but still valid
     roundtrip6("2001:0db8:85a3:ffff:8a2e:07:7334:eeee"); // not full length leading zeros
     roundtrip6("2001:0db8:85a3:ffff:8a2e:007:7334:eeee"); // not full length leading zeros
     roundtrip6("2001:0db8:85a3:ffff:8a2e::7334:eeee"); // only compress one zero group
     roundtrip6("2001:db8:0:0::0:eeee"); // not compress all possible zeros
     roundtrip6("2001:dB8:85A3:fFFf:8a2E:370:7334:EeEe"); // not lowercase
     roundtrip6("1:0:0:0:5::8"); // compress zeros but not the longest zero group
+
+    // standard inet_pton inet_ntop tests
+    auto standard = [](std::string s, std::source_location loc = std::source_location::current()) {
+        auto addr = address_v6::from_string(s);
+        TEST_EXPECT(addr.has_value());
+        std::string back = addr->to_string();
+        v6raw raw = addr->raw();
+        ::in6_addr addr6 = std::bit_cast<::in6_addr>(raw);
+        char buf[INET6_ADDRSTRLEN] = {};
+        const char* r = ::inet_ntop(AF_INET6, &addr6, buf, sizeof(buf));
+        std::println("{} {}", back, r);
+        TEST_EXPECT(r != nullptr);
+        TEST_EXPECT(back == buf);
+        int r2 = ::inet_pton(AF_INET6, s.c_str(), &addr6);
+        TEST_EXPECT(r2 == 1);
+        TEST_EXPECT(std::bit_cast<v6raw>(addr6) == raw);
+    };
+
+    standard("::");
+    standard("::1");
+    standard("1:2:3:4:5:6:7:8");
+    standard("2001:db8::1");
+    standard("fe80::1234:5678:9abc:def0");
+    standard("::ffff:1");
+    standard("2001:db8:85a3:ffff:8a2e:370:7334:eeee");
+    standard("2001:db8:85a3:ffff:8a2e:370:192.168.0.1");
+    standard("::ffff:192.168.0.1");
+    standard("::192.168.0.1");
 
     // invalid cases for ipv6
     auto invalid6 = [](std::string_view s,
