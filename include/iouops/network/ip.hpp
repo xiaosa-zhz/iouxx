@@ -323,8 +323,8 @@ namespace iouxx::inline iouops::network::ip {
                         // Too many parts
                         return std::errc::invalid_argument;
                     }
-                    if (sub[0] == '0' && sub.size() < 4 && sub.size() > 1) {
-                        // Leading zero in a shorter part
+                    if (sub.size() > 4) {
+                        // Too long
                         return std::errc::invalid_argument;
                     }
                     const auto first = sub.data();
@@ -420,27 +420,8 @@ namespace iouxx::inline iouops::network::ip {
             return address_v6(part_results);
         }
 
-        enum class format : std::uint8_t {
-            unspec = 0b000,
-            full = 0b000,
-            compressed = 0b001,
-            keeplz = 0b000,
-            removelz = 0b010,
-            nomix = 0b000,
-            mixed = 0b100,
-        };
-
-        friend constexpr format operator|(format lhs, format rhs) noexcept {
-            return format(std::to_underlying(lhs) | std::to_underlying(rhs));
-        }
-
-        friend constexpr format operator&(format lhs, format rhs) noexcept {
-            return format(std::to_underlying(lhs) & std::to_underlying(rhs));
-        }
-
         [[nodiscard]]
-        constexpr std::string to_string(
-            format fmt = format::full | format::keeplz | format::nomix) const;
+        constexpr std::string to_string() const;
 
     private:
         v6raw addr{}; // network byte order
@@ -486,41 +467,103 @@ namespace std {
         }
     };
 
-    // IPv6: accept optional single-letter spec describing representation
-    //  f : full, keep leading zeros (default)
-    //  F : full, remove leading zeros in each group
-    //  c : compressed (:: for longest zero run), keep leading zeros in other groups
-    //  C : compressed, remove leading zeros (most typical human form)
-    //  m : mixed (last 32 bits as IPv4), keep leading zeros
-    //  M : mixed (last 32 bits as IPv4), remove leading zeros
-    //  n : mixed, compressed, keep leading zeros
-    //  N : mixed, compressed, remove leading zeros (typical ipv4 compatible form)
+    // IPv6: accept optional spec describing representation
+    // Spec characters:
+    //  r | R (recommended, default) :
+    //   - RFC 5952 recommended form, which is:
+    //   - compressed
+    //   - remove leading zeros
+    //   - use lowercase hex digits
+    //   - and special rule for embedded IPv4, only when it is IPv4-compatible or IPv4-mapped
+    //   (This special rule can not be achieved by other format spec combinations.)
+    //  This character can only combine with 'n', 'N', 'u', 'U'.
+    //   
+    //  When useing customized format, default is:
+    //   - compressed, leading zeros removed, no mixed, lowercase hex digits.
+    //  Other characters (can be combined):
+    //  f | F (full) : full form, no compression
+    //  z | Z (keep leading zeros) : do not remove leading zeros
+    //  m | M (mixed) : force mixed form with embedded IPv4 address
+    //  n | N (no mixed) : do not use mixed form
+    //   - default, but can combine with 'r' or 'R' to disable the special rule
+    //   - can not combine with 'm' or 'M'
+    //  u | U (uppercase) : use uppercase hex digits
     template<>
     struct formatter<iouxx::network::ip::address_v6, char> {
         using ipv4 = iouxx::network::ip::address_v4;
         using ipv6 = iouxx::network::ip::address_v6;
-        ipv6::format fmt = ipv6::format::full | ipv6::format::keeplz | ipv6::format::nomix;
+        bool seen_r = false;
+        bool seen_f = false;
+        bool seen_z = false;
+        bool seen_m = false;
+        bool seen_n = false;
+        bool seen_u = false;
 
         constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
             auto it = ctx.begin();
             auto end = ctx.end();
             if (it == end || *it == '}') {
-                return it; // default spec
+                // empty spec, use recommended form
+                seen_r = true; // default
+                return it;
             }
-            char c = *it++;
-            switch (c) {
-                case 'f': /* also default spec */ break;
-                case 'F': fmt = ipv6::format::removelz; break;
-                case 'c': fmt = ipv6::format::compressed; break;
-                case 'C': fmt = ipv6::format::compressed | ipv6::format::removelz; break;
-                case 'm': fmt = ipv6::format::mixed; break;
-                case 'M': fmt = ipv6::format::mixed | ipv6::format::removelz; break;
-                case 'n': fmt = ipv6::format::mixed | ipv6::format::compressed; break;
-                case 'N': fmt = ipv6::format::mixed | ipv6::format::compressed | ipv6::format::removelz; break;
-                default: throw format_error("invalid format spec for ipv6 address");
+            for (; it != end && *it != '}'; ++it) {
+                switch (*it) {
+                case 'r': case 'R':
+                    if (seen_r) {
+                        throw format_error("duplicate 'r' or 'R' in ipv6 format spec");
+                    }
+                    seen_r = true;
+                    break;
+                case 'f': case 'F':
+                    if (seen_f) {
+                        throw format_error("duplicate 'f' or 'F' in ipv6 format spec");
+                    }
+                    seen_f = true;
+                    break;
+                case 'z': case 'Z':
+                    if (seen_z) {
+                        throw format_error("duplicate 'z' or 'Z' in ipv6 format spec");
+                    }
+                    seen_z = true;
+                    break;
+                case 'm': case 'M':
+                    if (seen_m) {
+                        throw format_error("duplicate 'm' or 'M' in ipv6 format spec");
+                    }
+                    seen_m = true;
+                    break;
+                case 'n': case 'N':
+                    if (seen_n) {
+                        throw format_error("duplicate 'n' or 'N' in ipv6 format spec");
+                    }
+                    seen_n = true;
+                    break;
+                case 'u': case 'U':
+                    if (seen_u) {
+                        throw format_error("duplicate 'u' or 'U' in ipv6 format spec");
+                    }
+                    seen_u = true;
+                    break;
+                default:
+                    throw format_error("invalid character in ipv6 format spec");
+                }
             }
-            if (it != end && *it != '}') {
-                throw format_error("Too many characters in ipv6 format spec");
+            // Validate combinations
+            if (seen_r) {
+                if (seen_f) {
+                    throw format_error("cannot combine 'r' and 'f' in ipv6 format spec");
+                }
+                if (seen_z) {
+                    throw format_error("cannot combine 'r' and 'z' in ipv6 format spec");
+                }
+                if (seen_m) {
+                    throw format_error("cannot combine 'r' and 'm' in ipv6 format spec");
+                }
+            } else {
+                if (seen_m && seen_n) {
+                    throw format_error("cannot combine 'm' and 'n' in ipv6 format spec");
+                }
             }
             return it;
         }
@@ -528,66 +571,139 @@ namespace std {
         template<class FormatContext>
         constexpr auto format(const ipv6& addr, FormatContext& ctx) const {
             using namespace iouxx::network::ip;
-
             auto out = ctx.out();
             const v6raw local = hton(addr.raw());
-            const bool compressed = std::to_underlying(fmt & ipv6::format::compressed);
-            const bool removed = std::to_underlying(fmt & ipv6::format::removelz);
-            const bool mixed = std::to_underlying(fmt & ipv6::format::mixed);
-            if (!compressed) {
+            const bool recommended = seen_r;
+            const bool full = seen_f;
+            const bool removed = !seen_z;
+            const bool uppercase = seen_u;
+            if (recommended) {
+                // Examine if it is IPv4-compatible or IPv4-mapped
+                // IPv4-compatible: ::d.d.d.d
+                // IPv4-mapped: ::ffff:d.d.d.d
+                bool is_ipv4_compatible = true;
+                bool is_ipv4_mapped = true;
+                // First 5 parts must be zero
+                for (std::size_t i = 0; i < 5; ++i) {
+                    if (local[i] != 0) {
+                        is_ipv4_compatible = false;
+                        is_ipv4_mapped = false;
+                        break;
+                    }
+                }
+                if (is_ipv4_compatible) {
+                    if (local[5] != 0) {
+                        is_ipv4_compatible = false;
+                    }
+                }
+                if (is_ipv4_mapped) {
+                    if (local[5] != 0xffff) {
+                        is_ipv4_mapped = false;
+                    }
+                }
+                const bool mixed = (is_ipv4_mapped || is_ipv4_compatible) && !seen_n;
+                return do_format(out, addr,
+                    local, recommended, full, removed, mixed, uppercase);
+            } else {
+                const bool mixed = seen_m;
+                return do_format(out, addr,
+                    local, recommended, full, removed, mixed, uppercase);
+            }
+        }
+
+        template<typename OutIt>
+        static constexpr OutIt do_format(OutIt out,
+            const ipv6& addr,
+            const iouxx::network::ip::v6raw& local,
+            bool recommended, bool full, bool removed,
+            bool mixed, bool uppercase) {
+            if (full) {
                 if (mixed) {
-                    out = mixed_full_ipv6(out, local, removed);
+                    out = mixed_full_ipv6(out, local, removed, uppercase);
                     return ipv4_part(out, addr);
                 } else {
-                    return full_ipv6(out, local, removed);
+                    return full_ipv6(out, local, removed, uppercase);
                 }
             } else {
-                out = compressed_ipv6(out, local, removed, mixed);
-                if (!mixed) {
-                    return out;
-                } else {
+                out = compressed_ipv6(out, local, removed, mixed, uppercase);
+                if (mixed) {
                     return ipv4_part(out, addr);
+                } else {
+                    return out;
                 }
             }
         }
 
         template<typename OutIt>
         static constexpr OutIt full_ipv6(OutIt out,
-            const iouxx::network::ip::v6raw& local, bool removed) {
-            if (!removed) {
-                // full, leading zeros kept
-                return std::format_to(out,
-                    "{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}",
-                    local[0], local[1], local[2], local[3],
-                    local[4], local[5], local[6], local[7]);
+            const iouxx::network::ip::v6raw& local,
+            bool removed, bool uppercase) {
+            if (!uppercase) {
+                if (!removed) {
+                    // full, leading zeros kept
+                    return std::format_to(out,
+                        "{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}",
+                        local[0], local[1], local[2], local[3],
+                        local[4], local[5], local[6], local[7]);
+                } else {
+                    // full, leading zeros removed
+                    return std::format_to(out,
+                        "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+                        local[0], local[1], local[2], local[3],
+                        local[4], local[5], local[6], local[7]);
+                }
             } else {
-                // full, leading zeros removed
-                return std::format_to(out,
-                    "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
-                    local[0], local[1], local[2], local[3],
-                    local[4], local[5], local[6], local[7]);
+                if (!removed) {
+                    // full, leading zeros kept, uppercase
+                    return std::format_to(out,
+                        "{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}",
+                        local[0], local[1], local[2], local[3],
+                        local[4], local[5], local[6], local[7]);
+                } else {
+                    // full, leading zeros removed, uppercase
+                    return std::format_to(out,
+                        "{:X}:{:X}:{:X}:{:X}:{:X}:{:X}:{:X}:{:X}",
+                        local[0], local[1], local[2], local[3],
+                        local[4], local[5], local[6], local[7]);
+                }
             }
         }
 
         template<typename OutIt>
         static constexpr OutIt mixed_full_ipv6(OutIt out,
-            const iouxx::network::ip::v6raw& local, bool removed) {
-            if (!removed) {
-                // leading zeros kept
-                return std::format_to(out,
-                    "{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:",
-                    local[0], local[1], local[2], local[3], local[4], local[5]);
+            const iouxx::network::ip::v6raw& local,
+            bool removed, bool uppercase) {
+            if (!uppercase) {
+                if (!removed) {
+                    // leading zeros kept
+                    return std::format_to(out,
+                        "{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:",
+                        local[0], local[1], local[2], local[3], local[4], local[5]);
+                } else {
+                    // leading zeros removed
+                    return std::format_to(out,
+                        "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:",
+                        local[0], local[1], local[2], local[3], local[4], local[5]);
+                }
             } else {
-                // leading zeros removed
-                return std::format_to(out,
-                    "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:",
-                    local[0], local[1], local[2], local[3], local[4], local[5]);
+                if (!removed) {
+                    // leading zeros kept
+                    return std::format_to(out,
+                        "{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:",
+                        local[0], local[1], local[2], local[3], local[4], local[5]);
+                } else {
+                    // leading zeros removed
+                    return std::format_to(out,
+                        "{:X}:{:X}:{:X}:{:X}:{:X}:{:X}:",
+                        local[0], local[1], local[2], local[3], local[4], local[5]);
+                }
             }
         }
 
         template<typename OutIt>
         static constexpr OutIt compressed_ipv6(OutIt out,
-            const iouxx::network::ip::v6raw& local, bool removed, bool mixed) {
+            const iouxx::network::ip::v6raw& local,
+            bool removed, bool mixed, bool uppercase) {
             // Find the longest consecutive zeros
             std::size_t best_start = 0;
             std::size_t best_len = 0;
@@ -611,9 +727,9 @@ namespace std {
             if (best_len < 2) {
                 // No compression
                 if (mixed) {
-                    return mixed_full_ipv6(out, local, removed);
+                    return mixed_full_ipv6(out, local, removed, uppercase);
                 } else {
-                    return full_ipv6(out, local, removed);
+                    return full_ipv6(out, local, removed, uppercase);
                 }
             }
             if (best_start == 0 && best_len == limit) {
@@ -624,10 +740,18 @@ namespace std {
             }
             // Before compression
             for (std::size_t i = 0; i < best_start; ++i) {
-                if (removed) {
-                    out = std::format_to(out, "{:x}:", local[i]);
+                if (!uppercase) {
+                    if (removed) {
+                        out = std::format_to(out, "{:x}:", local[i]);
+                    } else {
+                        out = std::format_to(out, "{:04x}:", local[i]);
+                    }
                 } else {
-                    out = std::format_to(out, "{:04x}:", local[i]);
+                    if (removed) {
+                        out = std::format_to(out, "{:X}:", local[i]);
+                    } else {
+                        out = std::format_to(out, "{:04X}:", local[i]);
+                    }
                 }
             }
             if (best_start == 0) {
@@ -636,10 +760,18 @@ namespace std {
             }
             // After compression
             for (std::size_t i = best_start + best_len; i < limit; ++i) {
-                if (removed) {
-                    out = std::format_to(out, ":{:x}", local[i]);
+                if (!uppercase) {
+                    if (removed) {
+                        out = std::format_to(out, ":{:x}", local[i]);
+                    } else {
+                        out = std::format_to(out, ":{:04x}", local[i]);
+                    }
                 } else {
-                    out = std::format_to(out, ":{:04x}", local[i]);
+                    if (removed) {
+                        out = std::format_to(out, ":{:X}", local[i]);
+                    } else {
+                        out = std::format_to(out, ":{:04X}", local[i]);
+                    }
                 }
             }
             if (best_start + best_len == limit || mixed) {
@@ -662,7 +794,7 @@ namespace std {
 } // namespace std
 
 [[nodiscard]]
-constexpr std::string iouxx::network::ip::address_v4::to_string() const {
+inline constexpr std::string iouxx::network::ip::address_v4::to_string() const {
     std::string result;
     result.resize_and_overwrite(16, [this](char* data, std::size_t) {
         std::formatter<address_v4> formatter;
@@ -676,11 +808,10 @@ constexpr std::string iouxx::network::ip::address_v4::to_string() const {
 }
 
 [[nodiscard]]
-constexpr std::string iouxx::network::ip::address_v6::to_string(format fmt) const {
+inline constexpr std::string iouxx::network::ip::address_v6::to_string() const {
     std::string result;
-    result.resize_and_overwrite(64, [this, fmt](char* data, std::size_t) {
+    result.resize_and_overwrite(64, [this](char* data, std::size_t) {
         std::formatter<address_v6> formatter;
-        formatter.fmt = fmt;
         struct fake_context {
             char* out_ptr;
             char* out() const noexcept { return out_ptr; }

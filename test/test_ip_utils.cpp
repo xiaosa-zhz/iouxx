@@ -109,33 +109,75 @@ void ip_parse_test() {
         std::source_location loc = std::source_location::current()) {
         auto r0 = address_v6::from_string(s);
         TEST_EXPECT(r0.has_value());
-        std::string back1 = std::format("{}", *r0);
+        // Single format
+        std::string back1 = std::format("{}", *r0); // same as {:r}
         auto r1 = address_v6::from_string_uncheck(back1);
         TEST_EXPECT(r0 == r1);
-        std::string back2 = std::format("{:f}", *r0);
+        std::string back2 = std::format("{:r}", *r0);
         auto r2 = address_v6::from_string_uncheck(back2);
         TEST_EXPECT(r0 == r2);
-        std::string back3 = std::format("{:c}", *r0);
+        std::string back3 = std::format("{:f}", *r0);
         auto r3 = address_v6::from_string_uncheck(back3);
         TEST_EXPECT(r0 == r3);
-        std::string back4 = std::format("{:F}", *r0);
+        std::string back4 = std::format("{:z}", *r0);
         auto r4 = address_v6::from_string_uncheck(back4);
         TEST_EXPECT(r0 == r4);
-        std::string back5 = std::format("{:C}", *r0);
+        std::string back5 = std::format("{:m}", *r0);
         auto r5 = address_v6::from_string_uncheck(back5);
         TEST_EXPECT(r0 == r5);
-        std::string back6 = std::format("{:m}", *r0);
+        std::string back6 = std::format("{:n}", *r0);
         auto r6 = address_v6::from_string_uncheck(back6);
         TEST_EXPECT(r0 == r6);
-        std::string back7 = std::format("{:M}", *r0);
+        std::string back7 = std::format("{:u}", *r0);
         auto r7 = address_v6::from_string_uncheck(back7);
         TEST_EXPECT(r0 == r7);
-        std::string back8 = std::format("{:n}", *r0);
+        // Combined formats of 'r'
+        std::string back8 = std::format("{:rn}", *r0);
         auto r8 = address_v6::from_string_uncheck(back8);
         TEST_EXPECT(r0 == r8);
-        std::string back9 = std::format("{:N}", *r0);
+        std::string back9 = std::format("{:ru}", *r0);
         auto r9 = address_v6::from_string_uncheck(back9);
         TEST_EXPECT(r0 == r9);
+        std::string back10 = std::format("{:rnu}", *r0);
+        auto r10 = address_v6::from_string_uncheck(back10);
+        TEST_EXPECT(r0 == r10);
+        // Other combined formats (of 'f', 'z', 'm', 'u')
+        // fz fm fu zm zu mu
+        // fzm fzu fmu zmu
+        // fzmu
+        std::string back11 = std::format("{:fz}", *r0);
+        auto r11 = address_v6::from_string_uncheck(back11);
+        TEST_EXPECT(r0 == r11);
+        std::string back12 = std::format("{:fm}", *r0);
+        auto r12 = address_v6::from_string_uncheck(back12);
+        TEST_EXPECT(r0 == r12);
+        std::string back13 = std::format("{:fu}", *r0);
+        auto r13 = address_v6::from_string_uncheck(back13);
+        TEST_EXPECT(r0 == r13);
+        std::string back14 = std::format("{:zm}", *r0);
+        auto r14 = address_v6::from_string_uncheck(back14);
+        TEST_EXPECT(r0 == r14);
+        std::string back15 = std::format("{:zu}", *r0);
+        auto r15 = address_v6::from_string_uncheck(back15);
+        TEST_EXPECT(r0 == r15);
+        std::string back16 = std::format("{:mu}", *r0);
+        auto r16 = address_v6::from_string_uncheck(back16);
+        TEST_EXPECT(r0 == r16);
+        std::string back17 = std::format("{:fzm}", *r0);
+        auto r17 = address_v6::from_string_uncheck(back17);
+        TEST_EXPECT(r0 == r17);
+        std::string back18 = std::format("{:fzu}", *r0);
+        auto r18 = address_v6::from_string_uncheck(back18);
+        TEST_EXPECT(r0 == r18);
+        std::string back19 = std::format("{:fmu}", *r0);
+        auto r19 = address_v6::from_string_uncheck(back19);
+        TEST_EXPECT(r0 == r19);
+        std::string back20 = std::format("{:zmu}", *r0);
+        auto r20 = address_v6::from_string_uncheck(back20);
+        TEST_EXPECT(r0 == r20);
+        std::string back21 = std::format("{:fzmu}", *r0);
+        auto r21 = address_v6::from_string_uncheck(back21);
+        TEST_EXPECT(r0 == r21);
     };
     roundtrip6("1:2:3:4:5:6:7:8");
     roundtrip6("2001:db8::1");
@@ -146,6 +188,13 @@ void ip_parse_test() {
     roundtrip6("2001:db8:85a3::8a2e:370:7334");
     roundtrip6("2001:db8:85a3:ffff:8a2e:370:7334:eeee");
     roundtrip6("2001:db8:85a3:ffff:8a2e:370:192.168.0.1");
+    // Cases that not recommended by RFC 5952 but still valid
+    roundtrip6("2001:0db8:85a3:ffff:8a2e:07:7334:eeee"); // not full length leading zeros
+    roundtrip6("2001:0db8:85a3:ffff:8a2e:007:7334:eeee"); // not full length leading zeros
+    roundtrip6("2001:0db8:85a3:ffff:8a2e::7334:eeee"); // only compress one zero group
+    roundtrip6("2001:db8:0:0::0:eeee"); // not compress all possible zeros
+    roundtrip6("2001:dB8:85A3:fFFf:8a2E:370:7334:EeEe"); // not lowercase
+    roundtrip6("1:0:0:0:5::8"); // compress zeros but not the longest zero group
 
     // invalid cases for ipv6
     auto invalid6 = [](std::string_view s,
@@ -161,10 +210,9 @@ void ip_parse_test() {
     invalid6("2001:db8:85a3:ffff: 8a2e:370:7334:eeee");
     invalid6("2001:db8: 85a3 :ffff:8a2e:370:7334:eeee");
     invalid6("2001:db8:85a3:ffff:8a2e:370:7334 :eeee");
-    invalid6("2001:0db8:85a3:ffff:8a2e:07:7334:eeee");
-    invalid6("2001:0db8:85a3:ffff:8a2e:000:7334:eeee");
     invalid6("2001:db8:85a3:ff1ff:8a2e:370:7334:eeee");
     invalid6("2001:db8:85a3:ffff:8a2e:370:7334:10000");
+    invalid6("1:00000::1");
     invalid6("gggg::1");
     invalid6("1:gggg::1");
     invalid6("1:1::gggg");
