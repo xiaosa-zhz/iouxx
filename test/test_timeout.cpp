@@ -5,7 +5,7 @@
 #include "iouringxx.hpp"
 #include "iouops/timeout.hpp"
 
-#define test_expect(...) do { \
+#define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
         std::println("Assertion failed: {}, {}:{}\n", #__VA_ARGS__, \
         __FILE__, __LINE__); \
@@ -26,15 +26,15 @@ void test_timeout() {
     auto start = std::chrono::steady_clock::now();
     if (auto ec = timer.submit()) {
         std::println("Failed to submit timer task: {}", ec.message());
-        test_expect(false);
+        TEST_EXPECT(false);
     }
     std::println("Timer task submitted, waiting for completion...");
     iouxx::operation_result result = ring.wait_for_result().value();
     result();
-    test_expect(n == 114514);
+    TEST_EXPECT(n == 114514);
     auto end = std::chrono::steady_clock::now();
     auto duration = end - start;
-    test_expect(duration < 100ms);
+    TEST_EXPECT(duration < 100ms);
     std::println("Timer completed after {}",
         std::chrono::duration_cast<std::chrono::milliseconds>(duration));
 }
@@ -59,23 +59,23 @@ void test_multishot_timeout() {
     auto start = std::chrono::steady_clock::now();
     if (auto ec = timer.submit()) {
         std::println("Failed to submit timer task: {}", ec.message());
-        test_expect(false);
+        TEST_EXPECT(false);
     }
     std::println("Timer task submitted, waiting for completion...");
     while (if_more) {
         iouxx::operation_result result = ring.wait_for_result().value();
         result();
     }
-    test_expect(counter == 5);
+    TEST_EXPECT(counter == 5);
     auto end = std::chrono::steady_clock::now();
     auto duration = end - start;
-    test_expect(duration < 100ms);
+    TEST_EXPECT(duration < 100ms);
     std::println("Timer completed after {}",
         std::chrono::duration_cast<std::chrono::milliseconds>(duration));
 }
 
 int main() {
-    test_expect(true);
+    TEST_EXPECT(true);
     test_timeout();
     test_multishot_timeout();
 }

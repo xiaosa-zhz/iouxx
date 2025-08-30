@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 #ifndef IOUXX_LIBURING_CXX_WRAPER_H
 #define IOUXX_LIBURING_CXX_WRAPER_H 1
 
@@ -18,6 +17,7 @@
 #include <span>
 #include <ranges>
 #include <vector>
+#include <chrono>
 
 #if defined(__cpp_contracts) && __cpp_contracts >= 202502L
 #define assert(...) contract_assert(__VA_ARGS__)
@@ -31,6 +31,16 @@ namespace iouxx {
     class io_uring_xx;
 
     namespace details {
+
+        inline ::__kernel_timespec to_kernel_timespec(std::chrono::nanoseconds stdtime) noexcept {
+            ::__kernel_timespec ts;
+            const auto sec
+                = std::chrono::duration_cast<std::chrono::seconds>(stdtime);
+            const auto nsec = stdtime - sec;
+            ts.tv_sec = sec.count();
+            ts.tv_nsec = nsec.count();
+            return ts;
+        }
 
         // Pre: ev >= 0
         inline std::error_code make_system_error_code(int ev) noexcept {
@@ -290,10 +300,17 @@ namespace iouxx {
             return result;
         }
 
-        std::expected<operation_result, std::error_code> wait_for_result() noexcept {
+        auto wait_for_result(std::chrono::nanoseconds timeout = {})
+            noexcept -> std::expected<operation_result, std::error_code> {
             assert(valid());
             ::io_uring_cqe* cqe = nullptr;
-            int ev = ::io_uring_wait_cqe(&ring, &cqe);
+            int ev = 0;
+            if (timeout.count() != 0) {
+                auto ts = details::to_kernel_timespec(timeout);
+                ev = ::io_uring_wait_cqe_timeout(&ring, &cqe, &ts);
+            } else {
+                ev = ::io_uring_wait_cqe(&ring, &cqe);
+            }
             if (ev < 0) {
                 return std::unexpected(details::make_system_error_code(-ev));
             }

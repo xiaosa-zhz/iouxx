@@ -4,7 +4,7 @@
 
 #include "iouops/network/ip.hpp"
 
-#define test_expect(...) do { \
+#define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
         std::println("Assertion failed: {}, {}:{}\n", #__VA_ARGS__, \
         loc.file_name(), loc.line()); \
@@ -21,11 +21,11 @@ void ip_parse_test() {
     auto special = [](std::string_view s, address_v4 expected,
         std::source_location loc = std::source_location::current()) {
         auto r = address_v4::from_string(s);
-        test_expect(r.has_value());
-        test_expect(r == expected);
+        TEST_EXPECT(r.has_value());
+        TEST_EXPECT(r == expected);
         auto ru = address_v4::from_string_uncheck(s);
-        test_expect(ru == expected);
-        test_expect(r->to_string() == s);
+        TEST_EXPECT(ru == expected);
+        TEST_EXPECT(r->to_string() == s);
     };
     // loopback 127.0.0.1
     special("127.0.0.1", address_v4::loopback());
@@ -38,10 +38,10 @@ void ip_parse_test() {
     auto roundtrip = [](std::string_view s,
         std::source_location loc = std::source_location::current()) {
         auto r = address_v4::from_string(s);
-        test_expect(r.has_value());
+        TEST_EXPECT(r.has_value());
         std::string back = r->to_string();
         auto r2 = address_v4::from_string_uncheck(back);
-        test_expect(r == r2);
+        TEST_EXPECT(r == r2);
     };
     roundtrip("1.2.3.4");
     roundtrip("192.168.0.1");
@@ -51,7 +51,7 @@ void ip_parse_test() {
     auto invalid = [](std::string_view s,
         std::source_location loc = std::source_location::current()) {
         auto r = address_v4::from_string(s);
-        test_expect(!r.has_value());
+        TEST_EXPECT(!r.has_value());
     };
     invalid("");
     invalid(" ");
@@ -80,7 +80,7 @@ void ip_parse_test() {
         std::source_location loc = std::source_location::current();
         using namespace iouxx::literals::network_literals;
         constexpr address_v4 a1 = "127.0.0.1"_ipv4;
-        test_expect(a1 == address_v4::loopback());
+        TEST_EXPECT(a1 == address_v4::loopback());
     }
 
     std::println("All ipv4 tests passed.");
@@ -91,11 +91,11 @@ void ip_parse_test() {
     auto special6 = [](std::string_view s, address_v6 expected,
         std::source_location loc = std::source_location::current()) {
         auto r = address_v6::from_string(s);
-        test_expect(r.has_value());
-        test_expect(r == expected);
+        TEST_EXPECT(r.has_value());
+        TEST_EXPECT(r == expected);
         auto back = r->to_string();
         auto ru = address_v6::from_string_uncheck(back);
-        test_expect(ru == expected);
+        TEST_EXPECT(ru == expected);
     };
     // loopback ::1
     special6("::1", address_v6::loopback());
@@ -108,34 +108,34 @@ void ip_parse_test() {
     auto roundtrip6 = [](std::string_view s,
         std::source_location loc = std::source_location::current()) {
         auto r0 = address_v6::from_string(s);
-        test_expect(r0.has_value());
+        TEST_EXPECT(r0.has_value());
         std::string back1 = std::format("{}", *r0);
         auto r1 = address_v6::from_string_uncheck(back1);
-        test_expect(r0 == r1);
+        TEST_EXPECT(r0 == r1);
         std::string back2 = std::format("{:f}", *r0);
         auto r2 = address_v6::from_string_uncheck(back2);
-        test_expect(r0 == r2);
+        TEST_EXPECT(r0 == r2);
         std::string back3 = std::format("{:c}", *r0);
         auto r3 = address_v6::from_string_uncheck(back3);
-        test_expect(r0 == r3);
+        TEST_EXPECT(r0 == r3);
         std::string back4 = std::format("{:F}", *r0);
         auto r4 = address_v6::from_string_uncheck(back4);
-        test_expect(r0 == r4);
+        TEST_EXPECT(r0 == r4);
         std::string back5 = std::format("{:C}", *r0);
         auto r5 = address_v6::from_string_uncheck(back5);
-        test_expect(r0 == r5);
+        TEST_EXPECT(r0 == r5);
         std::string back6 = std::format("{:m}", *r0);
         auto r6 = address_v6::from_string_uncheck(back6);
-        test_expect(r0 == r6);
+        TEST_EXPECT(r0 == r6);
         std::string back7 = std::format("{:M}", *r0);
         auto r7 = address_v6::from_string_uncheck(back7);
-        test_expect(r0 == r7);
+        TEST_EXPECT(r0 == r7);
         std::string back8 = std::format("{:n}", *r0);
         auto r8 = address_v6::from_string_uncheck(back8);
-        test_expect(r0 == r8);
+        TEST_EXPECT(r0 == r8);
         std::string back9 = std::format("{:N}", *r0);
         auto r9 = address_v6::from_string_uncheck(back9);
-        test_expect(r0 == r9);
+        TEST_EXPECT(r0 == r9);
     };
     roundtrip6("1:2:3:4:5:6:7:8");
     roundtrip6("2001:db8::1");
@@ -151,7 +151,7 @@ void ip_parse_test() {
     auto invalid6 = [](std::string_view s,
         std::source_location loc = std::source_location::current()) {
         auto r = address_v6::from_string(s);
-        test_expect(!r.has_value());
+        TEST_EXPECT(!r.has_value());
     };
     invalid6("");
     invalid6(" ");
@@ -198,7 +198,7 @@ void ip_parse_test() {
         std::source_location loc = std::source_location::current();
         using namespace iouxx::literals::network_literals;
         constexpr address_v6 a1 = "::1"_ipv6;
-        test_expect(a1 == address_v6::loopback());
+        TEST_EXPECT(a1 == address_v6::loopback());
     }
 
     std::println("All ipv6 tests passed.");
@@ -206,6 +206,6 @@ void ip_parse_test() {
 
 int main() {
     std::source_location loc = std::source_location::current();
-    test_expect(true);
+    TEST_EXPECT(true);
     ip_parse_test();
 }

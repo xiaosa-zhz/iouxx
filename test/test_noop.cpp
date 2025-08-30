@@ -4,7 +4,7 @@
 #include "iouringxx.hpp"
 #include "iouops/noop.hpp"
 
-#define test_expect(...) do { \
+#define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
         std::println("Assertion failed: {}, {}:{}\n", #__VA_ARGS__, \
         __FILE__, __LINE__); \
@@ -23,16 +23,16 @@ void test_noop() {
     });
     if (auto ec = noop.submit()) {
         std::println("Failed to submit noop task: {}", ec.message());
-        test_expect(false);
+        TEST_EXPECT(false);
     }
     std::println("Noop task submitted, waiting for completion...");
     iouxx::operation_result result = ring.wait_for_result().value();
     result();
-    test_expect(n == 114514);
+    TEST_EXPECT(n == 114514);
     std::println("Noop completed with result: {}", result.result());
 }
 
 int main() {
-    test_expect(true);
+    TEST_EXPECT(true);
     test_noop();
 }
