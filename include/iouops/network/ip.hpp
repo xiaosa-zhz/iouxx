@@ -587,7 +587,7 @@ namespace std {
             // Examine if it is IPv4-compatible or IPv4-mapped
             // IPv4-compatible: ::d.d.d.d
             // IPv4-mapped: ::ffff:d.d.d.d
-            // Special address (any and loopback) are always not mixed
+            // If all but last 16 bits are zeros, it will not be considered as mixed
             bool is_ipv4_compatible = true;
             bool is_ipv4_mapped = true;
             // First 5 parts must be zero
@@ -601,15 +601,10 @@ namespace std {
             if (is_ipv4_compatible) {
                 if (local[5] != 0) {
                     is_ipv4_compatible = false;
-                }
-                if (local[6] == 0) {
-                    if (local[7] == 0) {
-                        // ::
-                        return false;
-                    } else if (local[7] == 1) {
-                        // ::1
-                        return false;
-                    }
+                } else if (local[6] == 0) {
+                    // All but last 16 bits are zeros, not considered as mixed
+                    // Looks like '::abcd'
+                    return false;
                 }
             }
             if (is_ipv4_mapped) {

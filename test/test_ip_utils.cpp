@@ -217,6 +217,8 @@ void ip_parse_test() {
 
     standard("::");
     standard("::1");
+    standard("::abcd");
+    standard("::abcd:0");
     standard("1:2:3:4:5:6:7:8");
     standard("2001:db8::1");
     standard("fe80::1234:5678:9abc:def0");
