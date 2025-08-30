@@ -5,7 +5,7 @@
 - [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
 
 ## Medium Priority
-- [ ] Add test for cancel operation
+- [ ] Placeholder
 
 ## Low Priority
 - [ ] Add C++ module support
@@ -16,6 +16,7 @@
 - [x] ~~Rewrite operations~~
 - [x] ~~Add license file~~
 - [x] ~~Add readme file~~
+- [x] ~~Add test for cancel operation~~
 
 ## Notes
 - Add any additional notes or context here
