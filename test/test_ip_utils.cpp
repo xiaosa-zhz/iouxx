@@ -79,10 +79,9 @@ void ip_parse_test() {
 
     // ipv4 literals
     {
-        std::source_location loc = std::source_location::current();
         using namespace iouxx::literals::network_literals;
         constexpr address_v4 a1 = "127.0.0.1"_ipv4;
-        TEST_EXPECT(a1 == address_v4::loopback());
+        static_assert(a1 == address_v4::loopback());
     }
 
     std::println("All ipv4 tests passed.");
@@ -641,10 +640,9 @@ void ip_parse_test() {
 
     // ipv6 literals
     {
-        std::source_location loc = std::source_location::current();
         using namespace iouxx::literals::network_literals;
         constexpr address_v6 a1 = "::1"_ipv6;
-        TEST_EXPECT(a1 == address_v6::loopback());
+        static_assert(a1 == address_v6::loopback(), "ipv6 literal loopback mismatch");
     }
 
     std::println("All ipv6 tests passed.");
@@ -701,14 +699,13 @@ void ip_parse_test() {
     }
     // literal test
     {
-        std::source_location loc = std::source_location::current();
         using namespace iouxx::literals::network_literals;
         constexpr socket_v4 s1 = "127.0.0.1:80"_sockv4;
-        TEST_EXPECT(s1.address() == address_v4::loopback());
-        TEST_EXPECT(s1.port() == 80);
+        static_assert(s1.address() == address_v4::loopback());
+        static_assert(s1.port() == 80);
         constexpr socket_v4 s2 = "127.0.0.1/80"_sockv4;
-        TEST_EXPECT(s2.address() == address_v4::loopback());
-        TEST_EXPECT(s2.port() == 80);
+        static_assert(s2.address() == address_v4::loopback());
+        static_assert(s2.port() == 80);
     }
     // ipv6
     // roundtrip tests
@@ -777,14 +774,14 @@ void ip_parse_test() {
     }
     // literal test
     {
-        std::source_location loc = std::source_location::current();
         using namespace iouxx::literals::network_literals;
         constexpr socket_v6 s1 = "[::1]:80"_sockv6;
-        TEST_EXPECT(s1.address() == address_v6::loopback());
-        TEST_EXPECT(s1.port() == 80);
+        static_assert(s1.address() == address_v6::loopback());
+        static_assert(s1.port() == 80);
         constexpr socket_v6 s2 = "[2001:db8::1]:443"_sockv6;
-        TEST_EXPECT(s2.address() == address_v6::from_string("2001:db8::1").value());
-        TEST_EXPECT(s2.port() == 443);
+        constexpr address_v6 expected = "2001:db8::1"_ipv6;
+        static_assert(s2.address() == expected);
+        static_assert(s2.port() == 443);
     }
 }
 

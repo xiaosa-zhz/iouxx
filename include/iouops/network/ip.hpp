@@ -1,5 +1,4 @@
 #pragma once
-#include "iouops/network/socket.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_IP_H
 #define IOUXX_OPERATION_NETWORK_IP_H 1
 
@@ -16,6 +15,8 @@
 #include <system_error>
 #include <charconv>
 #include <format>
+
+#include "util/utility.hpp"
 
 namespace iouxx::inline iouops::network::ip {
 
