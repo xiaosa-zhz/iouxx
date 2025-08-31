@@ -475,8 +475,8 @@ namespace std {
     //   - remove leading zeros
     //   - use lowercase hex digits
     //   - and special rule for embedded IPv4, which is applied when:
-    //     - it is not that all but last 16 bits are zeros (::abcd)
     //     - it is IPv4-mapped (::ffff:d.d.d.d) or IPv4-compatible (::d.d.d.d)
+    //     - and it is not that all but last 16 bits are zeros (not ::abcd)
     //   (This special rule can not be achieved by other format spec combinations.)
     //  This character can only combine with 'n', 'N', 'u', 'U'.
     //   
@@ -487,7 +487,8 @@ namespace std {
     //  z | Z (keep leading zeros) : do not remove leading zeros
     //  m | M (mixed) : force mixed form with embedded IPv4 address
     //  n | N (no mixed) : do not use mixed form
-    //   - default, but can combine with 'r' or 'R' to disable the special rule
+    //   - the way to get default customized format (by {:n} or {:N})
+    //   - can combine with 'r' or 'R' to disable the special rule
     //   - can not combine with 'm' or 'M'
     //  u | U (uppercase) : use uppercase hex digits
     template<>

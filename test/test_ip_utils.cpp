@@ -207,7 +207,6 @@ void ip_parse_test() {
         ::in6_addr addr6 = std::bit_cast<::in6_addr>(raw);
         char buf[INET6_ADDRSTRLEN] = {};
         const char* r = ::inet_ntop(AF_INET6, &addr6, buf, sizeof(buf));
-        std::println("{} {}", back, r);
         TEST_EXPECT(r != nullptr);
         TEST_EXPECT(back == buf);
         int r2 = ::inet_pton(AF_INET6, s.c_str(), &addr6);
@@ -227,6 +226,373 @@ void ip_parse_test() {
     standard("2001:db8:85a3:ffff:8a2e:370:192.168.0.1");
     standard("::ffff:192.168.0.1");
     standard("::192.168.0.1");
+
+    // formatter tests
+    {
+#define FORMATTER_EXPECT(...) do { \
+    std::source_location loc = std::source_location::current(); \
+    TEST_EXPECT((__VA_ARGS__)); \
+} while(0)
+        // default and {:r}
+        {
+            constexpr std::string_view tests[] = {
+                "::", "::1", "::abcd",
+                "::192.168.0.1", "::ffff:192.168.0.1",
+                "::ffff:0.0.0.1",
+                "2001:db8:85a3:ffff:8a2e:370:7334:eeee",
+                "2001:db8::ffff:c0a8:1",
+                "2001:db8::c0a8:1",
+                "2001:db8:85a3:0:8a2e::",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back1 = std::format("{}", *addr);
+                FORMATTER_EXPECT(back1 == s);
+                std::string back2 = std::format("{:r}", *addr);
+                FORMATTER_EXPECT(back2 == s);
+            }
+        }
+        // {:f}
+        {
+            constexpr std::string_view tests[] = {
+                "0:0:0:0:0:0:0:0", "0:0:0:0:0:0:0:1",
+                "0:0:0:0:0:0:c0a8:1", "0:0:0:0:0:ffff:c0a8:1",
+                "2001:db8:85a3:ffff:8a2e:370:7334:eeee",
+                "2001:db8:0:0:0:0:ffff:1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:f}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:z}
+        {
+            constexpr std::string_view tests[] = {
+                "::c0a8:0001", "::ffff:c0a8:0001",
+                "2001:0db8:85a3:000f:8a2e:0370:7334:eeee",
+                "2001:0008:85a3::7334:0eee",
+                "0000:0000:05a3::0eee",
+                "2001::000f:8a2e:0000:0000:eeee",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:z}", *addr);
+                std::println("{} {}", s, back);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:m}
+        {
+            constexpr std::string_view tests[] = {
+                "::192.168.0.1", "::ffff:192.168.0.1",
+                "2001:db8:85a3:ffff:8a2e:370:192.168.0.1",
+                "2001::8a2e:370:192.168.0.1",
+                "::ffff:8a2e:370:192.168.0.1",
+                "2001:db8:85a3::192.168.0.1",
+                "::85a3:ffff:0:0:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:m}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:n}
+        {
+            constexpr std::string_view tests[] = {
+                "::", "::1", "::abcd",
+                "::c0a8:1", "::ffff:c0a8:1",
+                "2001:db8:85a3:ffff:8a2e:370:7334:eeee",
+                "2001:0:0:ffff::eeee",
+                "2001:db8:85a3:0:8a2e::",
+                "2001::ffff:8a2e:0:0:eeee",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:n}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:u}
+        {
+            constexpr std::string_view tests[] = {
+                "::", "::1", "::ABCD", "::FFFF:0",
+                "::C0A8:1", "::FFFF:C0A8:1",
+                "2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE",
+                "2001:DB8:85A3::7334:EEEE",
+                "2001:0:0:FFFF::EEEE",
+                "2001:DB8:85A3:0:8A2E::",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:u}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+
+        // Combined formats of 'r'
+        // rn ru rnu
+
+        // {:rn}
+        {
+            constexpr std::string_view tests[] = {
+                "::", "::1", "::abcd",
+                "::c0a8:1", "::ffff:c0a8:1",
+                "::ffff:0:1",
+                "2001:db8:85a3:ffff:8a2e:370:7334:eeee",
+                "2001:0:0:ffff::eeee",
+                "2001:db8:85a3:0:8a2e::",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:rn}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:ru}
+        {
+            constexpr std::string_view tests[] = {
+                "::", "::1", "::ABCD",
+                "::192.168.0.1", "::FFFF:192.168.0.1",
+                "::FFFF:0.0.0.1",
+                "2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE",
+                "2001:0:0:FFFF::EEEE",
+                "2001:DB8:85A3:0:8A2E::",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:ru}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:rnu}
+        {
+            constexpr std::string_view tests[] = {
+                "::", "::1", "::ABCD",
+                "::C0A8:1", "::FFFF:C0A8:1",
+                "::FFFF:0:1",
+                "2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE",
+                "2001:0:0:FFFF::EEEE",
+                "2001:DB8:85A3:0:8A2E::",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:rnu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+
+        // Other combined formats (of 'f', 'z', 'm', 'u')
+        // fz fm fu zm zu mu
+        // fzm fzu fmu zmu
+        // fzmu
+
+        // {:fz}
+        {
+            constexpr std::string_view tests[] = {
+                "0000:0000:0000:0000:0000:0000:0000:0000",
+                "0000:0000:0000:0000:0000:0000:0000:0001",
+                "0000:0000:0000:0000:0000:0000:c0a8:0001",
+                "0000:0000:0000:0000:0000:ffff:c0a8:0001",
+                "2001:0db8:85a3:ffff:8a2e:0370:7334:eeee",
+                "2001:0db8:0000:0000:0000:0000:ffff:0001",
+                "0000:0000:05a3:0000:0000:0000:0000:0eee",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fz}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:fm}
+        {
+            constexpr std::string_view tests[] = {
+                "0:0:0:0:0:0:192.168.0.1", "0:0:0:0:0:ffff:192.168.0.1",
+                "2001:db8:85a3:ffff:8a2e:370:192.168.0.1",
+                "2001:0:0:0:8a2e:370:192.168.0.1",
+                "0:0:0:ffff:8a2e:370:192.168.0.1",
+                "2001:db8:85a3:0:0:0:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fm}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:fu}
+        {
+            constexpr std::string_view tests[] = {
+                "0:0:0:0:0:0:0:0", "0:0:0:0:0:0:0:1",
+                "0:0:0:0:0:0:0:ABCD", "0:0:0:0:0:0:FFFF:0",
+                "0:0:0:0:0:0:C0A8:1", "0:0:0:0:0:FFFF:C0A8:1",
+                "2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE",
+                "2001:DB8:85A3:0:0:0:7334:EEEE",
+                "2001:0:0:FFFF:0:0:0:EEEE",
+                "2001:DB8:85A3:0:8A2E:0:0:0",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:zm}
+        {
+            constexpr std::string_view tests[] = {
+                "::192.168.0.1", "::ffff:192.168.0.1",
+                "2001:0db8:85a3:ffff:8a2e:0370:192.168.0.1",
+                "2001::8a2e:0370:192.168.0.1",
+                "::ffff:8a2e:0370:192.168.0.1",
+                "2001:0db8:85a3::192.168.0.1",
+                "2001:0db8:0000:ffff::192.168.0.1",
+                "2001::ffff:0000:0000:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:zm}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:zu}
+        {
+            constexpr std::string_view tests[] = {
+                "::C0A8:0001", "::FFFF:C0A8:0001",
+                "2001:0DB8:85A3:000F:8A2E:0370:7334:EEEE",
+                "2001:0008:85A3::7334:0EEE",
+                "0000:0000:05A3::0EEE",
+                "2001::000F:8A2E:0000:0000:EEEE",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:zu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:mu}
+        {
+            constexpr std::string_view tests[] = {
+                "::192.168.0.1", "::FFFF:192.168.0.1",
+                "2001:DB8:85A3:FFFF:8A2E:370:192.168.0.1",
+                "2001::8A2E:370:192.168.0.1",
+                "::FFFF:8A2E:370:192.168.0.1",
+                "2001:DB8:85A3::192.168.0.1",
+                "::85A3:FFFF:0:0:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:mu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:fzm}
+        {
+            constexpr std::string_view tests[] = {
+                "0000:0000:0000:0000:0000:0000:192.168.0.1",
+                "0000:0000:0000:0000:0000:ffff:192.168.0.1",
+                "2001:0db8:85a3:ffff:8a2e:0370:192.168.0.1",
+                "2001:0000:0000:0000:8a2e:0370:192.168.0.1",
+                "0000:0000:0000:ffff:8a2e:0370:192.168.0.1",
+                "2001:0db8:85a3:0000:0000:0000:192.168.0.1",
+                "2001:0000:0000:ffff:0000:0000:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fzm}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:fzu}
+        {
+            constexpr std::string_view tests[] = {
+                "0000:0000:0000:0000:0000:0000:0000:0000",
+                "0000:0000:0000:0000:0000:0000:0000:0001",
+                "0000:0000:0000:0000:0000:0000:0000:ABCD",
+                "0000:0000:0000:0000:0000:0000:FFFF:0000",
+                "0000:0000:0000:0000:0000:0000:C0A8:0001",
+                "2001:0DB8:85A3:FFFF:8A2E:0370:7334:EEEE",
+                "2001:0DB8:85A3:0000:0000:0000:7334:EEEE",
+                "2001:0DB8:0000:0000:FFFF:0000:0000:EEEE",
+                "2001:0DB8:85A3:000F:8A2E:0000:C0A8:0001",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fzu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:fmu}
+        {
+            constexpr std::string_view tests[] = {
+                "0:0:0:0:0:0:192.168.0.1",
+                "0:0:0:0:0:CF:192.168.0.1",
+                "2001:DB8:85A3:FFFF:8A2E:370:192.168.0.1",
+                "2001:0:0:0:8A2E:370:192.168.0.1",
+                "0:0:0:FFFF:8A2E:370:192.168.0.1",
+                "2001:DB8:85A3:0:0:0:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fmu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:zmu}
+        {
+            constexpr std::string_view tests[] = {
+                "::192.168.0.1", "::FFFF:192.168.0.1",
+                "2001:0DB8:85A3:FFFF:8A2E:0370:192.168.0.1",
+                "2001::8A2E:0370:192.168.0.1",
+                "::FFFF:8A2E:0370:192.168.0.1",
+                "2001:0DB8:85A3::192.168.0.1",
+                "2001:0DB8:0000:00CF::192.168.0.1",
+                "2001::FFFF:0000:0000:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:zmu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+        // {:fzmu}
+        {
+            constexpr std::string_view tests[] = {
+                "0000:0000:0000:0000:0000:0000:192.168.0.1",
+                "0000:0000:0000:0000:0000:FFFF:192.168.0.1",
+                "2001:0DB8:85A3:FFFF:8A2E:0370:192.168.0.1",
+                "2001:0000:0000:0000:8A2E:0370:192.168.0.1",
+                "0000:0000:0000:FFFF:8A2E:0370:192.168.0.1",
+                "2001:0DB8:85A3:0000:0000:0000:192.168.0.1",
+                "2001:0000:0000:FFFF:0000:0000:192.168.0.1",
+            };
+            for (std::string_view s : tests) {
+                auto addr = address_v6::from_string(s);
+                FORMATTER_EXPECT(addr.has_value());
+                std::string back = std::format("{:fzmu}", *addr);
+                FORMATTER_EXPECT(back == s);
+            }
+        }
+#undef FORMATTER_EXPECT
+    }
 
     // invalid cases for ipv6
     auto invalid6 = [](std::string_view s,
