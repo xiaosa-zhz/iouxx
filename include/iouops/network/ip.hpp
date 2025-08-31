@@ -1,4 +1,5 @@
 #pragma once
+#include "iouops/network/socket.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_IP_H
 #define IOUXX_OPERATION_NETWORK_IP_H 1
 
@@ -16,11 +17,10 @@
 #include <charconv>
 #include <format>
 
-namespace iouxx::details {
+namespace iouxx::inline iouops::network::ip {
 
-    inline std::error_code make_invalid_argument_error() noexcept {
-        return std::make_error_code(std::errc::invalid_argument);
-    }
+    using v4raw = std::uint32_t; // network byte order
+    using v6raw = std::array<std::uint16_t, 8>; // network byte order
 
     inline constexpr std::uint16_t hton_16(std::uint16_t host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
@@ -29,13 +29,6 @@ namespace iouxx::details {
             return host;
         }
     }
-
-} // iouxx::details
-
-namespace iouxx::inline iouops::network::ip {
-
-    using v4raw = std::uint32_t; // network byte order
-    using v6raw = std::array<std::uint16_t, 8>; // network byte order
 
     inline constexpr v4raw hton(v4raw host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
@@ -97,7 +90,7 @@ namespace iouxx::inline iouops::network::ip {
             : addr(net_order_raw)
         {}
 
-        v4raw raw() const noexcept { return addr; }
+        constexpr v4raw raw() const noexcept { return addr; }
 
         // Warning: invalid input results in UNDEFINED BEHAVIOR
         static constexpr address_v4 from_string_uncheck(const std::string_view ipv4_str) noexcept {
@@ -125,7 +118,7 @@ namespace iouxx::inline iouops::network::ip {
             noexcept -> std::expected<address_v4, std::error_code> {
             // Valid address: d.d.d.d, where d is 0-255, without leading zeros
             if (ipv4_str.empty() || ipv4_str.size() > 15) {
-                return std::unexpected(details::make_invalid_argument_error());
+                return std::unexpected(utility::make_invalid_argument_error());
             }
             namespace stdr = std::ranges;
             namespace stdv = std::views;
@@ -134,16 +127,16 @@ namespace iouxx::inline iouops::network::ip {
             std::size_t count = 0;
             for (auto&& part : parts) {
                 if (count >= 4) {
-                    return std::unexpected(details::make_invalid_argument_error());
+                    return std::unexpected(utility::make_invalid_argument_error());
                 }
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (sub.empty() || sub.size() > 3) {
                     // Empty part or too long
-                    return std::unexpected(details::make_invalid_argument_error());
+                    return std::unexpected(utility::make_invalid_argument_error());
                 }
                 if (sub[0] == '0' && sub.size() > 1) {
                     // Leading zero
-                    return std::unexpected(details::make_invalid_argument_error());
+                    return std::unexpected(utility::make_invalid_argument_error());
                 }
                 auto& part_result = part_results[count];
                 // std::from_chars will handle:
@@ -162,12 +155,12 @@ namespace iouxx::inline iouops::network::ip {
                 }
                 if (ptr != last) {
                     // Not fully consumed
-                    return std::unexpected(details::make_invalid_argument_error());
+                    return std::unexpected(utility::make_invalid_argument_error());
                 }
                 ++count;
             }
             if (count != 4) {
-                return std::unexpected(details::make_invalid_argument_error());
+                return std::unexpected(utility::make_invalid_argument_error());
             }
             return address_v4(std::bit_cast<v4raw>(part_results));
         }
@@ -201,7 +194,7 @@ namespace iouxx::inline iouops::network::ip {
             : addr(net_order_raw)
         {}
 
-        const v6raw& raw() const noexcept { return addr; }
+        constexpr const v6raw& raw() const noexcept { return addr; }
 
         // Warning: invalid input results in UNDEFINED BEHAVIOR
         static constexpr address_v6 from_string_uncheck(const std::string_view ipv6_str) noexcept {
@@ -222,8 +215,8 @@ namespace iouxx::inline iouops::network::ip {
                     std::array<std::uint16_t, 2> v4_parts =
                         std::bit_cast<std::array<std::uint16_t, 2>>(v4_raw);
                     // Use local endianness for now
-                    part_results[part_count++] = details::hton_16(v4_parts[0]);
-                    part_results[part_count++] = details::hton_16(v4_parts[1]);
+                    part_results[part_count++] = hton_16(v4_parts[0]);
+                    part_results[part_count++] = hton_16(v4_parts[1]);
                     seen_ipv4 = true;
                 } else {
                     // Hex part
@@ -288,7 +281,7 @@ namespace iouxx::inline iouops::network::ip {
                 * Hex digits may or may not have leading zeros.
             */
             if (ipv6_str.empty() || ipv6_str.size() > 45) {
-                return std::unexpected(details::make_invalid_argument_error());
+                return std::unexpected(utility::make_invalid_argument_error());
             }
             namespace stdr = std::ranges;
             namespace stdv = std::views;
@@ -314,8 +307,8 @@ namespace iouxx::inline iouops::network::ip {
                     std::array<std::uint16_t, 2> v4_parts =
                         std::bit_cast<std::array<std::uint16_t, 2>>(v4_raw);
                     // Use local endianness for now
-                    part_results[part_count++] = details::hton_16(v4_parts[0]);
-                    part_results[part_count++] = details::hton_16(v4_parts[1]);
+                    part_results[part_count++] = hton_16(v4_parts[0]);
+                    part_results[part_count++] = hton_16(v4_parts[1]);
                     seen_ipv4 = true;
                 } else {
                     // Hex part
@@ -358,12 +351,12 @@ namespace iouxx::inline iouops::network::ip {
                     for (auto&& part : parts_by_colon) {
                         if (seen_ipv4) {
                             // IPv4 part must be at the end
-                            return std::unexpected(details::make_invalid_argument_error());
+                            return std::unexpected(utility::make_invalid_argument_error());
                         }
                         std::string_view sub(stdr::data(part), stdr::size(part));
                         if (sub.empty()) {
                             // Leading single colon
-                            return std::unexpected(details::make_invalid_argument_error());
+                            return std::unexpected(utility::make_invalid_argument_error());
                         }
                         auto ec = parse_one_section(sub);
                         if (ec != std::errc()) {
@@ -374,7 +367,7 @@ namespace iouxx::inline iouops::network::ip {
                     // Second part (after "::")
                     if (seen_ipv4) {
                         // IPv4 part must be at the end
-                        return std::unexpected(details::make_invalid_argument_error());
+                        return std::unexpected(utility::make_invalid_argument_error());
                     }
                     if (sub.empty()) {
                         // Trailing "::"
@@ -386,12 +379,12 @@ namespace iouxx::inline iouops::network::ip {
                     for (auto&& part : parts_by_colon) {
                         if (seen_ipv4) {
                             // IPv4 part must be at the end
-                            return std::unexpected(details::make_invalid_argument_error());
+                            return std::unexpected(utility::make_invalid_argument_error());
                         }
                         std::string_view sub(stdr::data(part), stdr::size(part));
                         if (sub.empty()) {
                             // Pattern like ":::" or trailing single colon
-                            return std::unexpected(details::make_invalid_argument_error());
+                            return std::unexpected(utility::make_invalid_argument_error());
                         }
                         auto ec = parse_one_section(sub);
                         if (ec != std::errc()) {
@@ -401,7 +394,7 @@ namespace iouxx::inline iouops::network::ip {
                     // Deal with consecutive zeros
                     if (part_count >= 8) {
                         // No space for zeros
-                        return std::unexpected(details::make_invalid_argument_error());
+                        return std::unexpected(utility::make_invalid_argument_error());
                     }
                     stdr::rotate(part_results.begin() + first_part_count,
                         part_results.begin() + part_count,
@@ -409,12 +402,12 @@ namespace iouxx::inline iouops::network::ip {
                     part_count = 8;
                 } else {
                     // More than one "::"
-                    return std::unexpected(details::make_invalid_argument_error());
+                    return std::unexpected(utility::make_invalid_argument_error());
                 }
             }
             if (part_count != 8) {
                 // Not enough parts
-                return std::unexpected(details::make_invalid_argument_error());
+                return std::unexpected(utility::make_invalid_argument_error());
             }
             hton_inplace(part_results);
             return address_v6(part_results);
@@ -427,6 +420,238 @@ namespace iouxx::inline iouops::network::ip {
         v6raw addr{}; // network byte order
     };
 
+    using portraw = std::uint16_t; // network byte order
+
+    class port
+    {
+    public:
+        constexpr port() = default;
+
+        constexpr explicit port(portraw net_order_raw) noexcept
+            : p(net_order_raw)
+        {}
+
+        constexpr portraw raw() const noexcept { return p; }
+
+        friend constexpr bool operator==(const port&, const port&) = default;
+        friend constexpr bool operator==(const port& lhs, portraw /* local */ rhs) noexcept {
+            return lhs.p == hton_16(rhs);
+        }
+
+        static constexpr port from_string_uncheck(const std::string_view port_str) noexcept {
+            portraw port_num = 0;
+            const auto first = port_str.data();
+            const auto last = port_str.data() + port_str.size();
+            auto [ptr, ec] = std::from_chars(
+                first, last, port_num, 10);
+            [[assume(ec == std::errc())]];
+            [[assume(ptr == last)]];
+            return port(hton_16(port_num));
+        }
+
+        static constexpr auto from_string(const std::string_view port_str)
+            noexcept -> std::expected<port, std::error_code> {
+            if (port_str[0] == '0' && port_str.size() > 1) {
+                // Leading zero
+                return std::unexpected(utility::make_invalid_argument_error());
+            }
+            portraw port_num = 0;
+            const auto first = port_str.data();
+            const auto last = port_str.data() + port_str.size();
+            auto [ptr, ec] = std::from_chars(
+                first, last, port_num, 10);
+            if (ec != std::errc()) {
+                // Conversion error
+                return std::unexpected(std::make_error_code(ec));
+            }
+            if (ptr != last) {
+                // Not fully consumed
+                return std::unexpected(utility::make_invalid_argument_error());
+            }
+            return port(hton_16(port_num));
+        }
+
+        [[nodiscard]]
+        constexpr std::string to_string() const;
+
+    private:
+        portraw p = 0; // network byte order
+    };
+
+    class socket_v4
+    {
+    public:
+        constexpr socket_v4() = default;
+
+        constexpr socket_v4(const address_v4& addr, const port& p) noexcept
+            : addr(addr), p(p)
+        {}
+
+        constexpr const address_v4& address() const noexcept { return addr; }
+        constexpr const ip::port& port() const noexcept { return p; }
+
+        friend constexpr bool operator==(const socket_v4&, const socket_v4&) = default;
+
+        // Warning: invalid input results in UNDEFINED BEHAVIOR
+        static constexpr socket_v4 from_string_uncheck(const std::string_view str) noexcept {
+            namespace stdr = std::ranges;
+            namespace stdv = std::views;
+            char seperator = ':';
+            if (str.contains('/')) {
+                seperator = '/';
+            }
+            auto parts = str | stdv::split(seperator);
+            std::size_t part_count = 0;
+            address_v4 addr;
+            ip::port p;
+            for (auto&& part : parts) {
+                ++part_count;
+                std::string_view sub(stdr::data(part), stdr::size(part));
+                if (part_count == 1) {
+                    addr = address_v4::from_string_uncheck(sub);
+                } else {
+                    p = ip::port::from_string_uncheck(sub);
+                }
+            }
+            return socket_v4(addr, p);
+        }
+
+        static constexpr auto from_string(const std::string_view str)
+            noexcept -> std::expected<socket_v4, std::error_code> {
+            // ddd.ddd.ddd.ddd:ppppp or ddd.ddd.ddd.ddd/ppppp
+            namespace stdr = std::ranges;
+            namespace stdv = std::views;
+            char seperator = '\0';
+            if (str.contains(':')) {
+                seperator = ':';
+            } else if (str.contains('/')) {
+                seperator = '/';
+            } else {
+                return std::unexpected(utility::make_invalid_argument_error());
+            }
+            auto parts = str | stdv::split(seperator);
+            std::size_t part_count = 0;
+            address_v4 addr;
+            ip::port p;
+            for (auto&& part : parts) {
+                ++part_count;
+                if (part_count > 2) {
+                    return std::unexpected(utility::make_invalid_argument_error());
+                }
+                std::string_view sub(stdr::data(part), stdr::size(part));
+                if (part_count == 1) {
+                    auto addr_res = address_v4::from_string(sub);
+                    if (!addr_res) {
+                        return std::unexpected(addr_res.error());
+                    }
+                    addr = *addr_res;
+                } else {
+                    auto port_res = ip::port::from_string(sub);
+                    if (!port_res) {
+                        return std::unexpected(port_res.error());
+                    }
+                    p = *port_res;
+                }
+            }
+            if (part_count != 2) {
+                return std::unexpected(utility::make_invalid_argument_error());
+            }
+            return socket_v4(addr, p);
+        }
+
+        [[nodiscard]]
+        constexpr std::string to_string() const;
+
+    private:
+        address_v4 addr;
+        ip::port p;
+    };
+
+    class socket_v6
+    {
+    public:
+        constexpr socket_v6() = default;
+
+        constexpr socket_v6(const address_v6& addr, const port& p) noexcept
+            : addr(addr), p(p)
+        {}
+
+        constexpr const address_v6& address() const noexcept { return addr; }
+        constexpr const ip::port& port() const noexcept { return p; }
+
+        friend constexpr bool operator==(const socket_v6&, const socket_v6&) = default;
+
+        // Warning: invalid input results in UNDEFINED BEHAVIOR
+        static constexpr socket_v6 from_string_uncheck(const std::string_view str) noexcept {
+            namespace stdr = std::ranges;
+            namespace stdv = std::views;
+            using namespace std::literals;
+            auto parts = str | stdv::split("]:"sv);
+            std::size_t part_count = 0;
+            address_v6 addr;
+            ip::port p;
+            for (auto&& part : parts) {
+                ++part_count;
+                std::string_view sub(stdr::data(part), stdr::size(part));
+                if (part_count == 1) {
+                    sub.remove_prefix(1); // remove leading '['
+                    addr = address_v6::from_string_uncheck(sub);
+                } else {
+                    p = ip::port::from_string_uncheck(sub);
+                }
+            }
+            return socket_v6(addr, p);
+        }
+
+        static constexpr auto from_string(const std::string_view str)
+            noexcept -> std::expected<socket_v6, std::error_code> {
+            // Only recognize RFC 5952 recommended form
+            // [ipv6]:port
+            namespace stdr = std::ranges;
+            namespace stdv = std::views;
+            using namespace std::literals;
+            if (str.front() != '[' || !str.contains("]:"sv)) {
+                return std::unexpected(utility::make_invalid_argument_error());
+            }
+            auto parts = str | stdv::split("]:"sv);
+            std::size_t part_count = 0;
+            address_v6 addr;
+            ip::port p;
+            for (auto&& part : parts) {
+                ++part_count;
+                if (part_count > 2) {
+                    return std::unexpected(utility::make_invalid_argument_error());
+                }
+                std::string_view sub(stdr::data(part), stdr::size(part));
+                if (part_count == 1) {
+                    sub.remove_prefix(1); // remove leading '['
+                    auto addr_res = address_v6::from_string(sub);
+                    if (!addr_res) {
+                        return std::unexpected(addr_res.error());
+                    }
+                    addr = *addr_res;
+                } else {
+                    auto port_res = ip::port::from_string(sub);
+                    if (!port_res) {
+                        return std::unexpected(port_res.error());
+                    }
+                    p = *port_res;
+                }
+            }
+            if (part_count != 2) {
+                return std::unexpected(utility::make_invalid_argument_error());
+            }
+            return socket_v6(addr, p);
+        }
+
+        [[nodiscard]]
+        constexpr std::string to_string() const;
+
+    private:
+        address_v6 addr;
+        ip::port p;
+    };
+
 } // namespace iouxx::iouops::network::ip
 
 namespace iouxx::literals::inline network_literals {
@@ -437,6 +662,14 @@ namespace iouxx::literals::inline network_literals {
 
     consteval network::ip::address_v6 operator""_ipv6(const char* str, std::size_t) noexcept {
         return network::ip::address_v6::from_string(str).value();
+    }
+
+    consteval network::ip::socket_v4 operator""_sockv4(const char* str, std::size_t) noexcept {
+        return network::ip::socket_v4::from_string(str).value();
+    }
+
+    consteval network::ip::socket_v6 operator""_sockv6(const char* str, std::size_t) noexcept {
+        return network::ip::socket_v6::from_string(str).value();
     }
 
 } // namespace iouxx::literals::network_literals
@@ -782,36 +1015,107 @@ namespace std {
         }
     };
 
+    template<>
+    struct formatter<iouxx::network::ip::port, char> {
+        using port = iouxx::network::ip::port;
+
+        // No format spec supported; ensure it's either empty or '}' reached
+        constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
+            auto it = ctx.begin();
+            auto end = ctx.end();
+            if (it != end && *it != '}') {
+                throw format_error("invalid format spec for port");
+            }
+            return it;
+        }
+
+        template<class FormatContext>
+        constexpr auto format(const port& p, FormatContext& ctx) const {
+            return std::format_to(ctx.out(), "{}", iouxx::network::ip::hton_16(p.raw()));
+        }
+    };
+
+    template<>
+    struct formatter<iouxx::network::ip::socket_v4, char> {
+        using socketv4 = iouxx::network::ip::socket_v4;
+        char seperator = ':'; // default
+
+        // Requires empty spec or single '/'
+        constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
+            auto it = ctx.begin();
+            auto end = ctx.end();
+            if (it == end || *it == '}') {
+                // empty spec, use ':'
+                return it;
+            }
+            if (*it == '/') {
+                seperator = '/';
+                ++it;
+            }
+            if (it != end && *it != '}') {
+                throw format_error("invalid format spec for socketv4");
+            }
+            return it;
+        }
+
+        template<class FormatContext>
+        constexpr auto format(const socketv4& s, FormatContext& ctx) const {
+            if (seperator == ':') {
+                return std::format_to(ctx.out(), "{}:{}", s.address(), s.port());
+            } else {
+                return std::format_to(ctx.out(), "{}/{}", s.address(), s.port());
+            }
+        }
+    };
+
+    template<>
+    struct formatter<iouxx::network::ip::socket_v6, char> {
+        using socketv6 = iouxx::network::ip::socket_v6;
+
+        // No format spec supported; ensure it's either empty or '}' reached
+        constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
+            auto it = ctx.begin();
+            auto end = ctx.end();
+            if (it != end && *it != '}') {
+                throw format_error("invalid format spec for socketv6");
+            }
+            return it;
+        }
+
+        template<class FormatContext>
+        constexpr auto format(const socketv6& s, FormatContext& ctx) const {
+            // Always use RFC 5952 recommended form
+            return std::format_to(ctx.out(), "[{}]:{}", s.address(), s.port());
+        }
+    };
+
 } // namespace std
 
 [[nodiscard]]
 inline constexpr std::string iouxx::network::ip::address_v4::to_string() const {
-    std::string result;
-    result.resize_and_overwrite(16, [this](char* data, std::size_t) {
-        std::formatter<address_v4> formatter;
-        struct fake_context {
-            char* out_ptr;
-            char* out() const noexcept { return out_ptr; }
-        } ctx(data);
-        return formatter.format(*this, ctx) - data;
-    });
-    return result;
+    return std::format("{}", *this);
 }
 
 // Use RFC 5952 recommended form for IPv6 to_string()
 [[nodiscard]]
 inline constexpr std::string iouxx::network::ip::address_v6::to_string() const {
-    std::string result;
-    result.resize_and_overwrite(64, [this](char* data, std::size_t) {
-        std::formatter<address_v6> formatter;
-        formatter.seen_r = true; // recommended form
-        struct fake_context {
-            char* out_ptr;
-            char* out() const noexcept { return out_ptr; }
-        } ctx(data);
-        return formatter.format(*this, ctx) - data;
-    });
-    return result;
+    return std::format("{}", *this);
+}
+
+[[nodiscard]]
+inline constexpr std::string iouxx::network::ip::port::to_string() const {
+    return std::format("{}", *this);
+}
+
+[[nodiscard]]
+inline constexpr std::string iouxx::network::ip::socket_v4::to_string() const {
+    return std::format("{}", *this);
+}
+
+// Use RFC 5952 recommended form for IPv6 socket to_string()
+[[nodiscard]]
+inline constexpr std::string iouxx::network::ip::socket_v6::to_string() const {
+    return std::format("{}", *this);
 }
 
 #endif // IOUXX_OPERATION_NETWORK_IP_H

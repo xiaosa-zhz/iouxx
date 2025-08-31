@@ -38,6 +38,10 @@ namespace iouxx::utility {
         return std::error_code();
     }
 
+    inline std::error_code make_invalid_argument_error() noexcept {
+        return std::make_error_code(std::errc::invalid_argument);
+    }
+
     template<typename T>
     concept byte_unit = std::same_as<T, std::byte> || std::same_as<T, unsigned char>;
 

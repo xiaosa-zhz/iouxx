@@ -648,6 +648,144 @@ void ip_parse_test() {
     }
 
     std::println("All ipv6 tests passed.");
+
+    // Test socket
+    std::println("Starting socket tests...");
+    // ipv4
+    // roundtrip tests
+    auto roundtripsoc = [](std::string_view s,
+        std::source_location loc = std::source_location::current()) {
+        auto soc4 = socket_v4::from_string(s);
+        TEST_EXPECT(soc4.has_value());
+        std::string back = soc4->to_string();
+        auto soc4u = socket_v4::from_string_uncheck(back);
+        TEST_EXPECT(soc4u == *soc4);
+    };
+    roundtripsoc("127.0.0.1:80");
+    roundtripsoc("127.0.0.1/80");
+    roundtripsoc("192.168.0.1:443");
+    roundtripsoc("1.1.1.1/443");
+    // invalid ipv4 socket
+    auto invalidsoc = [](std::string_view s,
+        std::source_location loc = std::source_location::current()) {
+        auto r = socket_v4::from_string(s);
+        TEST_EXPECT(!r.has_value());
+    };
+    invalidsoc("");
+    invalidsoc(" ");
+    invalidsoc(":");
+    invalidsoc("/");
+    invalidsoc(" :80");
+    invalidsoc("127.0.0.1: 80");
+    invalidsoc("127.0.0.1:80 ");
+    invalidsoc("127.0.0.1 :80");
+    invalidsoc("::");
+    invalidsoc("127.0.0.1::443");
+    invalidsoc("127.0.0.1:/443");
+    invalidsoc("127.0.0.1/:443");
+    invalidsoc("127.0.0.1:65536");
+    // formatter tests
+    {
+        std::source_location loc = std::source_location::current();
+        constexpr std::string_view test1 = "127.0.0.1:80";
+        auto soc1 = socket_v4::from_string(test1);
+        TEST_EXPECT(soc1.has_value());
+        std::string back1 = std::format("{}", *soc1);
+        TEST_EXPECT(back1 == test1);
+        constexpr std::string_view test2 = "127.0.0.1/80";
+        auto soc2 = socket_v4::from_string(test2);
+        TEST_EXPECT(soc2.has_value());
+        std::string back2 = std::format("{:/}", *soc2);
+        TEST_EXPECT(back2 == test2);
+        TEST_EXPECT(*soc1 == *soc2);
+    }
+    // literal test
+    {
+        std::source_location loc = std::source_location::current();
+        using namespace iouxx::literals::network_literals;
+        constexpr socket_v4 s1 = "127.0.0.1:80"_sockv4;
+        TEST_EXPECT(s1.address() == address_v4::loopback());
+        TEST_EXPECT(s1.port() == 80);
+        constexpr socket_v4 s2 = "127.0.0.1/80"_sockv4;
+        TEST_EXPECT(s2.address() == address_v4::loopback());
+        TEST_EXPECT(s2.port() == 80);
+    }
+    // ipv6
+    // roundtrip tests
+    auto roundtripsoc6 = [](std::string_view s,
+        std::source_location loc = std::source_location::current()) {
+        auto soc6 = socket_v6::from_string(s);
+        TEST_EXPECT(soc6.has_value());
+        std::string back = soc6->to_string();
+        auto soc6u = socket_v6::from_string_uncheck(back);
+        TEST_EXPECT(soc6u == *soc6);
+    };
+    roundtripsoc6("[::1]:80");
+    roundtripsoc6("[2001:db8::1]:443");
+    roundtripsoc6("[::ffff:1]:443");
+    roundtripsoc6("[2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE]:80");
+    roundtripsoc6("[::192.168.0.1]:443");
+    roundtripsoc6("[::ffff:192.168.0.1]:443");
+    // invalid ipv6 socket
+    auto invalidsoc6 = [](std::string_view s,
+        std::source_location loc = std::source_location::current()) {
+        auto r = socket_v6::from_string(s);
+        TEST_EXPECT(!r.has_value());
+    };
+    invalidsoc6("");
+    invalidsoc6(" ");
+    invalidsoc6(":");
+    invalidsoc6("/");
+    invalidsoc6("[]:80");
+    invalidsoc6("[::1]: 80");
+    invalidsoc6("[::1] :80");
+    invalidsoc6("[::1]:80 ");
+    invalidsoc6("[::1/80");
+    invalidsoc6("[::1/:80");
+    invalidsoc6("::1]:80");
+    invalidsoc6("[::1]80");
+    invalidsoc6("[::1] : 80");
+    invalidsoc6("[:: ]:80");
+    invalidsoc6("[2001:db8::1]:");
+    invalidsoc6("[2001:db8::1]:65536");
+    invalidsoc6("[2001:db8::1");
+    invalidsoc6("2001:db8::1]");
+    invalidsoc6("2001:db8::1");
+    // formatter tests
+    {
+        std::source_location loc = std::source_location::current();
+        constexpr std::string_view test1 = "[::1]:80";
+        auto soc1 = socket_v6::from_string(test1);
+        TEST_EXPECT(soc1.has_value());
+        std::string back1 = std::format("{}", *soc1);
+        TEST_EXPECT(back1 == test1);
+        constexpr std::string_view test2 = "[2001:db8::1]:443";
+        auto soc2 = socket_v6::from_string(test2);
+        TEST_EXPECT(soc2.has_value());
+        std::string back2 = std::format("{}", *soc2);
+        TEST_EXPECT(back2 == test2);
+        constexpr std::string_view test3 = "[::ffff:192.168.0.1]:80";
+        auto soc3 = socket_v6::from_string(test3);
+        TEST_EXPECT(soc3.has_value());
+        std::string back3 = std::format("{}", *soc3);
+        TEST_EXPECT(back3 == test3);
+        constexpr std::string_view test4 = "[::192.168.0.1]:443";
+        auto soc4 = socket_v6::from_string(test4);
+        TEST_EXPECT(soc4.has_value());
+        std::string back4 = std::format("{}", *soc4);
+        TEST_EXPECT(back4 == test4);
+    }
+    // literal test
+    {
+        std::source_location loc = std::source_location::current();
+        using namespace iouxx::literals::network_literals;
+        constexpr socket_v6 s1 = "[::1]:80"_sockv6;
+        TEST_EXPECT(s1.address() == address_v6::loopback());
+        TEST_EXPECT(s1.port() == 80);
+        constexpr socket_v6 s2 = "[2001:db8::1]:443"_sockv6;
+        TEST_EXPECT(s2.address() == address_v6::from_string("2001:db8::1").value());
+        TEST_EXPECT(s2.port() == 443);
+    }
 }
 
 int main() {
