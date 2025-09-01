@@ -4,9 +4,14 @@
 
 #include <chrono>
 #include <functional>
+#include <expected>
+#include <concepts>
+#include <system_error>
 
 #include "iouringxx.hpp"
 #include "boottime_clock.hpp"
+#include "util/utility.hpp"
+#include "macro_config.hpp"
 
 namespace iouxx::details {
 
@@ -59,15 +64,19 @@ namespace iouxx::details {
 namespace iouxx::inline iouops {
 
     // Timeout operation with user-defined callback.
-    template<std::invocable<std::error_code> Callback>
+    template<typename Callback>
+        requires std::invocable<Callback, std::error_code>
+        || std::invocable<Callback, std::expected<void, std::error_code>>
     class timeout_operation : public operation_base
     {
     public:
         template<typename F>
         explicit timeout_operation(iouxx::io_uring_xx& ring, F&& f) :
-            operation_base(iouxx::op_tag<timeout_operation>, &ring.native()),
+            operation_base(iouxx::op_tag<timeout_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
         auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{}) &
@@ -95,36 +104,48 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout(sqe, &ts, 0, flags);
         }
 
-        void do_callback(int ev, std::int32_t) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
             }
-            std::invoke(callback, utility::make_system_error_code(-ev));
+            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+                if (ev == 0) {
+                    std::invoke(callback, std::expected<void, std::error_code>{});
+                } else {
+                    std::invoke(callback, std::unexpected(
+                        utility::make_system_error_code(-ev)
+                    ));
+                }
+            } else if constexpr (std::invocable<Callback, std::error_code>) {
+                std::invoke(callback, utility::make_system_error_code(-ev));
+            } else {
+                static_assert(utility::always_false<Callback>, "Unreachable");
+            }
         }
 
         ::__kernel_timespec ts{};
         unsigned flags = 0;
-        Callback callback;
+        [[no_unique_address]] Callback callback;
     };
 
     template<typename F>
     timeout_operation(iouxx::io_uring_xx&, F) -> timeout_operation<std::decay_t<F>>;
 
     // Timeout that triggers multiple times.
-    // Callback may receive a second parameter indicating whether there are more shots.
+    // On success, callback receive boolean indicating whether there are more shots.
     // Warning:
     // The operation object must outlive the whole execution of the multishot
-    template<typename Callback>
-        requires std::invocable<Callback, std::error_code>
-            || std::invocable<Callback, std::error_code, bool>
+    template<std::invocable<std::expected<bool, std::error_code>> Callback>
     class multishot_timeout_operation : public operation_base
     {
     public:
         template<typename F>
         explicit multishot_timeout_operation(iouxx::io_uring_xx& ring, F&& f) :
-            operation_base(iouxx::op_tag<multishot_timeout_operation>, &ring.native()),
+            operation_base(iouxx::op_tag<multishot_timeout_operation>, ring),
             callback(std::forward<F>(f))
         {}
+        
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
         auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{})
@@ -152,22 +173,24 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout(sqe, &ts, count, flags);
         }
 
-        void do_callback(int ev, std::int32_t cqe_flags) {
+        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
             }
-            if constexpr (std::invocable<Callback, std::error_code, bool>) {
-                const bool more = cqe_flags & IORING_CQE_F_MORE;
-                std::invoke(callback, utility::make_system_error_code(-ev), more);
+            const bool more = cqe_flags & IORING_CQE_F_MORE;
+            if (ev == 0) {
+                std::invoke(callback, more);
             } else {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke(callback, std::unexpected(
+                    utility::make_system_error_code(-ev)
+                ));
             }
         }
 
         ::__kernel_timespec ts{};
         std::size_t count = 1;
         unsigned flags = IORING_TIMEOUT_MULTISHOT;
-        Callback callback;
+        [[no_unique_address]] Callback callback;
     };
 
     template<typename F>
@@ -176,15 +199,19 @@ namespace iouxx::inline iouops {
 
     // Cancel a previously submitted timeout by its identifier.
 	template<typename Callback>
-        requires (std::is_void_v<Callback>) || std::invocable<Callback, std::error_code>
+        requires (std::is_void_v<Callback>)
+        || std::invocable<Callback, std::error_code>
+        || std::invocable<Callback, std::expected<void, std::error_code>>
 	class timeout_cancel_operation : public operation_base
 	{
 	public:
 		template<typename F>
 		timeout_cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
-			operation_base(iouxx::op_tag<timeout_cancel_operation>, &ring.native()),
+			operation_base(iouxx::op_tag<timeout_cancel_operation>, ring),
 			callback(std::forward<F>(f))
 		{}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT_REMOVE;
 
 		timeout_cancel_operation& target(operation_identifier identifier) & noexcept {
 			id = identifier;
@@ -194,18 +221,27 @@ namespace iouxx::inline iouops {
 	private:
 		friend operation_base;
 		void build(::io_uring_sqe* sqe) & noexcept {
-            const std::uint64_t user_data = static_cast<std::uint64_t>(
-                reinterpret_cast<std::uintptr_t>(id.user_data())
-            );
-			::io_uring_prep_timeout_remove(sqe, user_data, 0);
+			::io_uring_prep_timeout_remove(sqe, id.user_data64(), 0);
 		}
 
-		void do_callback(int ev, std::int32_t) {
-			std::invoke(callback, utility::make_system_error_code(-ev));
+		void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+                if (ev == 0) {
+                    return std::invoke(callback, std::expected<void, std::error_code>{});
+                } else {
+                    return std::invoke(callback, std::unexpected(
+                        utility::make_system_error_code(-ev)
+                    ));
+                }
+            } else if constexpr (std::invocable<Callback, std::error_code>) {
+                return std::invoke(callback, utility::make_system_error_code(-ev));
+            } else {
+                static_assert(utility::always_false<Callback>, "Unreachable");
+            }
 		}
 
 		operation_identifier id = operation_identifier();
-		Callback callback;
+		[[no_unique_address]] Callback callback;
 	};
 
     // Pure timeout cancel operation, does nothing on completion.
@@ -214,8 +250,10 @@ namespace iouxx::inline iouops {
     {
     public:
         explicit timeout_cancel_operation(iouxx::io_uring_xx& ring) noexcept :
-            operation_base(iouxx::op_tag<timeout_cancel_operation>, &ring.native())
+            operation_base(iouxx::op_tag<timeout_cancel_operation>, ring)
         {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT_REMOVE;
 
         timeout_cancel_operation& target(operation_identifier identifier) & noexcept {
             id = identifier;

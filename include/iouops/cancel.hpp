@@ -1,30 +1,32 @@
 #pragma once
-#include <liburing/io_uring.h>
 #ifndef IOUXX_OPERATION_CANCEL_H
 #define IOUXX_OPERATION_CANCEL_H 1
 
-#include <functional>
 #include <cstdint>
+#include <functional>
+#include <expected>
 
 #include "iouringxx.hpp"
+#include "util/utility.hpp"
+#include "macro_config.hpp"
 
 namespace iouxx::inline iouops {
 
 	// Cancel operation with user-defined callback by provided identifier.
-    // Callback may receive a second parameter indicating
-    // how many operations were cancelled.
+    // On success, callback receive a number indicating how many operations were cancelled.
 	template<typename Callback>
         requires (std::is_void_v<Callback>)
-        || std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::error_code, std::size_t>
+        || std::invocable<Callback, std::expected<std::size_t, std::error_code>>
 	class cancel_operation : public operation_base
 	{
 	public:
 		template<typename F>
 		cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
-			operation_base(iouxx::op_tag<cancel_operation>, &ring.native()),
+			operation_base(iouxx::op_tag<cancel_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
 
 		cancel_operation& target(operation_identifier identifier) & noexcept {
 			id = identifier;
@@ -47,26 +49,28 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_cancel(sqe, id.user_data(), flags);
 		}
 
-	    void do_callback(int ev, std::int32_t) {
-            if constexpr (std::is_invocable_v<Callback, std::error_code, std::size_t>) {
-                std::size_t cancelled_count = 0;
-                if (ev >= 0) {
-                    if (flags & IORING_ASYNC_CANCEL_ALL) {
-                        cancelled_count = static_cast<std::size_t>(ev);
-                    } else {
-                        cancelled_count = 1;
-                    }
-                    ev = 0;
+	    void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+            std::size_t cancelled_count = 0;
+            if (ev >= 0) {
+                if (flags & IORING_ASYNC_CANCEL_ALL) {
+                    cancelled_count = static_cast<std::size_t>(ev);
+                } else {
+                    cancelled_count = 1;
                 }
-                std::invoke(callback, utility::make_system_error_code(-ev), cancelled_count);
+                ev = 0;
+            }
+            if (ev == 0) {
+                std::invoke(callback, cancelled_count);
             } else {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke(callback, std::unexpected(
+                    utility::make_system_error_code(-ev)
+                ));
             }
 		}
 
 		operation_identifier id = operation_identifier();
 		unsigned flags = IORING_ASYNC_CANCEL_USERDATA;
-		Callback callback;
+		[[no_unique_address]] Callback callback;
 	};
 
     // Pure cancel operation, does nothing on completion.
@@ -75,8 +79,10 @@ namespace iouxx::inline iouops {
     {
     public:
         explicit cancel_operation(iouxx::io_uring_xx& ring) noexcept :
-            operation_base(iouxx::op_tag<cancel_operation>, &ring.native())
+            operation_base(iouxx::op_tag<cancel_operation>, ring)
         {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
 
         cancel_operation& target(operation_identifier identifier) & noexcept {
             id = identifier;
@@ -122,9 +128,11 @@ namespace iouxx::inline iouops {
     public:
         template<typename F>
         cancel_fd_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
-            operation_base(iouxx::op_tag<cancel_fd_operation>, &ring.native()),
+            operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
 
         cancel_fd_operation& target(int file_descriptor) & noexcept {
             fd = file_descriptor;
@@ -155,7 +163,7 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_cancel_fd(sqe, fd, flags);
         }
 
-        void do_callback(int ev, std::int32_t) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
             if constexpr (std::is_invocable_v<Callback, std::error_code, std::size_t>) {
                 std::size_t cancelled_count = 0;
                 if (ev >= 0) {
@@ -174,7 +182,7 @@ namespace iouxx::inline iouops {
 
         int fd = -1;
         unsigned flags = IORING_ASYNC_CANCEL_FD;
-        Callback callback;
+        [[no_unique_address]] Callback callback;
     };
 
     // Pure cancel fd operation, does nothing on completion.
@@ -183,8 +191,10 @@ namespace iouxx::inline iouops {
     {
     public:
         explicit cancel_fd_operation(iouxx::io_uring_xx& ring) noexcept :
-            operation_base(iouxx::op_tag<cancel_fd_operation>, &ring.native())
+            operation_base(iouxx::op_tag<cancel_fd_operation>, ring)
         {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
 
         cancel_fd_operation& target(int file_descriptor) & noexcept {
             fd = file_descriptor;

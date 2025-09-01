@@ -34,9 +34,9 @@ void test_cancel() {
     std::this_thread::sleep_for(10ms);
     bool cancel_result = false;
     iouxx::cancel_operation cancel(ring,
-        [&cancel_result](std::error_code ec) {
-        if (ec) {
-            std::println("Cancel failed: {}", ec.message());
+        [&cancel_result](std::expected<std::size_t, std::error_code> res) {
+        if (!res) {
+            std::println("Cancel failed: {}", res.error().message());
         } else {
             std::println("Cancel succeeded");
             cancel_result = true;

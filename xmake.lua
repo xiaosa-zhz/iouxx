@@ -1,6 +1,7 @@
 add_rules("mode.debug", "mode.release")
 add_files("src/*.cpp")
 add_includedirs("include")
+add_defines("IOUXX_CONFIG_ENABLE_FEATURE_TESTS")
 add_requires("liburing")
 set_languages("c++26")
 set_encodings("utf-8")

@@ -8,8 +8,6 @@
 
 #include <liburing.h>
 
-#include "util/utility.hpp"
-
 #include <concepts>
 #include <type_traits>
 #include <cstddef>
@@ -20,12 +18,11 @@
 #include <ranges>
 #include <vector>
 #include <chrono>
+#include <memory> // IWYU pragma: keep
 
-#if defined(__cpp_contracts) && __cpp_contracts >= 202502L
-#define assert(...) contract_assert(__VA_ARGS__)
-#else // ! __cpp_contracts
-#include <cassert>
-#endif
+#include "macro_config.hpp"
+#include "util/utility.hpp"
+#include "util/assertion.hpp"
 
 namespace iouxx {
 
@@ -54,6 +51,12 @@ namespace iouxx {
 
             void* user_data() const noexcept {
                 return static_cast<void*>(raw);
+            }
+
+            std::uint64_t user_data64() const noexcept {
+                return static_cast<std::uint64_t>(
+                    reinterpret_cast<std::uintptr_t>(raw)
+                );
             }
 
         private:
@@ -93,7 +96,7 @@ namespace iouxx {
 
             template<typename Self>
             ::io_uring_sqe* to_sqe(this Self& self) noexcept {
-                ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring);
+                ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring->native());
                 if (!sqe) return nullptr;
                 self.build(sqe); // Provided by derived class
                 ::io_uring_sqe_set_data(sqe, static_cast<operation_base*>(&self));
@@ -102,8 +105,14 @@ namespace iouxx {
 
             template<typename Self>
             std::error_code submit(this Self& self) noexcept {
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+                if (!::io_uring_opcode_supported(self.ring->ring_probe(),
+                    Self::IORING_OPCODE)) {
+                    return std::make_error_code(std::errc::function_not_supported);
+                }
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
                 if (::io_uring_sqe* sqe = self.to_sqe()) {
-                    int ev = ::io_uring_submit(self.ring);
+                    int ev = ::io_uring_submit(self.ring->native());
                     if (ev < 0) {
                         return utility::make_system_error_code(-ev);
                     }
@@ -112,24 +121,26 @@ namespace iouxx {
                 return utility::make_system_error_code(EAGAIN);
             }
 
-            void callback(int ev, std::int32_t cqe_flags) {
+            void callback(int ev, std::int32_t cqe_flags) &
+                IOUXX_CALLBACK_NOEXCEPT {
                 do_callback_ptr(this, ev, cqe_flags);
             }
 
-            operation_identifier identifier() noexcept {
+            operation_identifier identifier() & noexcept {
                 return operation_identifier(this);
             }
 
         protected:
             template<typename Derived>
-            static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags) {
+            static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
+                IOUXX_CALLBACK_NOEXCEPT {
                 // Provided by derived class
                 static_cast<Derived*>(base)->do_callback(ev, cqe_flags);
             }
 
             template<typename Derived>
-            explicit operation_base(operation_t<Derived>, ::io_uring* ring) noexcept
-                : do_callback_ptr(&callback_wrapper<Derived>), ring(ring)
+            explicit operation_base(operation_t<Derived>, io_uring_xx& ring) noexcept
+                : do_callback_ptr(&callback_wrapper<Derived>), ring(&ring)
             {}
 
             // Note:
@@ -143,7 +154,7 @@ namespace iouxx {
             using callback_type = void (*)(operation_base*, int, std::int32_t);
 
             callback_type do_callback_ptr = nullptr;
-            ::io_uring* ring = nullptr;
+            io_uring_xx* ring = nullptr;
         };
 
     } // namespace iouxx::iouops
@@ -160,8 +171,12 @@ namespace iouxx {
             return std::exchange(res, result);
         }
 
-        void operator()() const {
+        void callback() const IOUXX_CALLBACK_NOEXCEPT {
             cb->callback(res, cqe_flags);
+        }
+
+        void operator()() const IOUXX_CALLBACK_NOEXCEPT {
+            callback();
         }
 
     private:
@@ -183,7 +198,7 @@ namespace iouxx {
     class io_uring_xx
     {
     public:
-        io_uring_xx() = default;
+        explicit io_uring_xx() = default;
 
         explicit io_uring_xx(std::size_t queue_depth) {
             std::error_code ec = do_init(queue_depth);
@@ -194,18 +209,8 @@ namespace iouxx {
 
         io_uring_xx(const io_uring_xx&) = delete;
         io_uring_xx& operator=(const io_uring_xx&) = delete;
-
-        io_uring_xx(io_uring_xx&& other) noexcept
-            : ring(std::exchange(other.ring, invalid_ring()))
-        {}
-
-        io_uring_xx& operator=(io_uring_xx&& other) noexcept {
-            if (this != &other) {
-                exit();
-                this->swap(other);
-            }
-            return *this;
-        }
+        io_uring_xx(io_uring_xx&& other) = delete;
+        io_uring_xx& operator=(io_uring_xx&& other) = delete;
 
         void swap(io_uring_xx& other) noexcept {
             std::ranges::swap(ring, other.ring);
@@ -222,9 +227,26 @@ namespace iouxx {
 
         void exit() noexcept {
             if (valid()) {
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+                probe.reset();
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
                 ::io_uring_queue_exit(&ring);
                 ring = invalid_ring();
             }
+        }
+
+        // Explicitly specify operation type to create
+        template<template<typename...> class Operation, typename Callback>
+        auto make(Callback&& callback) & noexcept {
+            assert(valid());
+            return Operation(*this, std::forward<Callback>(callback));
+        }
+
+        // Explicitly specify operation type to create
+        template<template<typename...> class Operation>
+        auto make() & noexcept {
+            assert(valid());
+            return Operation(*this);
         }
 
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
@@ -293,10 +315,16 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        ::io_uring& native() & noexcept {
+        ::io_uring* native() & noexcept {
             assert(valid());
-            return ring;
+            return &ring;
         }
+
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+        ::io_uring_probe* ring_probe() const noexcept {
+            return probe.get();
+        }
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
 
     private:
         static ::io_uring invalid_ring() noexcept {
@@ -309,12 +337,28 @@ namespace iouxx {
             if (ev < 0) {
                 ring = invalid_ring();
                 return utility::make_system_error_code(-ev);
-            } else {
-                return std::error_code();
             }
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+            if (::io_uring_probe* raw = ::io_uring_get_probe_ring(&ring)) {
+                probe.reset(raw);
+            } else {
+                exit();
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
+            return std::error_code();
         }
 
         ::io_uring ring = invalid_ring(); // using ring_fd to detect if valid
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+        struct probe_deleter {
+            void operator()(::io_uring_probe* probe) const noexcept {
+                ::io_uring_free_probe(probe);
+            }
+        };
+        using probe_handle = std::unique_ptr<::io_uring_probe, probe_deleter>;
+        probe_handle probe = nullptr;
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
     };
 
 } // namespace iouxx

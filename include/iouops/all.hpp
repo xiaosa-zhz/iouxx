@@ -9,8 +9,7 @@
 #include "iouops/noop.hpp" // IWYU pragma: export
 #include "iouops/timeout.hpp" // IWYU pragma: export
 #include "iouops/cancel.hpp" // IWYU pragma: export
-#include "iouops/fileio.hpp" // IWYU pragma: export
-#include "iouops/network/ip.hpp" // IWYU pragma: export
+#include "iouops/file/fileio.hpp" // IWYU pragma: export
 #include "iouops/network/socketio.hpp" // IWYU pragma: export
 
 namespace iouxx::details {

@@ -45,8 +45,10 @@ void test_multishot_timeout() {
     bool if_more = true;
     int counter = 0;
     iouxx::multishot_timeout_operation timer(ring,
-        [&if_more, &counter](std::error_code ec, bool more) {
+        [&if_more, &counter](std::expected<bool, std::error_code> res) {
         ++counter;
+        TEST_EXPECT(res);
+        bool more = *res;
         if (more) {
             std::println("Timer expired, and more!");
         } else {

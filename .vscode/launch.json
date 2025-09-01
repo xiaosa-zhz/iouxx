@@ -4,8 +4,8 @@
        "name": "XMake Debug",
         "type": "xmake",
         "request": "launch",
-        "target": "llvm",
-        "stopAtEntry": true
+        "target": "gnu",
+        "stopAtEntry": false
     }
   ]
 }

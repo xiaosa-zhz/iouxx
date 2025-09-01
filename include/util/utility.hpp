@@ -3,7 +3,9 @@
 
 #include "linux/time_types.h"
 #include "bits/types/struct_iovec.h"
+#include "sys/socket.h"
 
+#include <utility>
 #include <chrono>
 #include <system_error>
 #include <span>
@@ -14,6 +16,14 @@ namespace iouxx::utility {
     struct defer {
         ~defer() { this->f(); }
         F f;
+    };
+
+    template<typename>
+    inline constexpr bool always_false = false;
+
+    struct system_addrsock_info {
+        ::sockaddr* addr;
+        std::size_t addrlen;
     };
 
     inline ::__kernel_timespec to_kernel_timespec(std::chrono::nanoseconds stdtime) noexcept {
@@ -46,8 +56,44 @@ namespace iouxx::utility {
     concept byte_unit = std::same_as<T, std::byte> || std::same_as<T, unsigned char>;
 
     template<typename R>
-    concept buffer_like = std::constructible_from<std::span<std::byte>, std::remove_cvref_t<R>>
-        || std::constructible_from<std::span<unsigned char>, std::remove_cvref_t<R>>;
+    concept byte_span_like = std::constructible_from<std::span<std::byte>, R>;
+
+    template<typename R>
+    concept char_span_like = std::constructible_from<std::span<unsigned char>, R>;
+
+    template<typename R>
+    concept readonly_byte_span_like = std::constructible_from<std::span<const std::byte>, R>;
+
+    template<typename R>
+    concept readonly_char_span_like = std::constructible_from<std::span<const unsigned char>, R>;
+
+    template<typename R>
+    concept buffer_like = byte_span_like<R> || char_span_like<R>;
+
+    template<typename R>
+    concept readonly_buffer_like = readonly_byte_span_like<R> || readonly_char_span_like<R>;
+
+    template<buffer_like R>
+    inline auto to_buffer(R&& r) noexcept {
+        if constexpr (byte_span_like<R>) {
+            return std::span<std::byte>(std::forward<R>(r));
+        } else if constexpr (char_span_like<R>) {
+            return std::span<unsigned char>(std::forward<R>(r));
+        } else {
+            static_assert(always_false<R>, "Unreachable");
+        }
+    }
+
+    template<buffer_like R>
+    inline auto to_readonly_buffer(R&& r) noexcept {
+        if constexpr (readonly_byte_span_like<R>) {
+            return std::span<const std::byte>(std::forward<R>(r));
+        } else if constexpr (readonly_char_span_like<R>) {
+            return std::span<const unsigned char>(std::forward<R>(r));
+        } else {
+            static_assert(always_false<R>, "Unreachable");
+        }
+    }
 
     template<typename R>
     concept buffer_range = std::ranges::input_range<std::remove_cvref_t<R>>

@@ -1,0 +1,180 @@
+#pragma once
+#include <utility>
+#ifndef IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H
+#define IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H 1
+
+#include <concepts>
+#include <cstddef>
+#include <expected>
+#include <system_error>
+#include <functional>
+
+#include "iouringxx.hpp"
+#include "util/utility.hpp"
+#include "macro_config.hpp"
+#include "socket.hpp"
+
+namespace iouxx::inline iouops::network {
+
+    enum class send_flag {
+        none      = 0,
+        confirm   = MSG_CONFIRM,
+        dontroute = MSG_DONTROUTE,
+        dontwait  = MSG_DONTWAIT,
+        eor       = MSG_EOR,
+        more      = MSG_MORE,
+        nosignal  = MSG_NOSIGNAL,
+        oob       = MSG_OOB,
+        fastopen  = MSG_FASTOPEN,
+    };
+
+    inline send_flag operator|(send_flag lhs, send_flag rhs) noexcept {
+        return static_cast<send_flag>(
+            std::to_underlying(lhs) | std::to_underlying(rhs)
+        );
+    }
+
+    template<std::invocable<std::expected<std::size_t, std::error_code>> Callback>
+    class socket_send_operation : public operation_base
+    {
+    public:
+        template<typename F>
+        explicit socket_send_operation(iouxx::io_uring_xx& ring, F&& f) :
+            operation_base(iouxx::op_tag<socket_send_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_SEND;
+
+        socket_send_operation& socket(const socket& s) & noexcept {
+            this->fd = s.native_handle();
+            return *this;
+        }
+
+        socket_send_operation& connection(const connection& c) & noexcept {
+            this->fd = c.native_handle();
+            return *this;
+        }
+
+        socket_send_operation& options(send_flag flags) & noexcept {
+            this->flags = flags;
+            return *this;
+        }
+
+        template<utility::readonly_buffer_like Buffer>
+        socket_send_operation& buffer(Buffer&& buf) & noexcept {
+            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
+            this->buf = span.data();
+            this->len = span.size();
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_send(sqe, fd, buf, len,
+                std::to_underlying(flags));
+        }
+
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+            if (ev >= 0) {
+                std::invoke(callback, static_cast<std::size_t>(ev));
+            } else {
+                std::invoke(callback, std::unexpected(
+                    utility::make_system_error_code(-ev)
+                ));
+            } 
+        }
+
+        const void* buf = nullptr;
+        std::size_t len = 0;
+        int fd = -1;
+        send_flag flags = send_flag::none;
+        [[no_unique_address]] Callback callback;
+    };
+
+    template<typename F>
+    socket_send_operation(iouxx::io_uring_xx&, F) -> socket_send_operation<std::decay_t<F>>;
+
+    enum class recv_flag {
+        none         = 0,
+        cmsg_cloexec = MSG_CMSG_CLOEXEC,
+        dontwait     = MSG_DONTWAIT,
+        errqueue     = MSG_ERRQUEUE,
+        oob          = MSG_OOB,
+        peek         = MSG_PEEK,
+        trunc        = MSG_TRUNC,
+        waitall      = MSG_WAITALL,
+    };
+
+    inline recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
+        return static_cast<recv_flag>(
+            std::to_underlying(lhs) | std::to_underlying(rhs)
+        );
+    }
+
+    template<std::invocable<std::expected<std::size_t, std::error_code>> Callback>
+    class socket_recv_operation : public operation_base
+    {
+    public:
+        template<typename F>
+        explicit socket_recv_operation(iouxx::io_uring_xx& ring, F&& f) :
+            operation_base(iouxx::op_tag<socket_recv_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_RECV;
+
+        socket_recv_operation& socket(const socket& s) & noexcept {
+            this->fd = s.native_handle();
+            return *this;
+        }
+
+        socket_recv_operation& connection(const connection& c) & noexcept {
+            this->fd = c.native_handle();
+            return *this;
+        }
+
+        socket_recv_operation& options(recv_flag flags) & noexcept {
+            this->flags = flags;
+            return *this;
+        }
+
+        template<utility::buffer_like Buffer>
+        socket_recv_operation& buffer(Buffer&& buf) & noexcept {
+            auto span = utility::to_buffer(std::forward<Buffer>(buf));
+            this->buf = span.data();
+            this->len = span.size();
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_recv(sqe, fd, buf, len,
+                std::to_underlying(flags));
+        }
+
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+            if (ev >= 0) {
+                std::invoke(callback, static_cast<std::size_t>(ev));
+            } else {
+                std::invoke(callback, std::unexpected(
+                    utility::make_system_error_code(-ev)
+                ));
+            }
+        }
+
+        void* buf = nullptr;
+        std::size_t len = 0;
+        int fd = -1;
+        recv_flag flags = recv_flag::none;
+        [[no_unique_address]] Callback callback;
+    };
+
+    template<typename F>
+    socket_recv_operation(iouxx::io_uring_xx&, F) -> socket_recv_operation<std::decay_t<F>>;
+
+} // namespace iouxx::iouops::network
+
+#endif // IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H
