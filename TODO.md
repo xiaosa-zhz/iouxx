@@ -7,7 +7,7 @@
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
 
 ## Medium Priority
-- [ ] Placeholder
+- [ ] Add registration of resources (files, buffers, etc.)
 
 ## Low Priority
 - [ ] Add C++ module support

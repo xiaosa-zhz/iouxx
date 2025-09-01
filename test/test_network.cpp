@@ -340,11 +340,10 @@ int main() {
         std::println("Protocol database not initialized, aborting");
         std::abort();
     }
-    std::thread srv(&echo_server);
+    std::jthread srv(&echo_server);
     // wait until server has called listen and set the flag
     while (!server_started.load(std::memory_order_acquire)) {
         std::this_thread::sleep_for(10ms);
     }
     echo_client();
-    srv.join();
 }
