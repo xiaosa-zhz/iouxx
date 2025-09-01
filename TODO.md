@@ -1,8 +1,10 @@
 # TODO List
 
+## Work in Progress
+- [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
+
 ## High Priority
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
-- [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
 
 ## Medium Priority
 - [ ] Placeholder
@@ -10,6 +12,7 @@
 ## Low Priority
 - [ ] Add C++ module support
 - [ ] Remove fallback around chrono when libc++ implementation is complete
+- [ ] Remove start_lifetime_as in test_network.cpp when supported
 - [ ] Add CI/CD pipeline
 
 ## Completed

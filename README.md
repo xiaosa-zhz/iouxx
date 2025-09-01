@@ -66,12 +66,12 @@ ring.wait_for_result().value()();
 #### 3. 多次触发 (multishot) 超时
 ```cpp
 iouxx::multishot_timeout_operation mt(ring,
-		[](std::error_code ec, bool more){ /* more=true 表示仍有后续 */ });
+        [](std::error_code ec, bool more){ /* more=true 表示仍有后续 */ });
 mt.wait_for(10ms).repeat(5).submit();
 while (true) {
-		auto res = ring.wait_for_result().value();
-		res();
-		if (res.result() == 0 /* 回调里可记录 more=false */) { /* 视语义终止条件 */ }
+        auto res = ring.wait_for_result().value();
+        res();
+        if (res.result() == 0 /* 回调里可记录 more=false */) { /* 视语义终止条件 */ }
 }
 ```
 
@@ -100,13 +100,13 @@ ring.wait_for_result().value()(); // 处理取消完成
 
 ```
 include/
-	iouringxx.hpp         # 核心 io_uring 封装与 operation 基础设施
-	iouxx.hpp             # 统一聚合头
-	boottime_clock.hpp    # CLOCK_BOOTTIME 时钟
-	iouops/               # 各类操作 (noop/timeout/cancel/...)
-		network/ip.hpp      # IPv4/IPv6 工具
+    iouringxx.hpp         # 核心 io_uring 封装与 operation 基础设施
+    iouxx.hpp             # 统一聚合头
+    boottime_clock.hpp    # CLOCK_BOOTTIME 时钟
+    iouops/               # 各类操作 (noop/timeout/cancel/...)
+        network/ip.hpp      # IPv4/IPv6 工具
 src/
-	main.cpp              # 示例入口（占位）
+    main.cpp              # 示例入口（占位）
 test/                   # 单元/示例测试
 xmake.lua               # 构建脚本
 ```

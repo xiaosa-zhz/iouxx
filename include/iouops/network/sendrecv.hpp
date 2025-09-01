@@ -44,6 +44,9 @@ namespace iouxx::inline iouops::network {
             callback(std::forward<F>(f))
         {}
 
+        using callback_type = Callback;
+        using result_type = std::size_t;
+
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_SEND;
 
         socket_send_operation& socket(const socket& s) & noexcept {
@@ -122,6 +125,9 @@ namespace iouxx::inline iouops::network {
             operation_base(iouxx::op_tag<socket_recv_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = std::size_t;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_RECV;
 

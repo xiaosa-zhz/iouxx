@@ -138,7 +138,7 @@ namespace iouxx::inline iouops::network::ip {
                     // Empty part or too long
                     return std::unexpected(utility::make_invalid_argument_error());
                 }
-                if (sub.size() > 1 && sub[0] == '0') {
+                if (sub.size() > 1 && sub.front() == '0') {
                     // Leading zero
                     return std::unexpected(utility::make_invalid_argument_error());
                 }
@@ -457,7 +457,7 @@ namespace iouxx::inline iouops::network::ip {
 
         static constexpr auto from_string(const std::string_view port_str)
             noexcept -> std::expected<port, std::error_code> {
-            if (port_str.size() > 1 && port_str[0] == '0') {
+            if (port_str.size() > 1 && port_str.front() == '0') {
                 // Leading zero
                 return std::unexpected(utility::make_invalid_argument_error());
             }

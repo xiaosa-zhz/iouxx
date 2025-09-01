@@ -25,6 +25,9 @@ namespace iouxx::inline iouops {
             callback(std::forward<F>(f))
         {}
 
+        using callback_type = Callback;
+        using result_type = void;
+
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_NOP;
 
     private:

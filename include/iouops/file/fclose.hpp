@@ -3,6 +3,7 @@
 #define IOUXX_OPERATION_FILE_CLOSE_H 1
 
 #include <expected>
+#include <functional>
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
@@ -21,6 +22,9 @@ namespace iouxx::inline iouops::file {
             operation_base(iouxx::op_tag<file_close_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = void;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_CLOSE;
 

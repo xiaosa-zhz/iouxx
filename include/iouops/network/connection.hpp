@@ -32,6 +32,9 @@ namespace iouxx::inline iouops::network {
             callback(std::forward<F>(f))
         {}
 
+        using callback_type = Callback;
+        using result_type = void;
+
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_LISTEN;
 
         socket_listen_operation& socket(const socket& s) & noexcept {
@@ -88,6 +91,9 @@ namespace iouxx::inline iouops::network {
             callback(std::forward<F>(f))
         {}
 
+        using callback_type = Callback;
+        using result_type = void;
+
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_CONNECT;
 
         socket_connect_operation& socket(const socket& s) & noexcept {
@@ -131,8 +137,8 @@ namespace iouxx::inline iouops::network {
         }
 
         alignas(std::max_align_t) sockaddr_buffer_type sockaddr_buf{};
-		network::socket sock;
-		supported_socket_type sock_info;
+        network::socket sock;
+        supported_socket_type sock_info;
         [[no_unique_address]] Callback callback;
     };
 
@@ -149,6 +155,9 @@ namespace iouxx::inline iouops::network {
             operation_base(iouxx::op_tag<socket_accept_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = connection;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ACCEPT;
 
@@ -189,8 +198,8 @@ namespace iouxx::inline iouops::network {
 
         alignas(std::max_align_t) sockaddr_buffer_type sockaddr_buf{};
         ::socklen_t addrlen = 0;
-		network::socket sock;
-		supported_socket_type sock_info;
+        network::socket sock;
+        supported_socket_type sock_info;
         [[no_unique_address]] Callback callback;
     };
 
@@ -212,6 +221,9 @@ namespace iouxx::inline iouops::network {
             operation_base(iouxx::op_tag<socket_multishot_accept_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = multishot_accept_result;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ACCEPT;
 
@@ -247,8 +259,8 @@ namespace iouxx::inline iouops::network {
         }
 
         alignas(std::max_align_t) sockaddr_buffer_type sockaddr_buf{};
-		network::socket sock;
-		supported_socket_type sock_info;
+        network::socket sock;
+        supported_socket_type sock_info;
         [[no_unique_address]] Callback callback;
     };
 
@@ -273,6 +285,9 @@ namespace iouxx::inline iouops::network {
             operation_base(iouxx::op_tag<socket_shutdown_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = void;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_SHUTDOWN;
 

@@ -76,6 +76,9 @@ namespace iouxx::inline iouops {
             callback(std::forward<F>(f))
         {}
 
+        using callback_type = Callback;
+        using result_type = void;
+
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
@@ -144,6 +147,9 @@ namespace iouxx::inline iouops {
             operation_base(iouxx::op_tag<multishot_timeout_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = bool;
         
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT;
 
@@ -198,51 +204,54 @@ namespace iouxx::inline iouops {
         -> multishot_timeout_operation<std::decay_t<F>>;
 
     // Cancel a previously submitted timeout by its identifier.
-	template<typename Callback>
+    template<typename Callback>
         requires (std::is_void_v<Callback>)
         || std::invocable<Callback, std::error_code>
         || std::invocable<Callback, std::expected<void, std::error_code>>
-	class timeout_cancel_operation : public operation_base
-	{
-	public:
-		template<typename F>
-		timeout_cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
-			operation_base(iouxx::op_tag<timeout_cancel_operation>, ring),
-			callback(std::forward<F>(f))
-		{}
+    class timeout_cancel_operation : public operation_base
+    {
+    public:
+        template<typename F>
+        timeout_cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
+            operation_base(iouxx::op_tag<timeout_cancel_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        using callback_type = Callback;
+        using result_type = void;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT_REMOVE;
 
-		timeout_cancel_operation& target(operation_identifier identifier) & noexcept {
-			id = identifier;
-			return *this;
-		}
+        timeout_cancel_operation& target(operation_identifier identifier) & noexcept {
+            id = identifier;
+            return *this;
+        }
 
-	private:
-		friend operation_base;
-		void build(::io_uring_sqe* sqe) & noexcept {
-			::io_uring_prep_timeout_remove(sqe, id.user_data64(), 0);
-		}
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_timeout_remove(sqe, id.user_data64(), 0);
+        }
 
-		void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
             if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
                 if (ev == 0) {
-                    return std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, std::expected<void, std::error_code>{});
                 } else {
-                    return std::invoke(callback, std::unexpected(
+                    std::invoke(callback, std::unexpected(
                         utility::make_system_error_code(-ev)
                     ));
                 }
             } else if constexpr (std::invocable<Callback, std::error_code>) {
-                return std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");
             }
-		}
+        }
 
-		operation_identifier id = operation_identifier();
-		[[no_unique_address]] Callback callback;
-	};
+        operation_identifier id = operation_identifier();
+        [[no_unique_address]] Callback callback;
+    };
 
     // Pure timeout cancel operation, does nothing on completion.
     template<>
@@ -274,8 +283,8 @@ namespace iouxx::inline iouops {
         operation_identifier id = operation_identifier();
     };
 
-	template<typename F>
-	timeout_cancel_operation(iouxx::io_uring_xx&, F) -> timeout_cancel_operation<std::decay_t<F>>;
+    template<typename F>
+    timeout_cancel_operation(iouxx::io_uring_xx&, F) -> timeout_cancel_operation<std::decay_t<F>>;
 
     timeout_cancel_operation(iouxx::io_uring_xx&) -> timeout_cancel_operation<void>;
 

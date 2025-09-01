@@ -34,6 +34,20 @@ namespace iouxx {
         // Forward declaration
         class operation_base;
 
+        struct dummy_callback {
+            constexpr void operator()(auto&&) const noexcept {}
+        };
+
+        template<typename Result>
+        struct sync_wait_callback {
+            using expected_type = std::expected<Result, std::error_code>;
+            expected_type result;
+
+            void operator()(expected_type res) noexcept {
+                result = std::move(res);
+            }
+        };
+
         class operation_identifier
         {
         public:
@@ -104,6 +118,8 @@ namespace iouxx {
             }
 
             template<typename Self>
+                requires (!utility::is_specialization_of_v<
+                    sync_wait_callback, typename Self::callback_type>)
             std::error_code submit(this Self& self) noexcept {
 #if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
                 if (!::io_uring_opcode_supported(self.ring->ring_probe(),
@@ -118,7 +134,41 @@ namespace iouxx {
                     }
                     return std::error_code();
                 }
-                return utility::make_system_error_code(EAGAIN);
+                return std::make_error_code(std::errc::resource_unavailable_try_again);
+            }
+
+            template<typename Self>
+                requires (utility::is_specialization_of_v<
+                    sync_wait_callback, typename Self::callback_type>)
+            auto submit_and_wait(this Self& self)
+                noexcept -> typename Self::callback_type::expected_type {
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+                if (!::io_uring_opcode_supported(self.ring->ring_probe(),
+                    Self::IORING_OPCODE)) {
+                    return std::unexpected(
+                        std::make_error_code(std::errc::function_not_supported)
+                    );
+                }
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
+                if (::io_uring_sqe* sqe = self.to_sqe()) {
+                    int ev = ::io_uring_submit(self.ring->native());
+                    if (ev < 0) {
+                        return std::unexpected(
+                            utility::make_system_error_code(-ev)
+                        );
+                    }
+                    // wait
+                    if (auto cqe_result = self.ring->wait_for_result()) {
+                        cqe_result->callback();
+                        return std::move(self.callback.result);
+                    } else {
+                        return std::unexpected(cqe_result.error());
+                    }
+                    
+                }
+                return std::unexpected(
+                    std::make_error_code(std::errc::resource_unavailable_try_again)
+                );
             }
 
             void callback(int ev, std::int32_t cqe_flags) &
@@ -249,10 +299,17 @@ namespace iouxx {
             return Operation(*this);
         }
 
+        template<template<typename...> class Operation>
+        auto make_sync() & noexcept {
+            assert(valid());
+            using result_type = typename Operation<dummy_callback>::result_type;
+            return Operation(*this, sync_wait_callback<result_type>{});
+        }
+
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
             assert(valid());
             if (!sqe) {
-                return utility::make_system_error_code(EAGAIN);
+                return std::make_error_code(std::errc::resource_unavailable_try_again);
             }
             int ev = ::io_uring_submit(&ring);
             if (ev < 0) {

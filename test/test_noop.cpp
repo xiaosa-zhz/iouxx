@@ -14,6 +14,7 @@
 
 void test_noop() {
     using namespace std::literals;
+    using namespace iouxx;
     iouxx::io_uring_xx ring(64);
     int n = 0;
     iouxx::noop_operation noop(ring,
@@ -30,6 +31,9 @@ void test_noop() {
     result();
     TEST_EXPECT(n == 114514);
     std::println("Noop completed with result: {}", result.result());
+    auto sync_noop = ring.make_sync<noop_operation>();
+    auto sync_result = sync_noop.submit_and_wait();
+    TEST_EXPECT(sync_result);
 }
 
 int main() {

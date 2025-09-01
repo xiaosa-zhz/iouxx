@@ -42,51 +42,51 @@ import std;
 
 namespace iouxx {
 
-	IOUXX_EXPORT
-	struct boottime_clock {
-		using rep        = std::int64_t;
-		using period     = std::nano; // same resolution as clock_gettime returns (nanoseconds)
-		using duration   = std::chrono::nanoseconds;
-		using time_point = std::chrono::time_point<boottime_clock, duration>;
-		static constexpr bool is_steady = true; // monotonic + never goes backwards
+    IOUXX_EXPORT
+    struct boottime_clock {
+        using rep        = std::int64_t;
+        using period     = std::nano; // same resolution as clock_gettime returns (nanoseconds)
+        using duration   = std::chrono::nanoseconds;
+        using time_point = std::chrono::time_point<boottime_clock, duration>;
+        static constexpr bool is_steady = true; // monotonic + never goes backwards
 
-		static time_point now() noexcept {
-			struct timespec ts;
-			::clock_gettime(CLOCK_BOOTTIME, &ts);
-			// Prevent overflow: tv_nsec < 1e9 always; tv_sec fits in 64 bits for practical uptimes.
-			auto ns = static_cast<rep>(ts.tv_sec) * 1'000'000'000 + static_cast<rep>(ts.tv_nsec);
-			return time_point(duration{ns});
-		}
-	};
+        static time_point now() noexcept {
+            struct timespec ts;
+            ::clock_gettime(CLOCK_BOOTTIME, &ts);
+            // Prevent overflow: tv_nsec < 1e9 always; tv_sec fits in 64 bits for practical uptimes.
+            auto ns = static_cast<rep>(ts.tv_sec) * 1'000'000'000 + static_cast<rep>(ts.tv_nsec);
+            return time_point(duration{ns});
+        }
+    };
 
-	IOUXX_EXPORT
-	inline ::timespec to_timespec(boottime_clock::duration d) noexcept {
-		using rep = boottime_clock::rep;
-		rep total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(d).count();
-		::timespec ts{};
-		ts.tv_sec  = static_cast<time_t>(total_ns / 1'000'000'000);
-		ts.tv_nsec = static_cast<long>(total_ns % 1'000'000'000);
-		return ts;
-	}
+    IOUXX_EXPORT
+    inline ::timespec to_timespec(boottime_clock::duration d) noexcept {
+        using rep = boottime_clock::rep;
+        rep total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(d).count();
+        ::timespec ts{};
+        ts.tv_sec  = static_cast<time_t>(total_ns / 1'000'000'000);
+        ts.tv_nsec = static_cast<long>(total_ns % 1'000'000'000);
+        return ts;
+    }
 
-	IOUXX_EXPORT
-	inline ::timespec to_timespec(boottime_clock::time_point tp) noexcept {
-		return to_timespec(tp.time_since_epoch());
-	}
+    IOUXX_EXPORT
+    inline ::timespec to_timespec(boottime_clock::time_point tp) noexcept {
+        return to_timespec(tp.time_since_epoch());
+    }
 
-	IOUXX_EXPORT
-	inline boottime_clock::duration from_timespec_duration(const ::timespec& ts) noexcept {
-		return std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
-	}
+    IOUXX_EXPORT
+    inline boottime_clock::duration from_timespec_duration(const ::timespec& ts) noexcept {
+        return std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
+    }
 
-	IOUXX_EXPORT
-	inline boottime_clock::time_point from_timespec_time_point(const ::timespec& ts) noexcept {
-		return boottime_clock::time_point(from_timespec_duration(ts));
-	}
+    IOUXX_EXPORT
+    inline boottime_clock::time_point from_timespec_time_point(const ::timespec& ts) noexcept {
+        return boottime_clock::time_point(from_timespec_duration(ts));
+    }
 
-	// libcxx has not implemented is_clock_v yet
+    // libcxx has not implemented is_clock_v yet
 #if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
-	static_assert(std::chrono::is_clock_v<boottime_clock>, "boottime_clock must satisfy clock requirements");
+    static_assert(std::chrono::is_clock_v<boottime_clock>, "boottime_clock must satisfy clock requirements");
 #endif
 
 } // namespace iouxx

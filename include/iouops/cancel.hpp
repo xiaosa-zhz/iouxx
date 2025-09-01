@@ -12,44 +12,47 @@
 
 namespace iouxx::inline iouops {
 
-	// Cancel operation with user-defined callback by provided identifier.
+    // Cancel operation with user-defined callback by provided identifier.
     // On success, callback receive a number indicating how many operations were cancelled.
-	template<typename Callback>
+    template<typename Callback>
         requires (std::is_void_v<Callback>)
         || std::invocable<Callback, std::expected<std::size_t, std::error_code>>
-	class cancel_operation : public operation_base
-	{
-	public:
-		template<typename F>
-		cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
-			operation_base(iouxx::op_tag<cancel_operation>, ring),
+    class cancel_operation : public operation_base
+    {
+    public:
+        template<typename F>
+        cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
+            operation_base(iouxx::op_tag<cancel_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
+        using callback_type = Callback;
+        using result_type = std::size_t;
+
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
 
-		cancel_operation& target(operation_identifier identifier) & noexcept {
-			id = identifier;
-			return *this;
-		}
+        cancel_operation& target(operation_identifier identifier) & noexcept {
+            id = identifier;
+            return *this;
+        }
 
         cancel_operation& cancel_one() & noexcept {
             flags &= ~IORING_ASYNC_CANCEL_ALL;
-			return *this;
-		}
+            return *this;
+        }
 
-		cancel_operation& cancel_all() & noexcept {
+        cancel_operation& cancel_all() & noexcept {
             flags |= IORING_ASYNC_CANCEL_ALL;
-			return *this;
-		}
+            return *this;
+        }
 
-	private:
-		friend operation_base;
-		void build(::io_uring_sqe* sqe) & noexcept {
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_cancel(sqe, id.user_data(), flags);
-		}
+        }
 
-	    void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
             std::size_t cancelled_count = 0;
             if (ev >= 0) {
                 if (flags & IORING_ASYNC_CANCEL_ALL) {
@@ -66,12 +69,12 @@ namespace iouxx::inline iouops {
                     utility::make_system_error_code(-ev)
                 ));
             }
-		}
+        }
 
-		operation_identifier id = operation_identifier();
-		unsigned flags = IORING_ASYNC_CANCEL_USERDATA;
-		[[no_unique_address]] Callback callback;
-	};
+        operation_identifier id = operation_identifier();
+        unsigned flags = IORING_ASYNC_CANCEL_USERDATA;
+        [[no_unique_address]] Callback callback;
+    };
 
     // Pure cancel operation, does nothing on completion.
     template<>
@@ -111,18 +114,16 @@ namespace iouxx::inline iouops {
         unsigned flags = 0;
     };
 
-	template<typename F>
-	cancel_operation(iouxx::io_uring_xx&, F) -> cancel_operation<std::decay_t<F>>;
+    template<typename F>
+    cancel_operation(iouxx::io_uring_xx&, F) -> cancel_operation<std::decay_t<F>>;
 
     cancel_operation(iouxx::io_uring_xx&) -> cancel_operation<void>;
 
     // Cancel operation with user-defined callback by provided file descriptor.
-    // Callback may receive a second parameter indicating
-    // how many operations were cancelled.
+    // On success, callback receive a number indicating how many operations were cancelled.
     template<typename Callback>
         requires (std::is_void_v<Callback>)
-        || std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::error_code, std::size_t>
+        || std::invocable<Callback, std::expected<std::size_t, std::error_code>>
     class cancel_fd_operation : public operation_base
     {
     public:
@@ -131,6 +132,9 @@ namespace iouxx::inline iouops {
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
             callback(std::forward<F>(f))
         {}
+
+        using callback_type = Callback;
+        using result_type = std::size_t;
 
         static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
 
@@ -164,19 +168,21 @@ namespace iouxx::inline iouops {
         }
 
         void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::is_invocable_v<Callback, std::error_code, std::size_t>) {
-                std::size_t cancelled_count = 0;
-                if (ev >= 0) {
-                    if (flags & IORING_ASYNC_CANCEL_ALL) {
-                        cancelled_count = static_cast<std::size_t>(ev);
-                    } else {
-                        cancelled_count = 1;
-                    }
-                    ev = 0;
+            std::size_t cancelled_count = 0;
+            if (ev >= 0) {
+                if (flags & IORING_ASYNC_CANCEL_ALL) {
+                    cancelled_count = static_cast<std::size_t>(ev);
+                } else {
+                    cancelled_count = 1;
                 }
-                std::invoke(callback, utility::make_system_error_code(-ev), cancelled_count);
+                ev = 0;
+            }
+            if (ev == 0) {
+                std::invoke(callback, cancelled_count);
             } else {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke(callback, std::unexpected(
+                    utility::make_system_error_code(-ev)
+                ));
             }
         }
 
