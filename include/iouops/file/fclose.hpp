@@ -56,7 +56,7 @@ namespace iouxx::inline iouops::file {
         }
 
         int fd = -1;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
 } // namespace iouxx::inline iouops::file

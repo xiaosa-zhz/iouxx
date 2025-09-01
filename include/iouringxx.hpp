@@ -207,6 +207,19 @@ namespace iouxx {
             io_uring_xx* ring = nullptr;
         };
 
+        template<typename Operation>
+        struct operation_traits {};
+
+        template<template<typename...> class Operation, typename Callback>
+            requires std::derived_from<Operation<Callback>, operation_base>
+        struct operation_traits<Operation<Callback>> {
+            using operation_type = Operation<Callback>;
+            using callback_type = typename operation_type::callback_type;
+            using result_type = typename operation_type::result_type;
+            template<typename F>
+            using rebind = Operation<F>;
+        };
+
     } // namespace iouxx::iouops
 
     class operation_result

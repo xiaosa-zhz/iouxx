@@ -73,7 +73,7 @@ namespace iouxx::inline iouops {
 
         operation_identifier id = operation_identifier();
         unsigned flags = IORING_ASYNC_CANCEL_USERDATA;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     // Pure cancel operation, does nothing on completion.
@@ -188,7 +188,7 @@ namespace iouxx::inline iouops {
 
         int fd = -1;
         unsigned flags = IORING_ASYNC_CANCEL_FD;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     // Pure cancel fd operation, does nothing on completion.

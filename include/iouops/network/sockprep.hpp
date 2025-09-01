@@ -80,7 +80,7 @@ namespace iouxx::inline iouops::network {
         socket::domain socket_domain = socket::domain::unspec;
         socket::type socket_type = socket::type::stream;
         socket::protocol socket_protocol = socket::protocol::unknown;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename F>
@@ -179,7 +179,7 @@ namespace iouxx::inline iouops::network {
         alignas(std::max_align_t) sockaddr_buffer_type sockaddr_buf{};
         network::socket sock;
         supported_socket_type sock_info;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename F>

@@ -93,7 +93,7 @@ namespace iouxx::inline iouops::network {
         std::size_t len = 0;
         int fd = -1;
         send_flag flags = send_flag::none;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename F>
@@ -175,7 +175,7 @@ namespace iouxx::inline iouops::network {
         std::size_t len = 0;
         int fd = -1;
         recv_flag flags = recv_flag::none;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename F>

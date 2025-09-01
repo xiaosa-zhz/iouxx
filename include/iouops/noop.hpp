@@ -52,7 +52,7 @@ namespace iouxx::inline iouops {
             }
         }
 
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     // Pure noop operation, does nothing on completion.

@@ -128,7 +128,7 @@ namespace iouxx::inline iouops {
 
         ::__kernel_timespec ts{};
         unsigned flags = 0;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename F>
@@ -198,7 +198,7 @@ namespace iouxx::inline iouops {
         ::__kernel_timespec ts{};
         std::size_t count = 1;
         unsigned flags = IORING_TIMEOUT_MULTISHOT;
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename F>
@@ -252,7 +252,7 @@ namespace iouxx::inline iouops {
         }
 
         operation_identifier id = operation_identifier();
-        [[no_unique_address]] Callback callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     // Pure timeout cancel operation, does nothing on completion.
