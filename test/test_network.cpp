@@ -1,7 +1,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
-#include <chrono>
 #include <vector>
 #include <span>
 #include <thread>

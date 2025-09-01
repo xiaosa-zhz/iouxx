@@ -141,6 +141,8 @@ namespace iouxx::inline iouops {
     template<std::invocable<std::expected<bool, std::error_code>> Callback>
     class multishot_timeout_operation : public operation_base
     {
+        static_assert(!utility::is_specialization_of_v<sync_wait_callback, Callback>,
+            "multishot operation does not support syncronous wait.");
     public:
         template<typename F>
         explicit multishot_timeout_operation(iouxx::io_uring_xx& ring, F&& f) :

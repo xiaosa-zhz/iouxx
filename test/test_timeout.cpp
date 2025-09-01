@@ -16,22 +16,15 @@
 void test_timeout() {
     using namespace std::literals;
     iouxx::io_uring_xx ring(64);
-    int n = 0;
-    iouxx::timeout_operation timer(ring,
-        [&n](std::error_code ec) {
-        std::println("Timer expired!");
-        n = 114514;
-    });
+    auto timer = ring.make_sync<iouxx::timeout_operation>();
     timer.wait_for(50ms);
     auto start = std::chrono::steady_clock::now();
-    if (auto ec = timer.submit()) {
-        std::println("Failed to submit timer task: {}", ec.message());
+    if (auto res = timer.submit_and_wait()) {
+        std::println("Timer expired!");
+    } else {
+        std::println("Failed to submit timer task: {}", res.error().message());
         TEST_EXPECT(false);
     }
-    std::println("Timer task submitted, waiting for completion...");
-    iouxx::operation_result result = ring.wait_for_result().value();
-    result();
-    TEST_EXPECT(n == 114514);
     auto end = std::chrono::steady_clock::now();
     auto duration = end - start;
     TEST_EXPECT(duration < 100ms);
