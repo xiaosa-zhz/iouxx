@@ -5,6 +5,7 @@
 
 ## High Priority
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
+- [ ] Update my WSL environment to really test networking
 
 ## Medium Priority
 - [ ] Add registration of resources (files, buffers, etc.)

@@ -111,22 +111,7 @@ test/                   # 单元/示例测试
 xmake.lua               # 构建脚本
 ```
 
-### 🛣️ Roadmap / TODO 摘要
-
-短期：
-- File IO 操作实现 (`fileio.hpp`)
-- Socket IO 操作实现 (`socketio.hpp`)
-- Cancel 操作测试完善
-
-中期：
-- C++ Modules 支持
-- 移除 chrono 回退（等待 libc++ 更新）
-- CI/CD (构建 + 测试 + 格式检查)
-
-长期：
-- 更丰富的 network / file 语义操作（读写、accept、connect 等）
-- 与协程/执行器整合示例
-- 文档站点 & Benchmark
+### 🛣️ Roadmap / TODO
 
 详见 `TODO.md`。
 
