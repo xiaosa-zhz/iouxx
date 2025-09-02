@@ -18,7 +18,7 @@
 #include <ranges>
 #include <vector>
 #include <chrono>
-#include <memory> // IWYU pragma: keep
+#include <memory>
 
 #include "macro_config.hpp"
 #include "util/utility.hpp"
@@ -38,6 +38,10 @@ namespace iouxx {
             constexpr void operator()(auto&&) const noexcept {}
         };
 
+        // Enable sync wait support for operations.
+        // To use this, the operation type must have:
+        //   using result_type = ...;
+        //   using callback_type = sync_wait_callback<result_type>;
         template<typename Result>
         struct sync_wait_callback {
             using expected_type = std::expected<Result, std::error_code>;
@@ -121,12 +125,10 @@ namespace iouxx {
                 requires (!utility::is_specialization_of_v<
                     sync_wait_callback, typename Self::callback_type>)
             std::error_code submit(this Self& self) noexcept {
-#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
-                if (!::io_uring_opcode_supported(self.ring->ring_probe(),
-                    Self::IORING_OPCODE)) {
-                    return std::make_error_code(std::errc::function_not_supported);
+                if (std::error_code test = self.feature_test()) {
+                    return test;
                 }
-#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
+                // Feature test passed
                 if (::io_uring_sqe* sqe = self.to_sqe()) {
                     int ev = ::io_uring_submit(self.ring->native());
                     if (ev < 0) {
@@ -134,6 +136,7 @@ namespace iouxx {
                     }
                     return std::error_code();
                 }
+                // No SQE available
                 return std::make_error_code(std::errc::resource_unavailable_try_again);
             }
 
@@ -142,14 +145,10 @@ namespace iouxx {
                     sync_wait_callback, typename Self::callback_type>)
             auto submit_and_wait(this Self& self)
                 noexcept -> typename Self::callback_type::expected_type {
-#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
-                if (!::io_uring_opcode_supported(self.ring->ring_probe(),
-                    Self::IORING_OPCODE)) {
-                    return std::unexpected(
-                        std::make_error_code(std::errc::function_not_supported)
-                    );
+                if (std::error_code test = self.feature_test()) {
+                    return std::unexpected(test);
                 }
-#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
+                // Feature test passed
                 if (::io_uring_sqe* sqe = self.to_sqe()) {
                     int ev = ::io_uring_submit(self.ring->native());
                     if (ev < 0) {
@@ -157,15 +156,15 @@ namespace iouxx {
                             utility::make_system_error_code(-ev)
                         );
                     }
-                    // wait
+                    // Submit success, wait
                     if (auto cqe_result = self.ring->wait_for_result()) {
                         cqe_result->callback();
                         return std::move(self.callback.result);
                     } else {
                         return std::unexpected(cqe_result.error());
                     }
-                    
                 }
+                // No SQE available
                 return std::unexpected(
                     std::make_error_code(std::errc::resource_unavailable_try_again)
                 );
@@ -192,6 +191,19 @@ namespace iouxx {
             explicit operation_base(operation_t<Derived>, io_uring_xx& ring) noexcept
                 : do_callback_ptr(&callback_wrapper<Derived>), ring(&ring)
             {}
+
+            // Enable feature test by define IOUXX_CONFIG_ENABLE_FEATURE_TESTS.
+            // Always returns success if feature test is disabled.
+            template<typename Self>
+            std::error_code feature_test(this Self& self) noexcept {
+#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
+                if (!::io_uring_opcode_supported(self.ring->ring_probe(),
+                    Self::IORING_OPCODE)) {
+                    return std::make_error_code(std::errc::function_not_supported);
+                }
+#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
+                return std::error_code();
+            }
 
             // Note:
             // Override method will receive raw error code from kernel, because:
@@ -290,9 +302,7 @@ namespace iouxx {
 
         void exit() noexcept {
             if (valid()) {
-#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
                 probe.reset();
-#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
                 ::io_uring_queue_exit(&ring);
                 ring = invalid_ring();
             }
@@ -390,11 +400,9 @@ namespace iouxx {
             return &ring;
         }
 
-#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
         ::io_uring_probe* ring_probe() const noexcept {
             return probe.get();
         }
-#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
 
     private:
         static ::io_uring invalid_ring() noexcept {
@@ -408,27 +416,24 @@ namespace iouxx {
                 ring = invalid_ring();
                 return utility::make_system_error_code(-ev);
             }
-#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
             if (::io_uring_probe* raw = ::io_uring_get_probe_ring(&ring)) {
                 probe.reset(raw);
             } else {
                 exit();
                 return std::make_error_code(std::errc::not_enough_memory);
             }
-#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
             return std::error_code();
         }
 
-        ::io_uring ring = invalid_ring(); // using ring_fd to detect if valid
-#if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
         struct probe_deleter {
             void operator()(::io_uring_probe* probe) const noexcept {
                 ::io_uring_free_probe(probe);
             }
         };
         using probe_handle = std::unique_ptr<::io_uring_probe, probe_deleter>;
+
+        ::io_uring ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
-#endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
     };
 
 } // namespace iouxx
