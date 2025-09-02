@@ -1,4 +1,4 @@
-## iouxx
+## [iouxx](https://github.com/xiaosa-zhz/iouxx)
 
 现代 C++26 风格的 [liburing](https://github.com/axboe/liburing) 轻量级包装库。提供类型安全、可组合的 io_uring 操作抽象（operation），支持回调、多次触发 (multishot) 超时、取消、以及 IPv4/IPv6 地址解析与格式化等实用组件。
 
