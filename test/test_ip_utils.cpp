@@ -782,6 +782,8 @@ void ip_parse_test() {
         static_assert(s2.address() == expected);
         static_assert(s2.port() == 443);
     }
+
+    std::println("All socket tests passed.");
 }
 
 int main() {
