@@ -113,7 +113,7 @@ xmake.lua               # 构建脚本
 
 ### 🛣️ Roadmap / TODO
 
-详见 `TODO.md`。
+详见 [TODO.md](https://github.com/xiaosa-zhz/iouxx/blob/main/TODO.md)。
 
 ### 🔌 扩展自定义 Operation
 
@@ -128,7 +128,7 @@ TODO
 
 ### 📄 许可证
 
-见 `LICENSE`
+见 [LICENSE](https://github.com/xiaosa-zhz/iouxx/blob/main/LICENSE)
 
 ### 🤝 贡献
 
