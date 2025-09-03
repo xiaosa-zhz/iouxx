@@ -2,7 +2,7 @@ name: auto test
 on: [push]
 jobs:
   Auto-Test:
-    runs-on: ubuntu-latest
+    runs-on: archlinux-latest
     steps:
       - run: echo "Check out..."
       - name: check out
@@ -13,4 +13,7 @@ jobs:
         with:
           xmake-version: latest
           actions-cache-folder: '.xmake-cache'
+          package-cache-key: 'archlinux-ci'
+          project-path: 'prpjectiouxx'
+      - run: xmake b -y
       - run: xmake test
