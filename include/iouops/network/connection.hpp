@@ -216,7 +216,9 @@ namespace iouxx::inline iouops::network {
     class socket_multishot_accept_operation : public operation_base
     {
         static_assert(!utility::is_specialization_of_v<sync_wait_callback, Callback>,
-            "sync_wait_callback is not supported for multishot operations");
+            "multishot operation does not support syncronous wait.");
+        static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
+            "multishot operation does not support coroutine await.");
     public:
         template<typename F>
         explicit socket_multishot_accept_operation(iouxx::io_uring_xx& ring, F&& f) :

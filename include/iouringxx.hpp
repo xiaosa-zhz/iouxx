@@ -19,6 +19,7 @@
 #include <vector>
 #include <chrono>
 #include <memory>
+#include <coroutine>
 
 #include "macro_config.hpp"
 #include "util/utility.hpp"
@@ -43,13 +44,38 @@ namespace iouxx {
         //   using result_type = ...;
         //   using callback_type = sync_wait_callback<result_type>;
         template<typename Result>
-        struct sync_wait_callback {
+        class sync_wait_callback
+        {
             using expected_type = std::expected<Result, std::error_code>;
-            expected_type result;
-
+        public:
             void operator()(expected_type res) noexcept {
                 result = std::move(res);
             }
+
+        private:
+            friend operation_base;
+            expected_type result = std::unexpected(std::error_code());
+        };
+
+        // Enable coroutine support for operations.
+        // To use this, the operation type must have:
+        //   using result_type = ...;
+        //   using callback_type = awaiter_callback<result_type>;
+        template<typename Result>
+        class awaiter_callback
+        {
+            using result_type = Result;
+            using expected_type = std::expected<result_type, std::error_code>;
+        public:
+            void operator()(expected_type res) noexcept {
+                *result = std::move(res);
+                handle();
+            }
+
+        private:
+            friend operation_base;
+            expected_type* result = nullptr;
+            std::coroutine_handle<> handle = nullptr;
         };
 
         class operation_identifier
@@ -170,6 +196,52 @@ namespace iouxx {
                 );
             }
 
+            template<typename Self>
+            class operation_awaiter
+            {
+                using operation_type = Self;
+                using callback_type = operation_type::callback_type;
+                using result_type = operation_type::result_type;
+                using expected_type = std::expected<result_type, std::error_code>;
+            public:
+                operation_awaiter() = delete;
+                operation_awaiter(const operation_awaiter&) = delete;
+                operation_awaiter& operator=(const operation_awaiter&) = delete;
+
+                constexpr bool await_ready() const noexcept { return false; }
+
+                bool await_suspend(std::coroutine_handle<> handle) noexcept {
+                    self.setup_awaiter_callback(handle, this->result);
+                    if (std::error_code res = self.submit()) {
+                        // fail to submit, resume immediately
+                        result = std::unexpected(res);
+                        return false;
+                    } else {
+                        return true; // suspend
+                    }
+                }
+
+                expected_type await_resume() noexcept {
+                    return std::move(result);
+                }
+
+            private:
+                friend operation_base;
+                explicit operation_awaiter(Self& self) noexcept
+                    : self(self)
+                {}
+
+                Self& self;
+                expected_type result = std::unexpected(std::error_code());
+            };
+
+            template<typename Self>
+                requires (utility::is_specialization_of_v<awaiter_callback,
+                    typename Self::callback_type>)
+            operation_awaiter<Self> operator co_await(this Self& self) noexcept {
+                return operation_awaiter<Self>(self);
+            }
+
             void callback(int ev, std::int32_t cqe_flags) &
                 IOUXX_CALLBACK_NOEXCEPT {
                 do_callback_ptr(this, ev, cqe_flags);
@@ -203,6 +275,16 @@ namespace iouxx {
                 }
 #endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
                 return std::error_code();
+            }
+
+            template<typename Self, typename Result>
+                requires (utility::is_specialization_of_v<awaiter_callback,
+                    typename Self::callback_type>)
+            void setup_awaiter_callback(this Self& self,
+                std::coroutine_handle<> handle,
+                std::expected<Result, std::error_code>& result) noexcept {
+                self.callback.handle = handle;
+                self.callback.result = &result;
             }
 
             // Note:
@@ -322,11 +404,22 @@ namespace iouxx {
             return Operation(*this);
         }
 
+        // Create a sync-waitable operation
+        // Explicitly specify operation type to create
         template<template<typename...> class Operation>
         auto make_sync() & noexcept {
             assert(valid());
             using result_type = typename Operation<dummy_callback>::result_type;
             return Operation(*this, sync_wait_callback<result_type>{});
+        }
+
+        // Create a coroutine-awaitable operation
+        // Explicitly specify operation type to create
+        template<template<typename...> class Operation>
+        auto make_await() & noexcept {
+            assert(valid());
+            using result_type = typename Operation<dummy_callback>::result_type;
+            return Operation(*this, awaiter_callback<result_type>{});
         }
 
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
