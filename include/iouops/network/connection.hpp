@@ -215,6 +215,8 @@ namespace iouxx::inline iouops::network {
         requires std::invocable<Callback, std::expected<multishot_accept_result, std::error_code>>
     class socket_multishot_accept_operation : public operation_base
     {
+        static_assert(!utility::is_specialization_of_v<sync_wait_callback, Callback>,
+            "sync_wait_callback is not supported for multishot operations");
     public:
         template<typename F>
         explicit socket_multishot_accept_operation(iouxx::io_uring_xx& ring, F&& f) :
