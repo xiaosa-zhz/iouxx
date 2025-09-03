@@ -29,7 +29,7 @@ namespace iouxx::inline iouops {
         using callback_type = Callback;
         using result_type = std::size_t;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
+        static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
         cancel_operation& target(operation_identifier identifier) & noexcept {
             id = identifier;
@@ -85,7 +85,7 @@ namespace iouxx::inline iouops {
             operation_base(iouxx::op_tag<cancel_operation>, ring)
         {}
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
+        static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
         cancel_operation& target(operation_identifier identifier) & noexcept {
             id = identifier;
@@ -136,7 +136,7 @@ namespace iouxx::inline iouops {
         using callback_type = Callback;
         using result_type = std::size_t;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
+        static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
         cancel_fd_operation& target(int file_descriptor) & noexcept {
             fd = file_descriptor;
@@ -200,7 +200,7 @@ namespace iouxx::inline iouops {
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring)
         {}
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ASYNC_CANCEL;
+        static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
         cancel_fd_operation& target(int file_descriptor) & noexcept {
             fd = file_descriptor;

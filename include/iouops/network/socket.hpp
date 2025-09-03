@@ -15,13 +15,15 @@
 #include <ranges>
 
 #include "util/utility.hpp"
+#include "iouops/file/file.hpp"
 
 namespace iouxx::inline iouops::network {
 
     // Warning:
     // This class is NOT a RAII wrapper of socket fd.
-    class socket
+    class socket : public file::file
     {
+        using base = file;
     public:
         enum class domain
         {
@@ -77,7 +79,7 @@ namespace iouxx::inline iouops::network {
         };
 
         explicit socket(int fd, domain d, type t, protocol p) noexcept
-            : d(d), t(t), p(p), sock_fd(fd)
+            : base(fd), d(d), t(t), p(p)
         {}
 
         [[nodiscard]]
@@ -86,8 +88,6 @@ namespace iouxx::inline iouops::network {
         type socket_type() const noexcept { return t; }
         [[nodiscard]]
         protocol socket_protocol() const noexcept { return p; }
-        [[nodiscard]]
-        int native_handle() const noexcept { return sock_fd; }
 
         socket() = default;
         socket(const socket&) = default;
@@ -97,7 +97,6 @@ namespace iouxx::inline iouops::network {
         domain d = domain::unspec;
         type t = type::stream;
         protocol p = protocol::unknown;
-        int sock_fd = -1;
     };
 
     struct unspecified_socket_info

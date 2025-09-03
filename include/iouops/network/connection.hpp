@@ -35,7 +35,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_LISTEN;
+        static constexpr std::uint8_t opcode = IORING_OP_LISTEN;
 
         socket_listen_operation& socket(const socket& s) & noexcept {
             this->sock = s;
@@ -94,7 +94,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_CONNECT;
+        static constexpr std::uint8_t opcode = IORING_OP_CONNECT;
 
         socket_connect_operation& socket(const socket& s) & noexcept {
             this->sock = s;
@@ -159,7 +159,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = connection;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ACCEPT;
+        static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
 
         socket_accept_operation& peer_socket(const socket& s) & noexcept {
             this->sock = s;
@@ -227,7 +227,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = multishot_accept_result;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_ACCEPT;
+        static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
 
         socket_multishot_accept_operation& socket(const socket& s) & noexcept {
             this->sock = s;
@@ -291,7 +291,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_SHUTDOWN;
+        static constexpr std::uint8_t opcode = IORING_OP_SHUTDOWN;
 
         socket_shutdown_operation& connection(const connection& s) & noexcept {
             this->fd = s.native_handle();

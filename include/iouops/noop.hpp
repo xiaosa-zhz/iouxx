@@ -28,7 +28,7 @@ namespace iouxx::inline iouops {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_NOP;
+        static constexpr std::uint8_t opcode = IORING_OP_NOP;
 
     private:
         friend operation_base;
@@ -65,7 +65,7 @@ namespace iouxx::inline iouops {
             : operation_base(iouxx::op_tag<noop_operation>, ring)
         {}
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_NOP;
+        static constexpr std::uint8_t opcode = IORING_OP_NOP;
 
     private:
         friend operation_base;

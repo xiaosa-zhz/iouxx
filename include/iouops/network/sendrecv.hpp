@@ -28,7 +28,7 @@ namespace iouxx::inline iouops::network {
         fastopen  = MSG_FASTOPEN,
     };
 
-    inline send_flag operator|(send_flag lhs, send_flag rhs) noexcept {
+    inline constexpr send_flag operator|(send_flag lhs, send_flag rhs) noexcept {
         return static_cast<send_flag>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );
@@ -47,7 +47,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = std::size_t;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_SEND;
+        static constexpr std::uint8_t opcode = IORING_OP_SEND;
 
         socket_send_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();
@@ -110,7 +110,7 @@ namespace iouxx::inline iouops::network {
         waitall      = MSG_WAITALL,
     };
 
-    inline recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
+    inline constexpr recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
         return static_cast<recv_flag>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );
@@ -129,7 +129,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = std::size_t;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_RECV;
+        static constexpr std::uint8_t opcode = IORING_OP_RECV;
 
         socket_recv_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();

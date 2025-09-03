@@ -198,7 +198,7 @@ namespace iouxx {
             std::error_code feature_test(this Self& self) noexcept {
 #if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
                 if (!::io_uring_opcode_supported(self.ring->ring_probe(),
-                    Self::IORING_OPCODE)) {
+                    Self::opcode)) {
                     return std::make_error_code(std::errc::function_not_supported);
                 }
 #endif // IOUXX_IORING_FEATURE_TESTS_ENABLED

@@ -16,7 +16,7 @@
 #include "socket.hpp"
 #include "ip.hpp"
 #include "supported.hpp"
-#include "iouops/file/fclose.hpp"
+#include "iouops/file/openclose.hpp"
 
 namespace iouxx::inline iouops::network {
 
@@ -34,7 +34,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = socket;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_SOCKET;
+        static constexpr std::uint8_t opcode = IORING_OP_SOCKET;
 
         socket_open_operation& domain(socket::domain domain) & noexcept {
             this->socket_domain = domain;
@@ -124,7 +124,7 @@ namespace iouxx::inline iouops::network {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_BIND;
+        static constexpr std::uint8_t opcode = IORING_OP_BIND;
 
         socket_bind_operation& socket(const socket& s) & noexcept {
             this->sock = s;

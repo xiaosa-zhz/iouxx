@@ -79,7 +79,7 @@ namespace iouxx::inline iouops {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT;
+        static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
         auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{}) &
@@ -153,7 +153,7 @@ namespace iouxx::inline iouops {
         using callback_type = Callback;
         using result_type = bool;
         
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT;
+        static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
         auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{})
@@ -222,7 +222,7 @@ namespace iouxx::inline iouops {
         using callback_type = Callback;
         using result_type = void;
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT_REMOVE;
+        static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT_REMOVE;
 
         timeout_cancel_operation& target(operation_identifier identifier) & noexcept {
             id = identifier;
@@ -264,7 +264,7 @@ namespace iouxx::inline iouops {
             operation_base(iouxx::op_tag<timeout_cancel_operation>, ring)
         {}
 
-        static constexpr std::uint8_t IORING_OPCODE = IORING_OP_TIMEOUT_REMOVE;
+        static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT_REMOVE;
 
         timeout_cancel_operation& target(operation_identifier identifier) & noexcept {
             id = identifier;
