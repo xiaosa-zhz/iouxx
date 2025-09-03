@@ -1,0 +1,16 @@
+name: auto test
+on: [push]
+jobs:
+  Auto-Test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Check out..."
+      - name: check out
+        uses: actions/checkout@v5
+      - run: echo "Starting auto test..."
+      - name: setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          actions-cache-folder: '.xmake-cache'
+      - run: xmake test
