@@ -279,10 +279,8 @@ namespace iouxx {
 
             template<typename Derived>
             static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
-                IOUXX_CALLBACK_NOEXCEPT_IF(
-                    utility::eligible_nothrow_callback<
-                        typename Derived::callback_type,
-                        typename Derived::result_type>) {
+                IOUXX_CALLBACK_NOEXCEPT_IF(utility::eligible_nothrow_callback<
+                    typename Derived::callback_type, typename Derived::result_type>) {
                 // Provided by derived class
                 static_cast<Derived*>(base)->do_callback(ev, cqe_flags);
             }
