@@ -1131,31 +1131,35 @@ namespace std {
 
 } // namespace std
 
-[[nodiscard]]
-constexpr std::string iouxx::network::ip::address_v4::to_string() const {
-    return std::format("{}", *this);
-}
+namespace iouxx::inline iouops::network::ip {
+    
+    [[nodiscard]]
+    constexpr std::string address_v4::to_string() const {
+        return std::format("{}", *this);
+    }
 
-// Use RFC 5952 recommended form for IPv6 to_string()
-[[nodiscard]]
-constexpr std::string iouxx::network::ip::address_v6::to_string() const {
-    return std::format("{}", *this);
-}
+    // Use RFC 5952 recommended form for IPv6 to_string()
+    [[nodiscard]]
+    constexpr std::string address_v6::to_string() const {
+        return std::format("{}", *this);
+    }
 
-[[nodiscard]]
-constexpr std::string iouxx::network::ip::port::to_string() const {
-    return std::format("{}", *this);
-}
+    [[nodiscard]]
+    constexpr std::string port::to_string() const {
+        return std::format("{}", *this);
+    }
 
-[[nodiscard]]
-constexpr std::string iouxx::network::ip::socket_v4_info::to_string() const {
-    return std::format("{}", *this);
-}
+    [[nodiscard]]
+    constexpr std::string socket_v4_info::to_string() const {
+        return std::format("{}", *this);
+    }
 
-// Use RFC 5952 recommended form for IPv6 socket to_string()
-[[nodiscard]]
-constexpr std::string iouxx::network::ip::socket_v6_info::to_string() const {
-    return std::format("{}", *this);
-}
+    // Use RFC 5952 recommended form for IPv6 socket to_string()
+    [[nodiscard]]
+    constexpr std::string socket_v6_info::to_string() const {
+        return std::format("{}", *this);
+    }
+
+} // iouxx::iouops::network::ip
 
 #endif // IOUXX_OPERATION_NETWORK_IP_H
