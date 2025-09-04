@@ -30,7 +30,8 @@ namespace iouxx::utility {
         std::size_t addrlen;
     };
 
-    inline ::__kernel_timespec to_kernel_timespec(std::chrono::nanoseconds stdtime) noexcept {
+    inline constexpr auto to_kernel_timespec(std::chrono::nanoseconds stdtime)
+        noexcept -> ::__kernel_timespec {
         ::__kernel_timespec ts;
         const auto sec
             = std::chrono::duration_cast<std::chrono::seconds>(stdtime);
@@ -40,20 +41,17 @@ namespace iouxx::utility {
         return ts;
     }
 
-    inline std::chrono::nanoseconds from_kernel_timespec(const ::__kernel_timespec& ts) noexcept {
+    inline constexpr auto from_kernel_timespec(const ::__kernel_timespec& ts)
+        noexcept -> std::chrono::nanoseconds {
         return std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
     }
 
     // Pre: ev >= 0
-    inline std::error_code make_system_error_code(int ev) noexcept {
+    inline constexpr std::error_code make_system_error_code(int ev) noexcept {
         if (ev != 0) {
             return std::error_code(ev, std::system_category());
         }
         return std::error_code();
-    }
-
-    inline std::error_code make_invalid_argument_error() noexcept {
-        return std::make_error_code(std::errc::invalid_argument);
     }
 
     template<typename T>
@@ -179,6 +177,16 @@ namespace iouxx::utility {
     inline constexpr auto fail(int ev)
         noexcept -> std::unexpected<std::error_code> {
         return std::unexpected(make_system_error_code(ev));
+    }
+
+    inline constexpr auto fail(std::errc ec)
+        noexcept -> std::unexpected<std::error_code> {
+        return std::unexpected(std::make_error_code(ec));
+    }
+
+    inline constexpr auto fail_invalid_argument()
+        noexcept -> std::unexpected<std::error_code> {
+        return fail(std::errc::invalid_argument);
     }
 
     template<typename Callback>

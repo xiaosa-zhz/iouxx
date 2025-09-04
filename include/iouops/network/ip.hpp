@@ -122,7 +122,7 @@ namespace iouxx::inline iouops::network::ip {
             noexcept -> std::expected<address_v4, std::error_code> {
             // Valid address: d.d.d.d, where d is 0-255, without leading zeros
             if (ipv4_str.empty() || ipv4_str.size() > 15) {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             namespace stdr = std::ranges;
             namespace stdv = std::views;
@@ -131,16 +131,16 @@ namespace iouxx::inline iouops::network::ip {
             std::size_t count = 0;
             for (auto&& part : parts) {
                 if (count >= 4) {
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (sub.empty() || sub.size() > 3) {
                     // Empty part or too long
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
                 if (sub.size() > 1 && sub.front() == '0') {
                     // Leading zero
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
                 auto& part_result = part_results[count];
                 // std::from_chars will handle:
@@ -155,16 +155,16 @@ namespace iouxx::inline iouops::network::ip {
                     first, last, part_result, 10);
                 if (ec != std::errc()) {
                     // Conversion error
-                    return std::unexpected(std::make_error_code(ec));
+                    return utility::fail(ec);
                 }
                 if (ptr != last) {
                     // Not fully consumed
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
                 ++count;
             }
             if (count != 4) {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             return address_v4(std::bit_cast<v4raw>(part_results));
         }
@@ -287,7 +287,7 @@ namespace iouxx::inline iouops::network::ip {
                 * Hex digits may or may not have leading zeros.
             */
             if (ipv6_str.empty() || ipv6_str.size() > 45) {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             namespace stdr = std::ranges;
             namespace stdv = std::views;
@@ -357,23 +357,23 @@ namespace iouxx::inline iouops::network::ip {
                     for (auto&& part : parts_by_colon) {
                         if (seen_ipv4) {
                             // IPv4 part must be at the end
-                            return std::unexpected(utility::make_invalid_argument_error());
+                            return utility::fail_invalid_argument();
                         }
                         std::string_view sub(stdr::data(part), stdr::size(part));
                         if (sub.empty()) {
                             // Leading single colon
-                            return std::unexpected(utility::make_invalid_argument_error());
+                            return utility::fail_invalid_argument();
                         }
                         auto ec = parse_one_section(sub);
                         if (ec != std::errc()) {
-                            return std::unexpected(std::make_error_code(ec));
+                            return utility::fail(ec);
                         }
                     }
                 } else if (double_colon_count == 2) {
                     // Second part (after "::")
                     if (seen_ipv4) {
                         // IPv4 part must be at the end
-                        return std::unexpected(utility::make_invalid_argument_error());
+                        return utility::fail_invalid_argument();
                     }
                     if (sub.empty()) {
                         // Trailing "::"
@@ -385,22 +385,22 @@ namespace iouxx::inline iouops::network::ip {
                     for (auto&& part : parts_by_colon) {
                         if (seen_ipv4) {
                             // IPv4 part must be at the end
-                            return std::unexpected(utility::make_invalid_argument_error());
+                            return utility::fail_invalid_argument();
                         }
                         std::string_view sub(stdr::data(part), stdr::size(part));
                         if (sub.empty()) {
                             // Pattern like ":::" or trailing single colon
-                            return std::unexpected(utility::make_invalid_argument_error());
+                            return utility::fail_invalid_argument();
                         }
                         auto ec = parse_one_section(sub);
                         if (ec != std::errc()) {
-                            return std::unexpected(std::make_error_code(ec));
+                            return utility::fail(ec);
                         }
                     }
                     // Deal with consecutive zeros
                     if (part_count >= 8) {
                         // No space for zeros
-                        return std::unexpected(utility::make_invalid_argument_error());
+                        return utility::fail_invalid_argument();
                     }
                     stdr::rotate(part_results.begin() + first_part_count,
                         part_results.begin() + part_count,
@@ -408,12 +408,12 @@ namespace iouxx::inline iouops::network::ip {
                     part_count = 8;
                 } else {
                     // More than one "::"
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
             }
             if (part_count != 8) {
                 // Not enough parts
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             hton_inplace(part_results);
             return address_v6(part_results);
@@ -459,7 +459,7 @@ namespace iouxx::inline iouops::network::ip {
             noexcept -> std::expected<port, std::error_code> {
             if (port_str.size() > 1 && port_str.front() == '0') {
                 // Leading zero
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             portraw port_num = 0;
             const auto first = port_str.data();
@@ -468,11 +468,11 @@ namespace iouxx::inline iouops::network::ip {
                 first, last, port_num, 10);
             if (ec != std::errc()) {
                 // Conversion error
-                return std::unexpected(std::make_error_code(ec));
+                return utility::fail(ec);
             }
             if (ptr != last) {
                 // Not fully consumed
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             return port(hton_16(port_num));
         }
@@ -547,7 +547,7 @@ namespace iouxx::inline iouops::network::ip {
             } else if (str.contains('/')) {
                 seperator = '/';
             } else {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             auto parts = str | stdv::split(seperator);
             std::size_t part_count = 0;
@@ -556,7 +556,7 @@ namespace iouxx::inline iouops::network::ip {
             for (auto&& part : parts) {
                 ++part_count;
                 if (part_count > 2) {
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (part_count == 1) {
@@ -574,7 +574,7 @@ namespace iouxx::inline iouops::network::ip {
                 }
             }
             if (part_count != 2) {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             return socket_v4_info(addr, p);
         }
@@ -646,7 +646,7 @@ namespace iouxx::inline iouops::network::ip {
             namespace stdv = std::views;
             using namespace std::literals;
             if (!str.contains("]:"sv) || str.front() != '[') {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             auto parts = str | stdv::split("]:"sv);
             std::size_t part_count = 0;
@@ -655,7 +655,7 @@ namespace iouxx::inline iouops::network::ip {
             for (auto&& part : parts) {
                 ++part_count;
                 if (part_count > 2) {
-                    return std::unexpected(utility::make_invalid_argument_error());
+                    return utility::fail_invalid_argument();
                 }
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (part_count == 1) {
@@ -674,7 +674,7 @@ namespace iouxx::inline iouops::network::ip {
                 }
             }
             if (part_count != 2) {
-                return std::unexpected(utility::make_invalid_argument_error());
+                return utility::fail_invalid_argument();
             }
             return socket_v6_info(addr, p);
         }

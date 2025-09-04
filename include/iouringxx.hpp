@@ -208,9 +208,7 @@ namespace iouxx {
                     }
                 }
                 // No SQE available
-                return std::unexpected(
-                    std::make_error_code(std::errc::resource_unavailable_try_again)
-                );
+                return utility::fail(std::errc::resource_unavailable_try_again);
             }
 
             template<typename Self>
