@@ -277,7 +277,7 @@ namespace iouxx {
             using callback_wrapper_type =
                 void (*)(operation_base*, int, std::int32_t) IOUXX_CALLBACK_NOEXCEPT;
 
-            template<typename Derived>
+            template<std::derived_from<operation_base> Derived>
             static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
                 IOUXX_CALLBACK_NOEXCEPT_IF(utility::eligible_nothrow_callback<
                     typename Derived::callback_type, typename Derived::result_type>) {
@@ -286,7 +286,7 @@ namespace iouxx {
             }
 
             // Type erasure here
-            template<typename Derived>
+            template<std::derived_from<operation_base> Derived>
             explicit operation_base(operation_t<Derived>, io_uring_xx& ring) noexcept
                 : do_callback_ptr(&callback_wrapper<Derived>), ring(&ring)
             {}
