@@ -17,7 +17,7 @@ namespace iouxx::inline iouops {
     class noop_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit noop_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<noop_operation>, ring),
@@ -84,7 +84,7 @@ namespace iouxx::inline iouops {
         void do_callback(int, std::int32_t) noexcept {}
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     noop_operation(iouxx::io_uring_xx&, F) -> noop_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>

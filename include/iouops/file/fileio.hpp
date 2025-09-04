@@ -18,7 +18,7 @@ namespace iouxx::inline iouops {
     class file_read_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit file_read_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_read_operation>, ring),
@@ -77,7 +77,7 @@ namespace iouxx::inline iouops {
         callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     file_read_operation(iouxx::io_uring_xx&, F) -> file_read_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -87,7 +87,7 @@ namespace iouxx::inline iouops {
     class file_write_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit file_write_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_write_operation>, ring),
@@ -146,9 +146,9 @@ namespace iouxx::inline iouops {
         callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     file_write_operation(iouxx::io_uring_xx&, F) -> file_write_operation<std::decay_t<F>>;
-    
+
     template<typename F, typename... Args>
     file_write_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_write_operation<F>;
 

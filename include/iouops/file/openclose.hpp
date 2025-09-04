@@ -56,7 +56,7 @@ namespace iouxx::inline iouops::file {
     class file_open_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit file_open_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_open_operation>, ring),
@@ -122,7 +122,7 @@ namespace iouxx::inline iouops::file {
         callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     file_open_operation(iouxx::io_uring_xx&, F) -> file_open_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -132,7 +132,7 @@ namespace iouxx::inline iouops::file {
     class file_close_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit file_close_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_close_operation>, ring),
@@ -181,7 +181,7 @@ namespace iouxx::inline iouops::file {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     file_close_operation(iouxx::io_uring_xx&, F) -> file_close_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>

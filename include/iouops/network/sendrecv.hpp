@@ -38,7 +38,7 @@ namespace iouxx::inline iouops::network {
     class socket_send_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_send_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_send_operation>, ring),
@@ -103,7 +103,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_send_operation(iouxx::io_uring_xx&, F) -> socket_send_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -131,7 +131,7 @@ namespace iouxx::inline iouops::network {
     class socket_recv_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_recv_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_recv_operation>, ring),
@@ -196,7 +196,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_recv_operation(iouxx::io_uring_xx&, F) -> socket_recv_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>

@@ -23,7 +23,7 @@ namespace iouxx::inline iouops::network {
     class socket_listen_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_listen_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_listen_operation>, ring),
@@ -80,7 +80,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_listen_operation(iouxx::io_uring_xx&, F) -> socket_listen_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -91,7 +91,7 @@ namespace iouxx::inline iouops::network {
     class socket_connect_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_connect_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_connect_operation>, ring),
@@ -155,7 +155,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_connect_operation(iouxx::io_uring_xx&, F) -> socket_connect_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -166,7 +166,7 @@ namespace iouxx::inline iouops::network {
     class socket_accept_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_accept_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_accept_operation>, ring),
@@ -226,7 +226,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_accept_operation(iouxx::io_uring_xx&, F) -> socket_accept_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -246,7 +246,7 @@ namespace iouxx::inline iouops::network {
         static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
             "multishot operation does not support coroutine await.");
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_multishot_accept_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_multishot_accept_operation>, ring),
@@ -302,7 +302,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_multishot_accept_operation(iouxx::io_uring_xx&, F)
         -> socket_multishot_accept_operation<std::decay_t<F>>;
     
@@ -320,7 +320,7 @@ namespace iouxx::inline iouops::network {
     class socket_shutdown_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_shutdown_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_shutdown_operation>, ring),
@@ -375,7 +375,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_shutdown_operation(iouxx::io_uring_xx&, F) -> socket_shutdown_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>

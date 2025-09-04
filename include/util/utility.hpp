@@ -1,3 +1,4 @@
+#pragma once
 #ifndef IOUXX_UTILITY_H
 #define IOUXX_UTILITY_H 1
 
@@ -16,10 +17,10 @@
 
 namespace iouxx::utility {
 
-    template<typename F>
+    template<typename Defer>
     struct defer {
         ~defer() { this->f(); }
-        F f;
+        Defer f;
     };
 
     template<typename>
@@ -192,6 +193,9 @@ namespace iouxx::utility {
     template<typename Callback>
     concept nothrow_constructible_callback =
         std::is_nothrow_constructible_v<std::decay_t<Callback>, Callback&&>;
+
+    template<typename T>
+    concept not_tag = !is_specialization_of_v<std::in_place_type_t, std::remove_cvref_t<T>>;
 
 } // namespace iouxx::utility
 

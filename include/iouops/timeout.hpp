@@ -68,7 +68,7 @@ namespace iouxx::inline iouops {
     class timeout_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit timeout_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<timeout_operation>, ring),
@@ -136,7 +136,7 @@ namespace iouxx::inline iouops {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     timeout_operation(iouxx::io_uring_xx&, F) -> timeout_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -154,7 +154,7 @@ namespace iouxx::inline iouops {
         static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
             "multishot operation does not support coroutine await.");
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit multishot_timeout_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<multishot_timeout_operation>, ring),
@@ -218,7 +218,7 @@ namespace iouxx::inline iouops {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     multishot_timeout_operation(iouxx::io_uring_xx&, F)
         -> multishot_timeout_operation<std::decay_t<F>>;
 
@@ -231,7 +231,7 @@ namespace iouxx::inline iouops {
     class timeout_cancel_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         timeout_cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<timeout_cancel_operation>, ring),
             callback(std::forward<F>(f))
@@ -312,9 +312,9 @@ namespace iouxx::inline iouops {
         operation_identifier id = operation_identifier();
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     timeout_cancel_operation(iouxx::io_uring_xx&, F) -> timeout_cancel_operation<std::decay_t<F>>;
-    
+
     template<typename F, typename... Args>
     timeout_cancel_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
         -> timeout_cancel_operation<F>;

@@ -23,7 +23,7 @@ namespace iouxx::inline iouops::network {
     class socket_open_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_open_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_open_operation>, ring),
@@ -88,7 +88,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_open_operation(iouxx::io_uring_xx&, F) -> socket_open_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -98,13 +98,9 @@ namespace iouxx::inline iouops::network {
     template<typename Callback>
     class socket_close_operation : public file::file_close_operation<Callback>
     {
-    private:
         using base = file::file_close_operation<Callback>;
     public:
-        template<typename F>
-        explicit socket_close_operation(iouxx::io_uring_xx& ring, F&& f)
-            : base(ring, std::forward<F>(f))
-        {}
+        using base::base;
 
         socket_close_operation& socket(const socket& s) & noexcept {
             this->base::file(s.native_handle());
@@ -115,14 +111,11 @@ namespace iouxx::inline iouops::network {
         void file(int fd) & noexcept = delete;
     };
 
-    template<typename F>
-    socket_close_operation(iouxx::io_uring_xx&, F) -> socket_close_operation<std::decay_t<F>>;
-
     template<utility::eligible_callback<void> Callback>
     class socket_bind_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         explicit socket_bind_operation(iouxx::io_uring_xx& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_bind_operation>, ring),
@@ -196,7 +189,7 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     socket_bind_operation(iouxx::io_uring_xx&, F) -> socket_bind_operation<std::decay_t<F>>;
     template<typename F, typename... Args>
     socket_bind_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)

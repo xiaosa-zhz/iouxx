@@ -19,7 +19,7 @@ namespace iouxx::inline iouops {
     class cancel_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<cancel_operation>, ring),
             callback(std::forward<F>(f))
@@ -122,7 +122,7 @@ namespace iouxx::inline iouops {
         unsigned flags = 0;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     cancel_operation(iouxx::io_uring_xx&, F) -> cancel_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -136,7 +136,7 @@ namespace iouxx::inline iouops {
     class cancel_fd_operation : public operation_base
     {
     public:
-        template<typename F>
+        template<utility::not_tag F>
         cancel_fd_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
             callback(std::forward<F>(f))
@@ -255,9 +255,9 @@ namespace iouxx::inline iouops {
         unsigned flags = IORING_ASYNC_CANCEL_FD;
     };
 
-    template<typename F>
+    template<utility::not_tag F>
     cancel_fd_operation(iouxx::io_uring_xx&, F) -> cancel_fd_operation<std::decay_t<F>>;
-    
+
     template<typename F, typename... Args>
     cancel_fd_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> cancel_fd_operation<F>;
 
