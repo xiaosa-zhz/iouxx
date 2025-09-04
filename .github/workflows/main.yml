@@ -1,9 +1,12 @@
 name: auto test
-on: [push]
+on: [push, pull_request]
 jobs:
   Auto-Test:
     runs-on: ubuntu-latest
     steps:
+      - run: echo "Find eligible compilers..."
+      - run: sudo apt install g++-15
+      - run: sudo apt install clang-20
       - run: echo "Check out..."
       - name: check out
         uses: actions/checkout@v5
