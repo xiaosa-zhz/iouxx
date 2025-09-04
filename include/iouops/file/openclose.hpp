@@ -145,7 +145,7 @@ namespace iouxx::inline iouops::file {
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, utility::void_success{});
+                    std::invoke(callback, utility::void_success());
                 } else {
                     std::invoke(callback, utility::fail(-ev));
                 }

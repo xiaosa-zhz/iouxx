@@ -1,5 +1,3 @@
-#include <concepts>
-#include <type_traits>
 #ifndef IOUXX_UTILITY_H
 #define IOUXX_UTILITY_H 1
 
@@ -7,8 +5,9 @@
 #include "bits/types/struct_iovec.h"
 #include "sys/socket.h"
 
+#include <concepts>
+#include <type_traits>
 #include <utility>
-#include <functional>
 #include <expected>
 #include <chrono>
 #include <system_error>
@@ -169,9 +168,13 @@ namespace iouxx::utility {
             && errorcode_callback<Callback>
             && nothrow_errorcode_callback<Callback>));
 
-    using void_success = std::expected<void, std::error_code>;
+    inline constexpr auto void_success()
+        noexcept -> std::expected<void, std::error_code> {
+        return {};
+    }
 
-    inline constexpr std::unexpected<std::error_code> fail(int ev) noexcept {
+    inline constexpr auto fail(int ev)
+        noexcept -> std::unexpected<std::error_code> {
         return std::unexpected(make_system_error_code(ev));
     }
 
