@@ -283,10 +283,8 @@ namespace iouxx {
             static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
                 IOUXX_CALLBACK_NOEXCEPT_IF(
                     utility::eligible_nothrow_callback<
-                        typename operation_traits<Derived>::callback_type,
-                        typename operation_traits<Derived>::result_type
-                    >
-                ) {
+                        typename Derived::callback_type,
+                        typename Derived::result_type>) {
                 // Provided by derived class
                 static_cast<Derived*>(base)->do_callback(ev, cqe_flags);
             }
@@ -324,14 +322,14 @@ namespace iouxx {
             io_uring_xx* ring = nullptr;
         };
 
-        template<template<typename...> class Operation, typename Callback>
-            requires std::derived_from<Operation<Callback>, operation_base>
-        struct operation_traits<Operation<Callback>> {
+        template<template<typename...> class Operation, typename Callback, typename... Args>
+            requires std::derived_from<Operation<Callback, Args...>, operation_base>
+        struct operation_traits<Operation<Callback, Args...>> {
             using operation_type = Operation<Callback>;
             using callback_type = typename operation_type::callback_type;
             using result_type = typename operation_type::result_type;
-            template<typename F>
-            using rebind = Operation<F>;
+            template<typename... NewArgs>
+            using rebind = Operation<NewArgs...>;
         };
 
     } // namespace iouxx::iouops
@@ -420,12 +418,15 @@ namespace iouxx {
         }
 
         // Explicitly specify operation type to create
-        template<template<typename...> class Operation, typename Callback>
-        Operation<std::decay_t<Callback>> make(Callback&& callback) &
-            noexcept(utility::nothrow_constructible_callback<Callback>) {
+        template<template<typename...> class Operation, typename Callback, typename... Args>
+        auto make(Callback&& callback, Args&&... args) &
+            noexcept(utility::nothrow_constructible_callback<Callback>)
+            -> Operation<std::decay_t<Callback>, std::decay_t<Args>...> {
             assert(valid());
-            using operation_type = Operation<std::decay_t<Callback>>;
-            return operation_type(*this, std::forward<Callback>(callback));
+            using operation_type = Operation<std::decay_t<Callback>, std::decay_t<Args>...>;
+            return operation_type(*this,
+                std::forward<Callback>(callback),
+                std::forward<Args>(args)...);
         }
 
         // Explicitly specify operation type to create
