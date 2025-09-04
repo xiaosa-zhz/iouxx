@@ -12,8 +12,7 @@
 
 namespace iouxx::inline iouops {
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::expected<std::ptrdiff_t, std::error_code>>
+    template<utility::eligible_callback<std::ptrdiff_t> Callback>
     class file_read_operation : public operation_base
     {
     public:
@@ -52,13 +51,12 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_read(sqe, fd, buf, len, off);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, static_cast<std::ptrdiff_t>(ev));
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 
@@ -72,8 +70,7 @@ namespace iouxx::inline iouops {
     template<typename F>
     file_read_operation(iouxx::io_uring_xx&, F) -> file_read_operation<std::decay_t<F>>;
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::expected<std::ptrdiff_t, std::error_code>>
+    template<utility::eligible_callback<std::ptrdiff_t> Callback>
     class file_write_operation : public operation_base
     {
     public:
@@ -112,13 +109,12 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_write(sqe, fd, buf, len, off);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, static_cast<std::ptrdiff_t>(ev));
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 

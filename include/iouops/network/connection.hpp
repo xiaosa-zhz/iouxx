@@ -4,11 +4,8 @@
 
 #include "sys/socket.h"
 
-#include <concepts>
 #include <utility>
-#include <expected>
 #include <algorithm>
-#include <system_error>
 #include <functional>
 
 #include "iouringxx.hpp"
@@ -20,9 +17,7 @@
 
 namespace iouxx::inline iouops::network {
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::expected<void, std::error_code>>
+    template<utility::eligible_callback<void> Callback>
     class socket_listen_operation : public operation_base
     {
     public:
@@ -55,16 +50,15 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_listen(sqe, sock.native_handle(), bl);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");
@@ -79,9 +73,7 @@ namespace iouxx::inline iouops::network {
     template<typename F>
     socket_listen_operation(iouxx::io_uring_xx&, F) -> socket_listen_operation<std::decay_t<F>>;
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::expected<void, std::error_code>>
+    template<utility::eligible_callback<void> Callback>
     class socket_connect_operation : public operation_base
     {
     public:
@@ -120,16 +112,15 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_connect(sqe, sock.native_handle(), addr, addrlen);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");
@@ -145,8 +136,7 @@ namespace iouxx::inline iouops::network {
     template<typename F>
     socket_connect_operation(iouxx::io_uring_xx&, F) -> socket_connect_operation<std::decay_t<F>>;
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::expected<connection, std::error_code>>
+    template<utility::eligible_callback<connection> Callback>
     class socket_accept_operation : public operation_base
     {
     public:
@@ -186,13 +176,12 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, connection(sock, ev));
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 
@@ -211,8 +200,7 @@ namespace iouxx::inline iouops::network {
         bool more = false;
     };
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::expected<multishot_accept_result, std::error_code>>
+    template<utility::eligible_callback<multishot_accept_result> Callback>
     class socket_multishot_accept_operation : public operation_base
     {
         static_assert(!utility::is_specialization_of_v<sync_wait_callback, Callback>,
@@ -249,16 +237,15 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_multishot_accept(sqe, sock.native_handle(), addr, addrlen, flags);
         }
 
-        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, multishot_accept_result{
                     .conn = connection(sock, ev),
                     .more = (cqe_flags & IORING_CQE_F_MORE) != 0
                 });
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 
@@ -278,9 +265,7 @@ namespace iouxx::inline iouops::network {
         rdwr = SHUT_RDWR
     };
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::expected<void, std::error_code>>
+    template<utility::eligible_callback<void> Callback>
     class socket_shutdown_operation : public operation_base
     {
     public:
@@ -311,16 +296,15 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_shutdown(sqe, fd, std::to_underlying(how_opt));
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");

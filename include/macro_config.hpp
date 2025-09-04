@@ -12,8 +12,10 @@
 // If the user-provided callback may throw, std::terminate will be called.
 #ifdef IOUXX_CONFIG_CALLBACK_NOTHROW
 #define IOUXX_CALLBACK_NOEXCEPT noexcept
+#define IOUXX_CALLBACK_NOEXCEPT_IF(...) noexcept
 #else // !IOUXX_CONFIG_CALLBACK_NOTHROW
 #define IOUXX_CALLBACK_NOEXCEPT
+#define IOUXX_CALLBACK_NOEXCEPT_IF(...) noexcept(__VA_ARGS__)
 #endif // IOUXX_CONFIG_CALLBACK_NOTHROW
 
 // IOUXX_CONFIG_DISABLE_ASSERTION

@@ -1,3 +1,5 @@
+#include <concepts>
+#include <type_traits>
 #ifndef IOUXX_UTILITY_H
 #define IOUXX_UTILITY_H 1
 
@@ -6,6 +8,8 @@
 #include "sys/socket.h"
 
 #include <utility>
+#include <functional>
+#include <expected>
 #include <chrono>
 #include <system_error>
 #include <expected>
@@ -122,6 +126,54 @@ namespace iouxx::utility {
 
     template<typename T>
     concept expected_like = is_specialization_of_v<std::expected, std::remove_cvref_t<T>>;
+
+    template<typename Void>
+    concept void_like = std::is_void_v<Void>;
+
+    template<typename Callback>
+    concept errorcode_callback = std::invocable<Callback&, std::error_code>;
+
+    template<typename Callback, typename Result>
+    concept callback = void_like<Callback>
+        || (std::invocable<Callback&, std::unexpected<std::error_code>>
+        && std::invocable<Callback&, std::expected<Result, std::error_code>>
+        && (void_like<Result> || std::invocable<Callback&, Result>));
+
+    template<typename Callback, typename Result>
+    concept eligible_callback = (callback<Callback, Result>)
+        || (void_like<Result> && errorcode_callback<Callback>);
+
+    template<typename Callback, typename Result>
+    concept eligible_maybe_void_callback = void_like<Callback>
+        || eligible_callback<Callback, Result>;
+
+    template<typename Callback>
+    concept nothrow_errorcode_callback
+        = std::is_nothrow_invocable_v<Callback&, std::error_code>;
+
+    template<typename Callback>
+    concept nothrow_unexpected_callback
+        = std::is_nothrow_invocable_v<Callback&, std::unexpected<std::error_code>>;
+
+    template<typename Callback, typename Result>
+    concept nothrow_expected_callback =
+        std::is_nothrow_invocable_v<Callback&, std::expected<Result, std::error_code>>
+        && (void_like<Result> || std::is_nothrow_invocable_v<Callback&, Result>);
+
+    template<typename Callback, typename Result>
+    concept eligible_nothrow_callback = eligible_callback<Callback, Result>
+        && ((callback<Callback, Result>
+            && nothrow_expected_callback<Callback, Result>
+            && nothrow_unexpected_callback<Callback>)
+        || (void_like<Result>
+            && errorcode_callback<Callback>
+            && nothrow_errorcode_callback<Callback>));
+
+    using void_success = std::expected<void, std::error_code>;
+
+    inline constexpr std::unexpected<std::error_code> fail(int ev) noexcept {
+        return std::unexpected(make_system_error_code(ev));
+    }
 
 } // namespace iouxx::utility
 

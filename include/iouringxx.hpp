@@ -121,6 +121,9 @@ namespace iouxx {
         template<typename Operation>
         inline constexpr operation_t<Operation> op_tag{};
 
+        template<typename Operation>
+        struct operation_traits {};
+
         // Base class for operations.
         // Derived class must implement:
         //   void build() & noexcept;
@@ -178,9 +181,7 @@ namespace iouxx {
                 if (::io_uring_sqe* sqe = self.to_sqe()) {
                     int ev = ::io_uring_submit(self.ring->native());
                     if (ev < 0) {
-                        return std::unexpected(
-                            utility::make_system_error_code(-ev)
-                        );
+                        return utility::fail(-ev);
                     }
                     // Submit success, wait
                     if (auto cqe_result = self.ring->wait_for_result()) {
@@ -242,8 +243,7 @@ namespace iouxx {
                 return operation_awaiter<Self>(self);
             }
 
-            void callback(int ev, std::int32_t cqe_flags) &
-                IOUXX_CALLBACK_NOEXCEPT {
+            void callback(int ev, std::int32_t cqe_flags) & IOUXX_CALLBACK_NOEXCEPT {
                 do_callback_ptr(this, ev, cqe_flags);
             }
 
@@ -252,13 +252,30 @@ namespace iouxx {
             }
 
         protected:
+            // Note:
+            // Override method will receive raw error code from kernel, because:
+            // 1. The positive value may be meaningful result,
+            //    and it is operation rather than user-defined callback
+            //    that knows what result means.
+            // 2. Some error codes are not real error depends on context,
+            //    e.g., -ETIME for pure timeout operation.
+            //    The operation itself should decide how to handle it.
+            using callback_wrapper_type =
+                void (*)(operation_base*, int, std::int32_t) IOUXX_CALLBACK_NOEXCEPT;
+
             template<typename Derived>
             static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
-                IOUXX_CALLBACK_NOEXCEPT {
+                IOUXX_CALLBACK_NOEXCEPT_IF(
+                    utility::eligible_nothrow_callback<
+                        typename operation_traits<Derived>::callback_type,
+                        typename operation_traits<Derived>::result_type
+                    >
+                ) {
                 // Provided by derived class
                 static_cast<Derived*>(base)->do_callback(ev, cqe_flags);
             }
 
+            // Type erasure here
             template<typename Derived>
             explicit operation_base(operation_t<Derived>, io_uring_xx& ring) noexcept
                 : do_callback_ptr(&callback_wrapper<Derived>), ring(&ring)
@@ -287,22 +304,9 @@ namespace iouxx {
                 self.callback.result = &result;
             }
 
-            // Note:
-            // Override method will receive raw error code from kernel, because:
-            // 1. The positive value may be meaningful result,
-            //    and it is operation rather than user-defined callback
-            //    that knows what result means.
-            // 2. Some error codes are not real error depends on context,
-            //    e.g., -ETIME for pure timeout operation.
-            //    The operation itself should decide how to handle it.
-            using callback_type = void (*)(operation_base*, int, std::int32_t);
-
-            callback_type do_callback_ptr = nullptr;
+            callback_wrapper_type do_callback_ptr = nullptr;
             io_uring_xx* ring = nullptr;
         };
-
-        template<typename Operation>
-        struct operation_traits {};
 
         template<template<typename...> class Operation, typename Callback>
             requires std::derived_from<Operation<Callback>, operation_base>
@@ -439,7 +443,7 @@ namespace iouxx {
             ::io_uring_cqe* cqe = nullptr;
             int ev = ::io_uring_peek_cqe(&ring, &cqe);
             if (ev < 0) {
-                return std::unexpected(utility::make_system_error_code(-ev));
+                return utility::fail(-ev);
             }
             operation_result result(cqe);
             ::io_uring_cqe_seen(&ring, cqe);
@@ -458,7 +462,7 @@ namespace iouxx {
                 ev = ::io_uring_wait_cqe(&ring, &cqe);
             }
             if (ev < 0) {
-                return std::unexpected(utility::make_system_error_code(-ev));
+                return utility::fail(-ev);
             }
             operation_result result(cqe);
             ::io_uring_cqe_seen(&ring, cqe);

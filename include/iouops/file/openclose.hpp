@@ -2,10 +2,8 @@
 #ifndef IOUXX_OPERATION_FILE_CLOSE_H
 #define IOUXX_OPERATION_FILE_CLOSE_H 1
 
-#include <expected>
 #include <functional>
 #include <string>
-#include <system_error>
 
 #include "macro_config.hpp"
 #include "util/utility.hpp"
@@ -52,8 +50,7 @@ namespace iouxx::inline iouops::file {
 
     inline constexpr int current_directory = AT_FDCWD;
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::expected<file, std::error_code>>
+    template<utility::eligible_callback<file> Callback>
     class file_open_operation : public operation_base
     {
     public:
@@ -99,13 +96,12 @@ namespace iouxx::inline iouops::file {
             );
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, file(ev));
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 
@@ -119,9 +115,7 @@ namespace iouxx::inline iouops::file {
     template<typename F>
     file_open_operation(iouxx::io_uring_xx&, F) -> file_open_operation<std::decay_t<F>>;
 
-    template<typename Callback>
-        requires std::invocable<Callback, std::expected<void, std::error_code>>
-        || std::invocable<Callback, std::error_code>
+    template<utility::eligible_callback<void> Callback>
     class file_close_operation : public operation_base
     {
     public:
@@ -147,16 +141,15 @@ namespace iouxx::inline iouops::file {
             ::io_uring_prep_close(sqe, fd);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");

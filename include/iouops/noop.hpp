@@ -3,7 +3,6 @@
 #define IOUXX_OPERATION_NOOP_H 1
 
 #include <functional>
-#include <expected>
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
@@ -12,10 +11,7 @@
 namespace iouxx::inline iouops {
 
     // Noop operation with user-defined callback.
-    template<typename Callback>
-        requires (std::is_void_v<Callback>)
-        || std::invocable<Callback, std::expected<void, std::error_code>>
-        || std::invocable<Callback, std::error_code>
+    template<utility::eligible_maybe_void_callback<void> Callback>
     class noop_operation : public operation_base
     {
     public:
@@ -36,16 +32,15 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_nop(sqe);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");
@@ -64,6 +59,9 @@ namespace iouxx::inline iouops {
         explicit noop_operation(iouxx::io_uring_xx& ring)
             : operation_base(iouxx::op_tag<noop_operation>, ring)
         {}
+
+        using callback_type = void;
+        using result_type = void;
 
         static constexpr std::uint8_t opcode = IORING_OP_NOP;
 

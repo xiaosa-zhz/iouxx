@@ -1,12 +1,10 @@
 #pragma once
-#include <utility>
+
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H 1
 
-#include <concepts>
 #include <cstddef>
-#include <expected>
-#include <system_error>
+#include <utility>
 #include <functional>
 
 #include "iouringxx.hpp"
@@ -34,7 +32,7 @@ namespace iouxx::inline iouops::network {
         );
     }
 
-    template<std::invocable<std::expected<std::size_t, std::error_code>> Callback>
+    template<utility::eligible_callback<std::size_t> Callback>
     class socket_send_operation : public operation_base
     {
     public:
@@ -79,13 +77,12 @@ namespace iouxx::inline iouops::network {
                 std::to_underlying(flags));
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, static_cast<std::size_t>(ev));
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             } 
         }
 
@@ -116,7 +113,7 @@ namespace iouxx::inline iouops::network {
         );
     }
 
-    template<std::invocable<std::expected<std::size_t, std::error_code>> Callback>
+    template<utility::eligible_callback<std::size_t> Callback>
     class socket_recv_operation : public operation_base
     {
     public:
@@ -161,13 +158,12 @@ namespace iouxx::inline iouops::network {
                 std::to_underlying(flags));
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, static_cast<std::size_t>(ev));
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 

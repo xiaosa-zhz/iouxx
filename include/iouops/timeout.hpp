@@ -64,9 +64,7 @@ namespace iouxx::details {
 namespace iouxx::inline iouops {
 
     // Timeout operation with user-defined callback.
-    template<typename Callback>
-        requires std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::expected<void, std::error_code>>
+    template<utility::eligible_callback<void> Callback>
     class timeout_operation : public operation_base
     {
     public:
@@ -107,19 +105,18 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout(sqe, &ts, 0, flags);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
             }
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");
@@ -138,7 +135,7 @@ namespace iouxx::inline iouops {
     // On success, callback receive boolean indicating whether there are more shots.
     // Warning:
     // The operation object must outlive the whole execution of the multishot
-    template<std::invocable<std::expected<bool, std::error_code>> Callback>
+    template<utility::eligible_callback<bool> Callback>
     class multishot_timeout_operation : public operation_base
     {
         static_assert(!utility::is_specialization_of_v<sync_wait_callback, Callback>,
@@ -183,7 +180,8 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout(sqe, &ts, count, flags);
         }
 
-        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT {
+        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
             }
@@ -191,9 +189,7 @@ namespace iouxx::inline iouops {
             if (ev == 0) {
                 std::invoke(callback, more);
             } else {
-                std::invoke(callback, std::unexpected(
-                    utility::make_system_error_code(-ev)
-                ));
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 
@@ -208,10 +204,7 @@ namespace iouxx::inline iouops {
         -> multishot_timeout_operation<std::decay_t<F>>;
 
     // Cancel a previously submitted timeout by its identifier.
-    template<typename Callback>
-        requires (std::is_void_v<Callback>)
-        || std::invocable<Callback, std::error_code>
-        || std::invocable<Callback, std::expected<void, std::error_code>>
+    template<utility::eligible_maybe_void_callback<void> Callback>
     class timeout_cancel_operation : public operation_base
     {
     public:
@@ -237,16 +230,15 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout_remove(sqe, id.user_data64(), 0);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT {
-            if constexpr (std::invocable<Callback, std::expected<void, std::error_code>>) {
+        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, std::expected<void, std::error_code>{});
+                    std::invoke(callback, utility::void_success{});
                 } else {
-                    std::invoke(callback, std::unexpected(
-                        utility::make_system_error_code(-ev)
-                    ));
+                    std::invoke(callback, utility::fail(-ev));
                 }
-            } else if constexpr (std::invocable<Callback, std::error_code>) {
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(utility::always_false<Callback>, "Unreachable");
@@ -265,6 +257,9 @@ namespace iouxx::inline iouops {
         explicit timeout_cancel_operation(iouxx::io_uring_xx& ring) noexcept :
             operation_base(iouxx::op_tag<timeout_cancel_operation>, ring)
         {}
+
+        using callback_type = void;
+        using result_type = void;
 
         static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT_REMOVE;
 
