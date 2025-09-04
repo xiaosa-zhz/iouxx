@@ -417,7 +417,7 @@ namespace iouxx {
             }
         }
 
-        // Explicitly specify operation type to create
+        // Explicitly specify operation type to create.
         template<template<typename...> class Operation, typename Callback>
         Operation<std::decay_t<Callback>> make(Callback&& callback) &
             noexcept(utility::nothrow_constructible_callback<Callback>) {
@@ -426,7 +426,8 @@ namespace iouxx {
             return operation_type(*this, std::forward<Callback>(callback));
         }
 
-        // Explicitly specify operation type to create
+        // No callback variant.
+        // Explicitly specify operation type to create.
         template<template<typename...> class Operation>
         Operation<void> make() & noexcept {
             assert(valid());
@@ -434,7 +435,8 @@ namespace iouxx {
             return operation_type(*this);
         }
 
-        // Explicitly specify operation type to create
+        // Construct callback in place.
+        // Explicitly specify operation type to create.
         template<template<typename...> class Operation, typename F, typename... Args>
         Operation<F> make(std::in_place_type_t<F> tag, Args&&... args) &
             noexcept(std::is_nothrow_constructible_v<F, Args...>) {
@@ -443,24 +445,24 @@ namespace iouxx {
             return operation_type(*this, tag, std::forward<Args>(args)...);
         }
 
-        // Create a sync-waitable operation
-        // Explicitly specify operation type to create
+        // Create a sync-waitable operation.
+        // Explicitly specify operation type to create.
         template<template<typename...> class Operation>
         syncwait_operation_t<Operation> make_sync() & noexcept {
             assert(valid());
             using operation_type = syncwait_operation_t<Operation>;
             using callback_type = operation_type::callback_type;
-            return operation_type(*this, callback_type{});
+            return operation_type(*this, std::in_place_type<callback_type>);
         }
 
-        // Create a coroutine-awaitable operation
-        // Explicitly specify operation type to create
+        // Create a coroutine-awaitable operation.
+        // Explicitly specify operation type to create.
         template<template<typename...> class Operation>
         awaiter_operation_t<Operation> make_await() & noexcept {
             assert(valid());
             using operation_type = awaiter_operation_t<Operation>;
             using callback_type = operation_type::callback_type;
-            return operation_type(*this, callback_type{});
+            return operation_type(*this, std::in_place_type<callback_type>);
         }
 
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
