@@ -26,7 +26,7 @@ namespace iouxx::inline iouops::file {
         truncate = O_TRUNC,
     };
 
-    inline constexpr open_flag operator|(open_flag lhs, open_flag rhs) noexcept {
+    constexpr open_flag operator|(open_flag lhs, open_flag rhs) noexcept {
         return static_cast<open_flag>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );
@@ -44,7 +44,7 @@ namespace iouxx::inline iouops::file {
         oexec = S_IXOTH,
     };
 
-    inline constexpr open_mode operator|(open_mode lhs, open_mode rhs) noexcept {
+    constexpr open_mode operator|(open_mode lhs, open_mode rhs) noexcept {
         return static_cast<open_mode>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );
@@ -183,7 +183,7 @@ namespace iouxx::inline iouops::file {
 
     template<typename F>
     file_close_operation(iouxx::io_uring_xx&, F) -> file_close_operation<std::decay_t<F>>;
-    
+
     template<typename F, typename... Args>
     file_close_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_close_operation<F>;
 

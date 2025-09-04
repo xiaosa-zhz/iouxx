@@ -28,7 +28,7 @@ namespace iouxx::inline iouops::network {
         fastopen  = MSG_FASTOPEN,
     };
 
-    inline constexpr send_flag operator|(send_flag lhs, send_flag rhs) noexcept {
+    constexpr send_flag operator|(send_flag lhs, send_flag rhs) noexcept {
         return static_cast<send_flag>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );
@@ -121,7 +121,7 @@ namespace iouxx::inline iouops::network {
         waitall      = MSG_WAITALL,
     };
 
-    inline constexpr recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
+    constexpr recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
         return static_cast<recv_flag>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );

@@ -135,7 +135,7 @@ namespace iouxx {
 
         // Tag for operation_base callback erasure
         template<typename Operation>
-        inline constexpr operation_t<Operation> op_tag{};
+        inline constexpr operation_t<Operation> op_tag = {};
 
         template<typename Operation>
         struct operation_traits {};

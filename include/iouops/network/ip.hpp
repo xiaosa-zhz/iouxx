@@ -24,7 +24,7 @@ namespace iouxx::inline iouops::network::ip {
     using v4raw = std::uint32_t; // network byte order
     using v6raw = std::array<std::uint16_t, 8>; // network byte order
 
-    inline constexpr std::uint16_t hton_16(std::uint16_t host) noexcept {
+    constexpr std::uint16_t hton_16(std::uint16_t host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
             return std::byteswap(host);
         } else {
@@ -32,7 +32,7 @@ namespace iouxx::inline iouops::network::ip {
         }
     }
 
-    inline constexpr v4raw hton(v4raw host) noexcept {
+    constexpr v4raw hton(v4raw host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
             return std::byteswap(host);
         } else {
@@ -40,13 +40,13 @@ namespace iouxx::inline iouops::network::ip {
         }
     }
 
-    inline constexpr void hton_inplace(v4raw& host) noexcept {
+    constexpr void hton_inplace(v4raw& host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
             host = std::byteswap(host);
         }
     }
 
-    inline constexpr v6raw hton(const v6raw& host) noexcept {
+    constexpr v6raw hton(const v6raw& host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
             v6raw net{};
             for (std::size_t i = 0; i < 8; ++i) {
@@ -58,7 +58,7 @@ namespace iouxx::inline iouops::network::ip {
         }
     }
 
-    inline constexpr void hton_inplace(v6raw& host) noexcept {
+    constexpr void hton_inplace(v6raw& host) noexcept {
         if constexpr (std::endian::native == std::endian::little) {
             for (std::size_t i = 0; i < 8; ++i) {
                 host[i] = std::byteswap(host[i]);
@@ -1132,29 +1132,29 @@ namespace std {
 } // namespace std
 
 [[nodiscard]]
-inline constexpr std::string iouxx::network::ip::address_v4::to_string() const {
+constexpr std::string iouxx::network::ip::address_v4::to_string() const {
     return std::format("{}", *this);
 }
 
 // Use RFC 5952 recommended form for IPv6 to_string()
 [[nodiscard]]
-inline constexpr std::string iouxx::network::ip::address_v6::to_string() const {
+constexpr std::string iouxx::network::ip::address_v6::to_string() const {
     return std::format("{}", *this);
 }
 
 [[nodiscard]]
-inline constexpr std::string iouxx::network::ip::port::to_string() const {
+constexpr std::string iouxx::network::ip::port::to_string() const {
     return std::format("{}", *this);
 }
 
 [[nodiscard]]
-inline constexpr std::string iouxx::network::ip::socket_v4_info::to_string() const {
+constexpr std::string iouxx::network::ip::socket_v4_info::to_string() const {
     return std::format("{}", *this);
 }
 
 // Use RFC 5952 recommended form for IPv6 socket to_string()
 [[nodiscard]]
-inline constexpr std::string iouxx::network::ip::socket_v6_info::to_string() const {
+constexpr std::string iouxx::network::ip::socket_v6_info::to_string() const {
     return std::format("{}", *this);
 }
 
