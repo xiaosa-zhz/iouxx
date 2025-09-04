@@ -67,7 +67,8 @@ namespace iouxx::inline iouops {
     {
     public:
         template<typename F>
-        explicit timeout_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit timeout_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<timeout_operation>, ring),
             callback(std::forward<F>(f))
         {}
@@ -142,7 +143,8 @@ namespace iouxx::inline iouops {
             "multishot operation does not support coroutine await.");
     public:
         template<typename F>
-        explicit multishot_timeout_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit multishot_timeout_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<multishot_timeout_operation>, ring),
             callback(std::forward<F>(f))
         {}

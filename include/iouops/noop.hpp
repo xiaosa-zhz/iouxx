@@ -16,7 +16,8 @@ namespace iouxx::inline iouops {
     {
     public:
         template<typename F>
-        explicit noop_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit noop_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<noop_operation>, ring),
             callback(std::forward<F>(f))
         {}

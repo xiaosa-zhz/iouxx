@@ -181,6 +181,10 @@ namespace iouxx::utility {
         return std::unexpected(make_system_error_code(ev));
     }
 
+    template<typename Callback>
+    concept nothrow_constructible_callback =
+        std::is_nothrow_constructible_v<std::decay_t<Callback>, Callback&&>;
+
 } // namespace iouxx::utility
 
 #endif // IOUXX_UTILITY_H

@@ -55,7 +55,8 @@ namespace iouxx::inline iouops::file {
     {
     public:
         template<typename F>
-        explicit file_open_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit file_open_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_open_operation>, ring),
             callback(std::forward<F>(f))
         {}
@@ -120,7 +121,8 @@ namespace iouxx::inline iouops::file {
     {
     public:
         template<typename F>
-        explicit file_close_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit file_close_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_close_operation>, ring),
             callback(std::forward<F>(f))
         {}

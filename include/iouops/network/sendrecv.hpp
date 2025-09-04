@@ -37,7 +37,8 @@ namespace iouxx::inline iouops::network {
     {
     public:
         template<typename F>
-        explicit socket_send_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit socket_send_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_send_operation>, ring),
             callback(std::forward<F>(f))
         {}
@@ -118,7 +119,8 @@ namespace iouxx::inline iouops::network {
     {
     public:
         template<typename F>
-        explicit socket_recv_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit socket_recv_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_recv_operation>, ring),
             callback(std::forward<F>(f))
         {}

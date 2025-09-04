@@ -22,7 +22,8 @@ namespace iouxx::inline iouops::network {
     {
     public:
         template<typename F>
-        explicit socket_open_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit socket_open_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_open_operation>, ring),
             callback(std::forward<F>(f))
         {}
@@ -109,7 +110,8 @@ namespace iouxx::inline iouops::network {
     {
     public:
         template<typename F>
-        explicit socket_bind_operation(iouxx::io_uring_xx& ring, F&& f) :
+        explicit socket_bind_operation(iouxx::io_uring_xx& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_bind_operation>, ring),
             callback(std::forward<F>(f))
         {}
