@@ -129,6 +129,10 @@ namespace iouxx::utility {
     template<typename Void>
     concept void_like = std::is_void_v<Void>;
 
+    template<typename Callable, typename... Args>
+    concept nothrow_invocable = std::invocable<Callable, Args...>
+        && std::is_nothrow_invocable_v<Callable, Args...>;
+
     template<typename Callback>
     concept errorcode_callback = std::invocable<Callback&, std::error_code>;
 
@@ -147,17 +151,16 @@ namespace iouxx::utility {
         || eligible_callback<Callback, Result>;
 
     template<typename Callback>
-    concept nothrow_errorcode_callback
-        = std::is_nothrow_invocable_v<Callback&, std::error_code>;
+    concept nothrow_errorcode_callback = nothrow_invocable<Callback&, std::error_code>;
 
     template<typename Callback>
-    concept nothrow_unexpected_callback
-        = std::is_nothrow_invocable_v<Callback&, std::unexpected<std::error_code>>;
+    concept nothrow_unexpected_callback =
+        nothrow_invocable<Callback&, std::unexpected<std::error_code>>;
 
     template<typename Callback, typename Result>
     concept nothrow_expected_callback =
-        std::is_nothrow_invocable_v<Callback&, std::expected<Result, std::error_code>>
-        && (void_like<Result> || std::is_nothrow_invocable_v<Callback&, Result>);
+        nothrow_invocable<Callback&, std::expected<Result, std::error_code>>
+        && (void_like<Result> || nothrow_invocable<Callback&, Result>);
 
     template<typename Callback, typename Result>
     concept eligible_nothrow_callback = eligible_callback<Callback, Result>
