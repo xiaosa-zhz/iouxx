@@ -2,10 +2,10 @@
 
 ## Work in Progress
 - [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
+- [ ] Implement file IO operations in `include/iouops/fileio.hpp`
 
 ## High Priority
-- [ ] Implement file IO operations in `include/iouops/fileio.hpp`
-- [ ] Update my WSL environment to really test networking
+- [ ] Find a suitable environment to really test networking
 
 ## Medium Priority
 - [ ] Add registration of resources (files, buffers, etc.)
