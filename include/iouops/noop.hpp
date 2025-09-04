@@ -2,7 +2,9 @@
 #ifndef IOUXX_OPERATION_NOOP_H
 #define IOUXX_OPERATION_NOOP_H 1
 
+#include <utility>
 #include <functional>
+#include <type_traits>
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
@@ -20,6 +22,13 @@ namespace iouxx::inline iouops {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<noop_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit noop_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<noop_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -77,6 +86,9 @@ namespace iouxx::inline iouops {
 
     template<typename F>
     noop_operation(iouxx::io_uring_xx&, F) -> noop_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    noop_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> noop_operation<F>;
 
     noop_operation(iouxx::io_uring_xx&) -> noop_operation<void>;
 

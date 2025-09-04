@@ -7,6 +7,8 @@
 #include <utility>
 #include <algorithm>
 #include <functional>
+#include <utility>
+#include <type_traits>
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
@@ -26,6 +28,13 @@ namespace iouxx::inline iouops::network {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_listen_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_listen_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_listen_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -74,6 +83,10 @@ namespace iouxx::inline iouops::network {
     template<typename F>
     socket_listen_operation(iouxx::io_uring_xx&, F) -> socket_listen_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    socket_listen_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> socket_listen_operation<F>;
+
     template<utility::eligible_callback<void> Callback>
     class socket_connect_operation : public operation_base
     {
@@ -83,6 +96,13 @@ namespace iouxx::inline iouops::network {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_connect_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_connect_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_connect_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -138,6 +158,10 @@ namespace iouxx::inline iouops::network {
     template<typename F>
     socket_connect_operation(iouxx::io_uring_xx&, F) -> socket_connect_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    socket_connect_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> socket_connect_operation<F>;
+
     template<utility::eligible_callback<connection> Callback>
     class socket_accept_operation : public operation_base
     {
@@ -147,6 +171,13 @@ namespace iouxx::inline iouops::network {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_accept_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_accept_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_accept_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -198,6 +229,10 @@ namespace iouxx::inline iouops::network {
     template<typename F>
     socket_accept_operation(iouxx::io_uring_xx&, F) -> socket_accept_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    socket_accept_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> socket_accept_operation<F>;
+
     struct multishot_accept_result {
         connection conn;
         bool more = false;
@@ -216,6 +251,14 @@ namespace iouxx::inline iouops::network {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_multishot_accept_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_multishot_accept_operation(iouxx::io_uring_xx& ring,
+            std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_multishot_accept_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -262,6 +305,10 @@ namespace iouxx::inline iouops::network {
     template<typename F>
     socket_multishot_accept_operation(iouxx::io_uring_xx&, F)
         -> socket_multishot_accept_operation<std::decay_t<F>>;
+    
+    template<typename F, typename... Args>
+    socket_multishot_accept_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> socket_multishot_accept_operation<F>;
 
     enum class shutdown_option {
         rd = SHUT_RD,
@@ -278,6 +325,13 @@ namespace iouxx::inline iouops::network {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_shutdown_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_shutdown_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_shutdown_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -323,6 +377,10 @@ namespace iouxx::inline iouops::network {
 
     template<typename F>
     socket_shutdown_operation(iouxx::io_uring_xx&, F) -> socket_shutdown_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_shutdown_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> socket_shutdown_operation<F>;
 
 } // namespace iouxx::iouops::network
 

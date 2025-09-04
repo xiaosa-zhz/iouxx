@@ -418,15 +418,12 @@ namespace iouxx {
         }
 
         // Explicitly specify operation type to create
-        template<template<typename...> class Operation, typename Callback, typename... Args>
-        auto make(Callback&& callback, Args&&... args) &
-            noexcept(utility::nothrow_constructible_callback<Callback>)
-            -> Operation<std::decay_t<Callback>, std::decay_t<Args>...> {
+        template<template<typename...> class Operation, typename Callback>
+        Operation<std::decay_t<Callback>> make(Callback&& callback) &
+            noexcept(utility::nothrow_constructible_callback<Callback>) {
             assert(valid());
-            using operation_type = Operation<std::decay_t<Callback>, std::decay_t<Args>...>;
-            return operation_type(*this,
-                std::forward<Callback>(callback),
-                std::forward<Args>(args)...);
+            using operation_type = Operation<std::decay_t<Callback>>;
+            return operation_type(*this, std::forward<Callback>(callback));
         }
 
         // Explicitly specify operation type to create
@@ -435,6 +432,15 @@ namespace iouxx {
             assert(valid());
             using operation_type = Operation<void>;
             return operation_type(*this);
+        }
+
+        // Explicitly specify operation type to create
+        template<template<typename...> class Operation, typename F, typename... Args>
+        Operation<F> make(std::in_place_type_t<F> tag, Args&&... args) &
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) {
+            assert(valid());
+            using operation_type = Operation<F>;
+            return operation_type(*this, tag, std::forward<Args>(args)...);
         }
 
         // Create a sync-waitable operation

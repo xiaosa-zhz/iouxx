@@ -4,6 +4,8 @@
 
 #include <functional>
 #include <string>
+#include <utility>
+#include <type_traits>
 
 #include "macro_config.hpp"
 #include "util/utility.hpp"
@@ -61,6 +63,13 @@ namespace iouxx::inline iouops::file {
             callback(std::forward<F>(f))
         {}
 
+        template<typename F, typename... Args>
+        explicit file_open_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<file_open_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
         using callback_type = Callback;
         using result_type = int;
 
@@ -116,6 +125,9 @@ namespace iouxx::inline iouops::file {
     template<typename F>
     file_open_operation(iouxx::io_uring_xx&, F) -> file_open_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    file_open_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_open_operation<F>;
+
     template<utility::eligible_callback<void> Callback>
     class file_close_operation : public operation_base
     {
@@ -125,6 +137,13 @@ namespace iouxx::inline iouops::file {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_close_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit file_close_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<file_close_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -164,6 +183,9 @@ namespace iouxx::inline iouops::file {
 
     template<typename F>
     file_close_operation(iouxx::io_uring_xx&, F) -> file_close_operation<std::decay_t<F>>;
+    
+    template<typename F, typename... Args>
+    file_close_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_close_operation<F>;
 
 } // namespace iouxx::inline iouops::file
 

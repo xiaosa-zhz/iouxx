@@ -5,6 +5,8 @@
 #include <chrono>
 #include <functional>
 #include <concepts>
+#include <utility>
+#include <type_traits>
 
 #include "iouringxx.hpp"
 #include "boottime_clock.hpp"
@@ -73,6 +75,13 @@ namespace iouxx::inline iouops {
             callback(std::forward<F>(f))
         {}
 
+        template<typename F, typename... Args>
+        explicit timeout_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<timeout_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
         using callback_type = Callback;
         using result_type = void;
 
@@ -130,6 +139,9 @@ namespace iouxx::inline iouops {
     template<typename F>
     timeout_operation(iouxx::io_uring_xx&, F) -> timeout_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    timeout_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> timeout_operation<F>;
+
     // Timeout that triggers multiple times.
     // On success, callback receive boolean indicating whether there are more shots.
     // Warning:
@@ -147,6 +159,13 @@ namespace iouxx::inline iouops {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<multishot_timeout_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit multishot_timeout_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<multishot_timeout_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -203,6 +222,10 @@ namespace iouxx::inline iouops {
     multishot_timeout_operation(iouxx::io_uring_xx&, F)
         -> multishot_timeout_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    multishot_timeout_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> multishot_timeout_operation<F>;
+
     // Cancel a previously submitted timeout by its identifier.
     template<utility::eligible_maybe_void_callback<void> Callback>
     class timeout_cancel_operation : public operation_base
@@ -212,6 +235,13 @@ namespace iouxx::inline iouops {
         timeout_cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<timeout_cancel_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        timeout_cancel_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<timeout_cancel_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -284,6 +314,10 @@ namespace iouxx::inline iouops {
 
     template<typename F>
     timeout_cancel_operation(iouxx::io_uring_xx&, F) -> timeout_cancel_operation<std::decay_t<F>>;
+    
+    template<typename F, typename... Args>
+    timeout_cancel_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+        -> timeout_cancel_operation<F>;
 
     timeout_cancel_operation(iouxx::io_uring_xx&) -> timeout_cancel_operation<void>;
 

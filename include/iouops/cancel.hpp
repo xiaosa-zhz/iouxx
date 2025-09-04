@@ -4,6 +4,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <utility>
+#include <type_traits>
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
@@ -21,6 +23,13 @@ namespace iouxx::inline iouops {
         cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<cancel_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        cancel_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<cancel_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -116,6 +125,9 @@ namespace iouxx::inline iouops {
     template<typename F>
     cancel_operation(iouxx::io_uring_xx&, F) -> cancel_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    cancel_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> cancel_operation<F>;
+
     cancel_operation(iouxx::io_uring_xx&) -> cancel_operation<void>;
 
     // Cancel operation with user-defined callback by provided file descriptor.
@@ -128,6 +140,13 @@ namespace iouxx::inline iouops {
         cancel_fd_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        cancel_fd_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -238,6 +257,9 @@ namespace iouxx::inline iouops {
 
     template<typename F>
     cancel_fd_operation(iouxx::io_uring_xx&, F) -> cancel_fd_operation<std::decay_t<F>>;
+    
+    template<typename F, typename... Args>
+    cancel_fd_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> cancel_fd_operation<F>;
 
     cancel_fd_operation(iouxx::io_uring_xx&) -> cancel_fd_operation<void>;
 

@@ -3,6 +3,8 @@
 #define IOUXX_OPERATION_FILEIO_H 1
 
 #include <cstddef>
+#include <utility>
+#include <type_traits>
 
 #include "macro_config.hpp"
 #include "util/utility.hpp"
@@ -21,6 +23,13 @@ namespace iouxx::inline iouops {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_read_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit file_read_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<file_read_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -71,6 +80,9 @@ namespace iouxx::inline iouops {
     template<typename F>
     file_read_operation(iouxx::io_uring_xx&, F) -> file_read_operation<std::decay_t<F>>;
 
+    template<typename F, typename... Args>
+    file_read_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_read_operation<F>;
+
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
     class file_write_operation : public operation_base
     {
@@ -80,6 +92,13 @@ namespace iouxx::inline iouops {
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_write_operation>, ring),
             callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit file_write_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<file_write_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
@@ -129,6 +148,9 @@ namespace iouxx::inline iouops {
 
     template<typename F>
     file_write_operation(iouxx::io_uring_xx&, F) -> file_write_operation<std::decay_t<F>>;
+    
+    template<typename F, typename... Args>
+    file_write_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_write_operation<F>;
 
 } // namespace iouxx::iouops
 
