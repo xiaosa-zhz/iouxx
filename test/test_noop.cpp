@@ -64,6 +64,22 @@ void test_noop() {
     std::println("Noop2 task submitted, waiting for completion...");
     result = ring.wait_for_result().value();
     result();
+    auto callback = [] (std::expected<void, std::error_code> res) {
+        if (res) {
+            std::println("Awaited noop completed successfully");
+        } else {
+            std::println("Awaited noop failed: {}", res.error().message());
+        }
+    };
+    noop_operation noop3
+        = ring.make_in_place<noop_operation<decltype(callback)&>>(callback);
+    if (auto ec = noop3.submit()) {
+        std::println("Failed to submit noop3 task: {}", ec.message());
+        TEST_EXPECT(false);
+    }
+    std::println("Noop3 task submitted, waiting for completion...");
+    result = ring.wait_for_result().value();
+    result();
 }
 
 int main() {

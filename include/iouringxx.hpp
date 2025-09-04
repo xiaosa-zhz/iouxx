@@ -417,7 +417,7 @@ namespace iouxx {
             }
         }
 
-        // Explicitly specify operation type to create.
+        // Explicitly specify operation template to create.
         template<template<typename...> class Operation, typename Callback>
         Operation<std::decay_t<Callback>> make(Callback&& callback) &
             noexcept(utility::nothrow_constructible_callback<Callback>) {
@@ -427,7 +427,7 @@ namespace iouxx {
         }
 
         // No callback variant.
-        // Explicitly specify operation type to create.
+        // Explicitly specify operation template to create.
         template<template<typename...> class Operation>
         Operation<void> make() & noexcept {
             assert(valid());
@@ -436,7 +436,7 @@ namespace iouxx {
         }
 
         // Construct callback in place.
-        // Explicitly specify operation type to create.
+        // Explicitly specify operation template to create.
         template<template<typename...> class Operation, typename F, typename... Args>
         Operation<F> make(std::in_place_type_t<F> tag, Args&&... args) &
             noexcept(std::is_nothrow_constructible_v<F, Args...>) {
@@ -445,8 +445,21 @@ namespace iouxx {
             return operation_type(*this, tag, std::forward<Args>(args)...);
         }
 
+        // Construct callback in place.
+        // Explicitly specify operation<callback> to create.
+        template<typename Operation, typename... Args>
+        Operation make_in_place(Args&&... args) &
+            noexcept(std::is_nothrow_constructible_v<
+                typename Operation::callback_type, Args...>) {
+            assert(valid());
+            using operation_type = Operation;
+            using callback_type = operation_type::callback_type;
+            return operation_type(*this, std::in_place_type<callback_type>,
+                std::forward<Args>(args)...);
+        }
+
         // Create a sync-waitable operation.
-        // Explicitly specify operation type to create.
+        // Explicitly specify operation template to create.
         template<template<typename...> class Operation>
         syncwait_operation_t<Operation> make_sync() & noexcept {
             assert(valid());
@@ -456,7 +469,7 @@ namespace iouxx {
         }
 
         // Create a coroutine-awaitable operation.
-        // Explicitly specify operation type to create.
+        // Explicitly specify operation template to create.
         template<template<typename...> class Operation>
         awaiter_operation_t<Operation> make_await() & noexcept {
             assert(valid());
