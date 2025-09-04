@@ -206,7 +206,7 @@ namespace iouxx::inline iouops::network {
     template<utility::eligible_callback<multishot_accept_result> Callback>
     class socket_multishot_accept_operation : public operation_base
     {
-        static_assert(!utility::is_specialization_of_v<sync_wait_callback, Callback>,
+        static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");
         static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
             "multishot operation does not support coroutine await.");

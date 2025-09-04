@@ -47,10 +47,10 @@ namespace iouxx {
         // Enable sync wait support for operations.
         // To use this, the operation type must have:
         //   using result_type = ...;
-        //   using callback_type = sync_wait_callback<result_type>;
+        //   using callback_type = syncwait_callback<result_type>;
         // Recommended to use io_uring_xx::make_sync to create such operations.
         template<typename Result>
-        class sync_wait_callback
+        class syncwait_callback
         {
             using expected_type = std::expected<Result, std::error_code>;
         public:
@@ -86,11 +86,11 @@ namespace iouxx {
         };
 
         template<template<typename...> class Operation>
-        using sync_wait_operation =
-            Operation<sync_wait_callback<typename Operation<dummy_callback>::result_type>>;
+        using syncwait_operation_t =
+            Operation<syncwait_callback<typename Operation<dummy_callback>::result_type>>;
 
         template<template<typename...> class Operation>
-        using awaiter_operation =
+        using awaiter_operation_t =
             Operation<awaiter_callback<typename Operation<dummy_callback>::result_type>>;
 
         class operation_identifier
@@ -168,7 +168,7 @@ namespace iouxx {
 
             template<typename Self>
                 requires (!utility::is_specialization_of_v<
-                    sync_wait_callback, typename Self::callback_type>)
+                    syncwait_callback, typename Self::callback_type>)
             std::error_code submit(this Self& self) noexcept {
                 if (std::error_code test = self.feature_test()) {
                     return test;
@@ -187,7 +187,7 @@ namespace iouxx {
 
             template<typename Self>
                 requires (utility::is_specialization_of_v<
-                    sync_wait_callback, typename Self::callback_type>)
+                    syncwait_callback, typename Self::callback_type>)
             auto submit_and_wait(this Self& self)
                 noexcept -> typename Self::callback_type::expected_type {
                 if (std::error_code test = self.feature_test()) {
@@ -421,35 +421,39 @@ namespace iouxx {
 
         // Explicitly specify operation type to create
         template<template<typename...> class Operation, typename Callback>
-        Operation<Callback> make(Callback&& callback) &
+        Operation<std::decay_t<Callback>> make(Callback&& callback) &
             noexcept(utility::nothrow_constructible_callback<Callback>) {
             assert(valid());
-            return Operation(*this, std::forward<Callback>(callback));
+            using operation_type = Operation<std::decay_t<Callback>>;
+            return operation_type(*this, std::forward<Callback>(callback));
         }
 
         // Explicitly specify operation type to create
         template<template<typename...> class Operation>
         Operation<void> make() & noexcept {
             assert(valid());
-            return Operation(*this);
+            using operation_type = Operation<void>;
+            return operation_type(*this);
         }
 
         // Create a sync-waitable operation
         // Explicitly specify operation type to create
         template<template<typename...> class Operation>
-        sync_wait_operation<Operation> make_sync() & noexcept {
+        syncwait_operation_t<Operation> make_sync() & noexcept {
             assert(valid());
-            using callback_type = sync_wait_operation<Operation>::callback_type;
-            return Operation(*this, callback_type{});
+            using operation_type = syncwait_operation_t<Operation>;
+            using callback_type = operation_type::callback_type;
+            return operation_type(*this, callback_type{});
         }
 
         // Create a coroutine-awaitable operation
         // Explicitly specify operation type to create
         template<template<typename...> class Operation>
-        awaiter_operation<Operation> make_await() & noexcept {
+        awaiter_operation_t<Operation> make_await() & noexcept {
             assert(valid());
-            using callback_type = awaiter_operation<Operation>::callback_type;
-            return Operation(*this, callback_type{});
+            using operation_type = awaiter_operation_t<Operation>;
+            using callback_type = operation_type::callback_type;
+            return operation_type(*this, callback_type{});
         }
 
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
