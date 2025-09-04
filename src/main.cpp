@@ -6,11 +6,13 @@
 #include <array>
 #include <string_view>
 #include <print>
+#include <cerrno>
+#include <cstring>
 
 void echo_server() {
     int sockfd = ::socket(AF_INET, SOCK_STREAM, 6);
     if (sockfd < 0) {
-        std::println("Failed to create socket");
+        std::println("Failed to create socket: {}", std::strerror(errno));
         return;
     }
     ::sockaddr_in addr{
@@ -18,20 +20,28 @@ void echo_server() {
         .sin_port = htons(8080),
         .sin_addr = { htonl(INADDR_LOOPBACK) },
     };
+    int optval = 1;
+    int resopt = ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+        &optval, sizeof(optval));
+    if (resopt < 0) {
+        std::println("Failed to set socket options: {}", std::strerror(errno));
+        ::close(sockfd);
+        return;
+    }
     int res0 = ::bind(sockfd, (::sockaddr*) &addr, sizeof(addr));
     if (res0 < 0) {
-        std::println("Failed to bind socket");
+    std::println("Failed to bind socket: {}", std::strerror(errno));
         return;
     }
     int res1 = ::listen(sockfd, 128);
     if (res1 < 0) {
-        std::println("Failed to listen on socket");
+    std::println("Failed to listen on socket: {}", std::strerror(errno));
         ::close(sockfd);
         return;
     }
     int fd = ::accept4(sockfd, nullptr, nullptr, SOCK_CLOEXEC);
     if (fd < 0) {
-        std::println("Failed to accept connection");
+        std::println("Failed to accept connection: {}", std::strerror(errno));
         ::close(sockfd);
         return;
     }
@@ -48,12 +58,18 @@ void echo_server() {
         }
         int res = ::send(fd, buffer.data(), size, 0);
         if (res < 0) {
-            std::println("Failed to send echo");
+            std::println("Failed to send echo: {}", std::strerror(errno));
             break;
         }
     }
-    int _ = ::shutdown(fd, SHUT_RDWR);
-    int _ = ::close(fd);
+    int res2 = ::shutdown(fd, SHUT_RDWR);
+    if (res2 < 0) {
+        std::println("Failed to shutdown connection: {}", std::strerror(errno));
+    }
+    int res3 = ::close(fd);
+    if (res3 < 0) {
+        std::println("Failed to close connection: {}", std::strerror(errno));
+    }
 }
 
 void echo_client() {
@@ -63,13 +79,30 @@ void echo_client() {
         .sin_port = htons(8081),
         .sin_addr = { htonl(INADDR_LOOPBACK) },
     };
-    int _ = ::bind(sockfd, (::sockaddr*) &addr, sizeof(addr));
+    int optval = 1;
+    int resopt = ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+        &optval, sizeof(optval));
+    if (resopt < 0) {
+        std::println("Failed to set socket options: {}", std::strerror(errno));
+        ::close(sockfd);
+        return;
+    }
+    int res0 = ::bind(sockfd, (::sockaddr*) &addr, sizeof(addr));
+    if (res0 < 0) {
+    std::println("Failed to bind client socket: {}", std::strerror(errno));
+        return;
+    }
     ::sockaddr_in server_addr{
         .sin_family = AF_INET,
         .sin_port = htons(8080),
         .sin_addr = { htonl(INADDR_LOOPBACK) },
     };
-    int _ = ::connect(sockfd, (::sockaddr*) &server_addr, sizeof(server_addr));
+    int res1 = ::connect(sockfd, (::sockaddr*) &server_addr, sizeof(server_addr));
+    if (res1 < 0) {
+    std::println("Failed to connect to server: {}", std::strerror(errno));
+        ::close(sockfd);
+        return;
+    }
     std::string_view echo_msg = "Hello io_uring!";
     std::array<char, 1024> buffer{};
     for (int i = 0; i < 10; ++i) {
@@ -78,9 +111,18 @@ void echo_client() {
         std::string_view msg(buffer.data(), size);
         std::println("Received echo: {}", msg);
     }
-    int _ = ::send(sockfd, "exit", 4, 0);
-    int _ = ::shutdown(sockfd, SHUT_RDWR);
-    int _ = ::close(sockfd);
+    int res2 = ::send(sockfd, "exit", 4, 0);
+    if (res2 < 0) {
+    std::println("Failed to send exit message: {}", std::strerror(errno));
+    }
+    int res3 = ::shutdown(sockfd, SHUT_RDWR);
+    if (res3 < 0) {
+    std::println("Failed to shutdown socket: {}", std::strerror(errno));
+    }
+    int res4 = ::close(sockfd);
+    if (res4 < 0) {
+    std::println("Failed to close socket: {}", std::strerror(errno));
+    }
 }
 
 int main() {

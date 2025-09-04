@@ -236,8 +236,8 @@ namespace iouxx {
             };
 
             template<typename Self>
-                requires (utility::is_specialization_of_v<awaiter_callback,
-                    typename Self::callback_type>)
+                requires (utility::is_specialization_of_v<
+                    awaiter_callback, typename Self::callback_type>)
             operation_awaiter<Self> operator co_await(this Self& self) noexcept {
                 return operation_awaiter<Self>(self);
             }
@@ -278,8 +278,8 @@ namespace iouxx {
             }
 
             template<typename Self, typename Result>
-                requires (utility::is_specialization_of_v<awaiter_callback,
-                    typename Self::callback_type>)
+                requires (utility::is_specialization_of_v<
+                    awaiter_callback, typename Self::callback_type>)
             void setup_awaiter_callback(this Self& self,
                 std::coroutine_handle<> handle,
                 std::expected<Result, std::error_code>& result) noexcept {
