@@ -4,6 +4,7 @@ jobs:
   Auto-Test:
     runs-on: ubuntu-latest
     steps:
+      - run: uname -a
       - run: echo "Find eligible compilers..."
       - run: sudo apt install g++-15
       - run: sudo apt install clang-20
