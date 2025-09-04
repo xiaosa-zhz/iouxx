@@ -119,7 +119,7 @@ namespace iouxx::inline iouops::file {
         int dirfd = current_directory;
         open_flag flags = open_flag::unspec;
         open_mode modes = open_mode::uread | open_mode::uwrite;
-        callback_type callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<utility::not_tag F>

@@ -74,7 +74,7 @@ namespace iouxx::inline iouops {
         void* buf = nullptr;
         std::size_t len = 0;
         std::size_t off = 0;
-        callback_type callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<utility::not_tag F>
@@ -143,7 +143,7 @@ namespace iouxx::inline iouops {
         const void* buf = nullptr;
         std::size_t len = 0;
         std::size_t off = 0;
-        callback_type callback;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<utility::not_tag F>
