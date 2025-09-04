@@ -413,7 +413,8 @@ namespace iouxx {
 
         // Explicitly specify operation type to create
         template<template<typename...> class Operation, typename Callback>
-        auto make(Callback&& callback) & noexcept {
+        auto make(Callback&& callback) & noexcept(noexcept(
+            std::is_nothrow_constructible_v<std::decay_t<Callback>, Callback&&>)) {
             assert(valid());
             return Operation(*this, std::forward<Callback>(callback));
         }
