@@ -30,19 +30,25 @@ namespace iouxx {
     // Forward declaration
     class io_uring_xx;
 
+    // Forward declaration
+    class operation_result;
+
     inline namespace iouops {
 
         // Forward declaration
         class operation_base;
 
+        // Dummy callback type for type deduction only.
+        // Never actually used in operation.
         struct dummy_callback {
-            constexpr void operator()(auto&&) const noexcept {}
+            constexpr void operator()(auto&&) const noexcept;
         };
 
         // Enable sync wait support for operations.
         // To use this, the operation type must have:
         //   using result_type = ...;
         //   using callback_type = sync_wait_callback<result_type>;
+        // Recommended to use io_uring_xx::make_sync to create such operations.
         template<typename Result>
         class sync_wait_callback
         {
@@ -61,6 +67,7 @@ namespace iouxx {
         // To use this, the operation type must have:
         //   using result_type = ...;
         //   using callback_type = awaiter_callback<result_type>;
+        // Recommended to use io_uring_xx::make_await to create such operations.
         template<typename Result>
         class awaiter_callback
         {
@@ -86,8 +93,8 @@ namespace iouxx {
             operation_identifier& operator=(const operation_identifier&) = default;
 
             friend bool operator==(
-                const operation_identifier& lhs,
-                const operation_identifier& rhs) = default;
+                const operation_identifier&,
+                const operation_identifier&) = default;
 
             friend auto operator<=>(
                 const operation_identifier&,
@@ -105,6 +112,7 @@ namespace iouxx {
 
         private:
             friend operation_base;
+            friend operation_result;
             explicit operation_identifier(operation_base* raw) noexcept
                 : raw(raw)
             {}
@@ -332,12 +340,21 @@ namespace iouxx {
             return std::exchange(res, result);
         }
 
+        std::uint32_t flags() const noexcept { return cqe_flags; }
+        std::uint32_t reset_flags(std::uint32_t flags = 0) noexcept {
+            return std::exchange(cqe_flags, flags);
+        }
+
         void callback() const IOUXX_CALLBACK_NOEXCEPT {
             cb->callback(res, cqe_flags);
         }
 
         void operator()() const IOUXX_CALLBACK_NOEXCEPT {
             callback();
+        }
+
+        operation_identifier identifier() const noexcept {
+            return operation_identifier(cb);
         }
 
     private:
