@@ -170,19 +170,7 @@ namespace iouxx {
                 requires (!utility::is_specialization_of_v<
                     syncwait_callback, typename Self::callback_type>)
             std::error_code submit(this Self& self) noexcept {
-                if (std::error_code test = self.feature_test()) {
-                    return test;
-                }
-                // Feature test passed
-                if (::io_uring_sqe* sqe = self.to_sqe()) {
-                    int ev = ::io_uring_submit(self.ring->native());
-                    if (ev < 0) {
-                        return utility::make_system_error_code(-ev);
-                    }
-                    return std::error_code();
-                }
-                // No SQE available
-                return std::make_error_code(std::errc::resource_unavailable_try_again);
+                return self.do_submit();
             }
 
             template<typename Self>
@@ -190,25 +178,16 @@ namespace iouxx {
                     syncwait_callback, typename Self::callback_type>)
             auto submit_and_wait(this Self& self)
                 noexcept -> typename Self::callback_type::expected_type {
-                if (std::error_code test = self.feature_test()) {
-                    return std::unexpected(test);
+                if (std::error_code res = self.do_submit()) {
+                    return std::unexpected(res);
                 }
-                // Feature test passed
-                if (::io_uring_sqe* sqe = self.to_sqe()) {
-                    int ev = ::io_uring_submit(self.ring->native());
-                    if (ev < 0) {
-                        return utility::fail(-ev);
-                    }
-                    // Submit success, wait
-                    if (auto cqe_result = self.ring->wait_for_result()) {
-                        cqe_result->callback();
-                        return std::move(self.callback.result);
-                    } else {
-                        return std::unexpected(cqe_result.error());
-                    }
+                // Submit success, wait
+                if (auto cqe_result = self.ring->wait_for_result()) {
+                    cqe_result->callback();
+                    return std::move(self.callback.result);
+                } else {
+                    return std::unexpected(cqe_result.error());
                 }
-                // No SQE available
-                return utility::fail(std::errc::resource_unavailable_try_again);
             }
 
             template<typename Self>
@@ -227,7 +206,7 @@ namespace iouxx {
 
                 bool await_suspend(std::coroutine_handle<> handle) noexcept {
                     self.setup_awaiter_callback(handle, this->result);
-                    if (std::error_code res = self.submit()) {
+                    if (std::error_code res = self.do_submit()) {
                         // fail to submit, resume immediately
                         result = std::unexpected(res);
                         return false;
@@ -302,6 +281,15 @@ namespace iouxx {
                 }
 #endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
                 return std::error_code();
+            }
+
+            template<typename Self>
+            std::error_code do_submit(this Self& self) noexcept {
+                if (std::error_code test = self.feature_test()) {
+                    return test;
+                }
+                // Feature test passed
+                return self.ring->submit(self.to_sqe());
             }
 
             template<typename Self, typename Result>
@@ -414,7 +402,7 @@ namespace iouxx {
         }
 
         // Explicitly specify operation template to create.
-        template<template<typename...> class Operation, typename Callback>
+        template<template<typename...> class Operation, utility::not_tag Callback>
         Operation<std::decay_t<Callback>> make(Callback&& callback) &
             noexcept(utility::nothrow_constructible_callback<Callback>) {
             assert(valid());
