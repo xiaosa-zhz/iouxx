@@ -76,7 +76,7 @@ namespace iouxx {
         public:
             void operator()(expected_type res) noexcept {
                 *result = std::move(res);
-                handle();
+                handle.resume();
             }
 
         private:
@@ -157,7 +157,7 @@ namespace iouxx {
             operation_base(operation_base&&) = delete;
             operation_base& operator=(operation_base&&) = delete;
 
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
             ::io_uring_sqe* to_sqe(this Self& self) noexcept {
                 ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring->native());
                 if (!sqe) return nullptr;
@@ -166,14 +166,14 @@ namespace iouxx {
                 return sqe;
             }
 
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
                 requires (!utility::is_specialization_of_v<
                     syncwait_callback, typename Self::callback_type>)
             std::error_code submit(this Self& self) noexcept {
                 return self.do_submit();
             }
 
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
                 requires (utility::is_specialization_of_v<
                     syncwait_callback, typename Self::callback_type>)
             auto submit_and_wait(this Self& self)
@@ -190,7 +190,7 @@ namespace iouxx {
                 }
             }
 
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
             class operation_awaiter
             {
                 using operation_type = Self;
@@ -229,7 +229,7 @@ namespace iouxx {
                 expected_type result = std::unexpected(std::error_code());
             };
 
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
                 requires (utility::is_specialization_of_v<
                     awaiter_callback, typename Self::callback_type>)
             operation_awaiter<Self> operator co_await(this Self& self) noexcept {
@@ -272,7 +272,7 @@ namespace iouxx {
 
             // Enable feature test by define IOUXX_CONFIG_ENABLE_FEATURE_TESTS.
             // Always returns success if feature test is disabled.
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
             std::error_code feature_test(this Self& self) noexcept {
 #if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
                 if (!::io_uring_opcode_supported(self.ring->ring_probe(),
@@ -283,7 +283,7 @@ namespace iouxx {
                 return std::error_code();
             }
 
-            template<typename Self>
+            template<std::derived_from<operation_base> Self>
             std::error_code do_submit(this Self& self) noexcept {
                 if (std::error_code test = self.feature_test()) {
                     return test;
@@ -292,7 +292,7 @@ namespace iouxx {
                 return self.ring->submit(self.to_sqe());
             }
 
-            template<typename Self, typename Result>
+            template<std::derived_from<operation_base> Self, typename Result>
                 requires (utility::is_specialization_of_v<
                     awaiter_callback, typename Self::callback_type>)
             void setup_awaiter_callback(this Self& self,
