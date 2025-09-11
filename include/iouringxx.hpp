@@ -6,6 +6,8 @@
     * iouxx is a C++ wrapper for the liburing library.
 */
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <liburing.h>
 
 #include <concepts>
@@ -22,19 +24,25 @@
 #include <coroutine>
 
 #include "macro_config.hpp"
+#include "cxxmodule_helper.hpp"
 #include "util/utility.hpp"
 #include "util/assertion.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
 namespace iouxx {
 
+    IOUXX_EXPORT
     // Forward declaration
-    class io_uring_xx;
+    class ring;
 
+    IOUXX_EXPORT
     // Forward declaration
     class operation_result;
 
     inline namespace iouops {
 
+        IOUXX_EXPORT
         // Forward declaration
         class operation_base;
 
@@ -49,6 +57,7 @@ namespace iouxx {
         //   using result_type = ...;
         //   using callback_type = syncwait_callback<result_type>;
         // Recommended to use io_uring_xx::make_sync to create such operations.
+        IOUXX_EXPORT
         template<typename Result>
         class syncwait_callback
         {
@@ -68,6 +77,7 @@ namespace iouxx {
         //   using result_type = ...;
         //   using callback_type = awaiter_callback<result_type>;
         // Recommended to use io_uring_xx::make_await to create such operations.
+        IOUXX_EXPORT
         template<typename Result>
         class awaiter_callback
         {
@@ -85,14 +95,17 @@ namespace iouxx {
             std::coroutine_handle<> handle = nullptr;
         };
 
+        IOUXX_EXPORT
         template<template<typename...> class Operation>
         using syncwait_operation_t =
             Operation<syncwait_callback<typename Operation<dummy_callback>::result_type>>;
 
+        IOUXX_EXPORT
         template<template<typename...> class Operation>
         using awaiter_operation_t =
             Operation<awaiter_callback<typename Operation<dummy_callback>::result_type>>;
 
+        IOUXX_EXPORT
         class operation_identifier
         {
         public:
@@ -100,13 +113,8 @@ namespace iouxx {
             operation_identifier(const operation_identifier&) = default;
             operation_identifier& operator=(const operation_identifier&) = default;
 
-            friend bool operator==(
-                const operation_identifier&,
-                const operation_identifier&) = default;
-
-            friend auto operator<=>(
-                const operation_identifier&,
-                const operation_identifier&) = default;
+            friend bool operator==(const operation_identifier&, const operation_identifier&) = default;
+            friend auto operator<=>(const operation_identifier&, const operation_identifier&) = default;
 
             void* user_data() const noexcept {
                 return static_cast<void*>(raw);
@@ -128,15 +136,18 @@ namespace iouxx {
             operation_base* raw = nullptr;
         };
 
+        IOUXX_EXPORT
         template<typename Operation>
         struct operation_t {
             using type = Operation;
         };
 
         // Tag for operation_base callback erasure
+        IOUXX_EXPORT
         template<typename Operation>
         inline constexpr operation_t<Operation> op_tag = {};
 
+        IOUXX_EXPORT
         template<typename Operation>
         struct operation_traits {};
 
@@ -148,6 +159,7 @@ namespace iouxx {
         // User of operations should create and store operation objects
         // in their own context, make sure the operation object outlives
         // the whole execution of io_uring task.
+        IOUXX_EXPORT
         class operation_base
         {
         public:
@@ -159,7 +171,7 @@ namespace iouxx {
 
             template<std::derived_from<operation_base> Self>
             ::io_uring_sqe* to_sqe(this Self& self) noexcept {
-                ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring->native());
+                ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring_ptr->native());
                 if (!sqe) return nullptr;
                 self.build(sqe); // Provided by derived class
                 ::io_uring_sqe_set_data(sqe, static_cast<operation_base*>(&self));
@@ -182,7 +194,7 @@ namespace iouxx {
                     return std::unexpected(res);
                 }
                 // Submit success, wait
-                if (auto cqe_result = self.ring->wait_for_result()) {
+                if (auto cqe_result = self.ring_ptr->wait_for_result()) {
                     cqe_result->callback();
                     return std::move(self.callback.result);
                 } else {
@@ -266,8 +278,8 @@ namespace iouxx {
 
             // Type erasure here
             template<std::derived_from<operation_base> Derived>
-            explicit operation_base(operation_t<Derived>, io_uring_xx& ring) noexcept
-                : do_callback_ptr(&callback_wrapper<Derived>), ring(&ring)
+            explicit operation_base(operation_t<Derived>, ring& ring) noexcept
+                : do_callback_ptr(&callback_wrapper<Derived>), ring_ptr(&ring)
             {}
 
             // Enable feature test by define IOUXX_CONFIG_ENABLE_FEATURE_TESTS.
@@ -275,7 +287,7 @@ namespace iouxx {
             template<std::derived_from<operation_base> Self>
             std::error_code feature_test(this Self& self) noexcept {
 #if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
-                if (!::io_uring_opcode_supported(self.ring->ring_probe(),
+                if (!::io_uring_opcode_supported(self.ring_ptr->ring_probe(),
                     Self::opcode)) {
                     return std::make_error_code(std::errc::function_not_supported);
                 }
@@ -289,7 +301,7 @@ namespace iouxx {
                     return test;
                 }
                 // Feature test passed
-                return self.ring->submit(self.to_sqe());
+                return self.ring_ptr->submit(self.to_sqe());
             }
 
             template<std::derived_from<operation_base> Self, typename Result>
@@ -303,7 +315,7 @@ namespace iouxx {
             }
 
             callback_wrapper_type do_callback_ptr = nullptr;
-            io_uring_xx* ring = nullptr;
+            ring* ring_ptr = nullptr;
         };
 
         template<template<typename...> class Operation, typename Callback, typename... Args>
@@ -318,6 +330,7 @@ namespace iouxx {
 
     } // namespace iouxx::iouops
 
+    IOUXX_EXPORT
     class operation_result
     {
     public:
@@ -348,7 +361,7 @@ namespace iouxx {
         }
 
     private:
-        friend io_uring_xx;
+        friend ring;
         explicit operation_result(io_uring_cqe* cqe) noexcept :
             cb(from_user_data(::io_uring_cqe_get_data(cqe))),
             res(cqe->res), cqe_flags(cqe->flags)
@@ -363,30 +376,31 @@ namespace iouxx {
         std::uint32_t cqe_flags;
     };
 
-    class io_uring_xx
+    IOUXX_EXPORT
+    class ring
     {
     public:
-        explicit io_uring_xx() = default;
+        explicit ring() = default;
 
-        explicit io_uring_xx(std::size_t queue_depth) {
+        explicit ring(std::size_t queue_depth) {
             std::error_code ec = do_init(queue_depth);
             if (ec) {
                 throw std::system_error(ec, "Failed to initialize io_uring");
             }
         }
 
-        io_uring_xx(const io_uring_xx&) = delete;
-        io_uring_xx& operator=(const io_uring_xx&) = delete;
-        io_uring_xx(io_uring_xx&& other) = delete;
-        io_uring_xx& operator=(io_uring_xx&& other) = delete;
+        ring(const ring&) = delete;
+        ring& operator=(const ring&) = delete;
+        ring(ring&& other) = delete;
+        ring& operator=(ring&& other) = delete;
 
-        void swap(io_uring_xx& other) noexcept {
-            std::ranges::swap(ring, other.ring);
+        void swap(ring& other) noexcept {
+            std::ranges::swap(raw_ring, other.raw_ring);
         }
 
-        ~io_uring_xx() { exit(); }
+        ~ring() { exit(); }
 
-        bool valid() const noexcept { return ring.ring_fd >= 0; }
+        bool valid() const noexcept { return raw_ring.ring_fd >= 0; }
 
         std::error_code reinit(std::size_t queue_depth) noexcept {
             exit();
@@ -396,8 +410,8 @@ namespace iouxx {
         void exit() noexcept {
             if (valid()) {
                 probe.reset();
-                ::io_uring_queue_exit(&ring);
-                ring = invalid_ring();
+                ::io_uring_queue_exit(&raw_ring);
+                raw_ring = invalid_ring();
             }
         }
 
@@ -467,7 +481,7 @@ namespace iouxx {
             if (!sqe) {
                 return std::make_error_code(std::errc::resource_unavailable_try_again);
             }
-            int ev = ::io_uring_submit(&ring);
+            int ev = ::io_uring_submit(&raw_ring);
             if (ev < 0) {
                 return utility::make_system_error_code(-ev);
             }
@@ -477,12 +491,12 @@ namespace iouxx {
         std::expected<operation_result, std::error_code> fetch_result() noexcept {
             assert(valid());
             ::io_uring_cqe* cqe = nullptr;
-            int ev = ::io_uring_peek_cqe(&ring, &cqe);
+            int ev = ::io_uring_peek_cqe(&raw_ring, &cqe);
             if (ev < 0) {
                 return utility::fail(-ev);
             }
             operation_result result(cqe);
-            ::io_uring_cqe_seen(&ring, cqe);
+            ::io_uring_cqe_seen(&raw_ring, cqe);
             return result;
         }
 
@@ -493,15 +507,15 @@ namespace iouxx {
             int ev = 0;
             if (timeout.count() != 0) {
                 auto ts = utility::to_kernel_timespec(timeout);
-                ev = ::io_uring_wait_cqe_timeout(&ring, &cqe, &ts);
+                ev = ::io_uring_wait_cqe_timeout(&raw_ring, &cqe, &ts);
             } else {
-                ev = ::io_uring_wait_cqe(&ring, &cqe);
+                ev = ::io_uring_wait_cqe(&raw_ring, &cqe);
             }
             if (ev < 0) {
                 return utility::fail(-ev);
             }
             operation_result result(cqe);
-            ::io_uring_cqe_seen(&ring, cqe);
+            ::io_uring_cqe_seen(&raw_ring, cqe);
             return result;
         }
 
@@ -517,20 +531,20 @@ namespace iouxx {
                 })
                 | std::ranges::to<std::vector<::iovec>>();
             int ev = ::io_uring_register_buffers(
-                &ring, iovecs.data(), iovecs.size());
+                &raw_ring, iovecs.data(), iovecs.size());
             return utility::make_system_error_code(-ev);
         }
 
         // TODO
         std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
             assert(valid());
-            int ev = ::io_uring_register_files_sparse(&ring, size);
+            int ev = ::io_uring_register_files_sparse(&raw_ring, size);
             return utility::make_system_error_code(-ev);
         }
 
         ::io_uring* native() & noexcept {
             assert(valid());
-            return &ring;
+            return &raw_ring;
         }
 
         ::io_uring_probe* ring_probe() const noexcept {
@@ -544,12 +558,12 @@ namespace iouxx {
 
         std::error_code do_init(std::size_t queue_depth) noexcept {
             assert(!valid());
-            int ev = ::io_uring_queue_init(queue_depth, &ring, 0);
+            int ev = ::io_uring_queue_init(queue_depth, &raw_ring, 0);
             if (ev < 0) {
-                ring = invalid_ring();
+                raw_ring = invalid_ring();
                 return utility::make_system_error_code(-ev);
             }
-            if (::io_uring_probe* raw = ::io_uring_get_probe_ring(&ring)) {
+            if (::io_uring_probe* raw = ::io_uring_get_probe_ring(&raw_ring)) {
                 probe.reset(raw);
             } else {
                 exit();
@@ -565,7 +579,7 @@ namespace iouxx {
         };
         using probe_handle = std::unique_ptr<::io_uring_probe, probe_deleter>;
 
-        ::io_uring ring = invalid_ring(); // using ring_fd to detect if valid
+        ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
     };
 

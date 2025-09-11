@@ -6,7 +6,7 @@
     * This file is a convenience header that includes all headers of iouxx.
 */
 
-#include "boottime_clock.hpp" // IWYU pragma: export
+#include "clock.hpp" // IWYU pragma: export
 
 #include "iouringxx.hpp" // IWYU pragma: export
 

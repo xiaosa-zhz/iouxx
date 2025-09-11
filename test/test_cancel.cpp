@@ -1,3 +1,11 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <chrono>
 #include <print>
 #include <system_error>
@@ -6,6 +14,8 @@
 #include "iouringxx.hpp"
 #include "iouops/timeout.hpp"
 #include "iouops/cancel.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
@@ -17,7 +27,7 @@
 
 void test_cancel() {
     using namespace std::literals;
-    iouxx::io_uring_xx ring(64);
+    iouxx::ring ring(64);
     bool timeout_result = false;
     iouxx::timeout_operation timer(ring,
         [&timeout_result](std::error_code ec) {

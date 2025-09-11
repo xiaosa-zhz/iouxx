@@ -17,21 +17,14 @@
 #ifndef IOUXX_BOOTTIME_CLOCK_H
 #define IOUXX_BOOTTIME_CLOCK_H 1
 
-#include "cxxmodule_helper.hpp"
-
-#ifdef IOUXX_USE_CXX_MODULE
-
-module;
-#include <bits/time.h> // CLOCK_BOOTTIME
-
-export module iouxx.clock;
-import std;
-
-#else // ! IOUXX_USE_CXX_MODULE
+#ifndef IOUXX_USE_CXX_MODULE
 
 #include <chrono>
 #include <cstdint>
 #include <ctime>
+#include <bits/time.h> // CLOCK_BOOTTIME
+#include "macro_config.hpp" // IWYU pragma: keep
+#include "cxxmodule_helper.hpp" // IWYU pragma: keep
 
 #endif // IOUXX_USE_CXX_MODULE
 
@@ -40,9 +33,9 @@ import std;
 #error "CLOCK_BOOTTIME not available on this system. boottime_clock requires Linux with CLOCK_BOOTTIME."
 #endif
 
+IOUXX_EXPORT
 namespace iouxx {
 
-    IOUXX_EXPORT
     struct boottime_clock {
         using rep        = std::int64_t;
         using period     = std::nano; // same resolution as clock_gettime returns (nanoseconds)
@@ -59,7 +52,6 @@ namespace iouxx {
         }
     };
 
-    IOUXX_EXPORT
     inline ::timespec to_timespec(boottime_clock::duration d) noexcept {
         using rep = boottime_clock::rep;
         rep total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(d).count();
@@ -69,17 +61,14 @@ namespace iouxx {
         return ts;
     }
 
-    IOUXX_EXPORT
     inline ::timespec to_timespec(boottime_clock::time_point tp) noexcept {
         return to_timespec(tp.time_since_epoch());
     }
 
-    IOUXX_EXPORT
     inline boottime_clock::duration from_timespec_duration(const ::timespec& ts) noexcept {
         return std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
     }
 
-    IOUXX_EXPORT
     inline boottime_clock::time_point from_timespec_time_point(const ::timespec& ts) noexcept {
         return boottime_clock::time_point(from_timespec_duration(ts));
     }

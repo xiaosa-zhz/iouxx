@@ -39,14 +39,14 @@ namespace iouxx::inline iouops::network {
     {
     public:
         template<utility::not_tag F>
-        explicit socket_send_operation(iouxx::io_uring_xx& ring, F&& f)
+        explicit socket_send_operation(iouxx::ring& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_send_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        explicit socket_send_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        explicit socket_send_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<socket_send_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -104,10 +104,10 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::not_tag F>
-    socket_send_operation(iouxx::io_uring_xx&, F) -> socket_send_operation<std::decay_t<F>>;
+    socket_send_operation(iouxx::ring&, F) -> socket_send_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    socket_send_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+    socket_send_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_send_operation<F>;
 
     enum class recv_flag {
@@ -132,14 +132,14 @@ namespace iouxx::inline iouops::network {
     {
     public:
         template<utility::not_tag F>
-        explicit socket_recv_operation(iouxx::io_uring_xx& ring, F&& f)
+        explicit socket_recv_operation(iouxx::ring& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<socket_recv_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        explicit socket_recv_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        explicit socket_recv_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<socket_recv_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -197,10 +197,10 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::not_tag F>
-    socket_recv_operation(iouxx::io_uring_xx&, F) -> socket_recv_operation<std::decay_t<F>>;
+    socket_recv_operation(iouxx::ring&, F) -> socket_recv_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    socket_recv_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...)
+    socket_recv_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_recv_operation<F>;
 
 } // namespace iouxx::iouops::network

@@ -57,14 +57,14 @@ namespace iouxx::inline iouops::file {
     {
     public:
         template<utility::not_tag F>
-        explicit file_open_operation(iouxx::io_uring_xx& ring, F&& f)
+        explicit file_open_operation(iouxx::ring& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_open_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        explicit file_open_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        explicit file_open_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<file_open_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -123,24 +123,24 @@ namespace iouxx::inline iouops::file {
     };
 
     template<utility::not_tag F>
-    file_open_operation(iouxx::io_uring_xx&, F) -> file_open_operation<std::decay_t<F>>;
+    file_open_operation(iouxx::ring&, F) -> file_open_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    file_open_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_open_operation<F>;
+    file_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_open_operation<F>;
 
     template<utility::eligible_callback<void> Callback>
     class file_close_operation : public operation_base
     {
     public:
         template<utility::not_tag F>
-        explicit file_close_operation(iouxx::io_uring_xx& ring, F&& f)
+        explicit file_close_operation(iouxx::ring& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<file_close_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        explicit file_close_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        explicit file_close_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<file_close_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -182,10 +182,10 @@ namespace iouxx::inline iouops::file {
     };
 
     template<utility::not_tag F>
-    file_close_operation(iouxx::io_uring_xx&, F) -> file_close_operation<std::decay_t<F>>;
+    file_close_operation(iouxx::ring&, F) -> file_close_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    file_close_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> file_close_operation<F>;
+    file_close_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_close_operation<F>;
 
 } // namespace iouxx::inline iouops::file
 

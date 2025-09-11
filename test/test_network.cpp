@@ -46,7 +46,7 @@ template<class T>
 }
 
 void echo_server() {
-    io_uring_xx ring(256);
+    ring ring(256);
     network::socket sock = [&ring] {
         auto open = ring.make_sync<network::socket_open_operation>();
         open.domain(network::socket::domain::ipv4)
@@ -209,7 +209,7 @@ void echo_server() {
 }
 
 void echo_client() {
-    io_uring_xx ring(256);
+    ring ring(256);
     network::socket sock = [&ring] {
         auto open = ring.make_sync<network::socket_open_operation>();
         open.domain(network::socket::domain::ipv4)
