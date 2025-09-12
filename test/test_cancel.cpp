@@ -2,7 +2,8 @@
 
 import std;
 import iouxx.ring;
-import iouxx.ops;
+import iouxx.ops.cancel;
+import iouxx.ops.timeout;
 
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
 

@@ -1,7 +1,7 @@
+module;
 #ifndef IOUXX_CONFIG_USE_CXX_MODULE
 #define IOUXX_CONFIG_USE_CXX_MODULE
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-module;
 #include "linux/time_types.h" // IWYU pragma: export
 #include "bits/types/struct_iovec.h" // IWYU pragma: export
 #include "sys/socket.h" // IWYU pragma: export

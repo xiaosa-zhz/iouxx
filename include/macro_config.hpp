@@ -38,6 +38,7 @@
 // Define this macro to enable C++ module support.
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 #define IOUXX_USE_CXX_MODULE 1
+#define IOURINGINLINE inline // Module cannot handle static inline
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 #endif // IOUXX_MACRO_CONFIGURATION_H

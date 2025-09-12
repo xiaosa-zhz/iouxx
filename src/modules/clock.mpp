@@ -1,7 +1,7 @@
+module;
 #ifndef IOUXX_CONFIG_USE_CXX_MODULE
 #define IOUXX_CONFIG_USE_CXX_MODULE
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-module;
 #include <time.h> // IWYU pragma: export
 #include "macro_config.hpp" // IWYU pragma: export
 #include "cxxmodule_helper.hpp" // IWYU pragma: export

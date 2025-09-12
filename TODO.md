@@ -3,6 +3,7 @@
 ## Work in Progress
 - [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
+- [ ] Add CI/CD pipeline
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
@@ -14,7 +15,6 @@
 - [ ] Add C++ module support
 - [ ] Remove fallback around chrono when libc++ implementation is complete
 - [ ] Remove start_lifetime_as in test_network.cpp when supported
-- [ ] Add CI/CD pipeline
 
 ## Completed
 - [x] ~~Rewrite operations~~

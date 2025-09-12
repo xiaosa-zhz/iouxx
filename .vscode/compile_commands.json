@@ -1,1 +1,6 @@
 [
+{
+  "directory": "/home/xiaosa/source/iouring",
+  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu/linux/x86_64/release/test/test_cancel.cpp.o", "test/test_cancel.cpp"],
+  "file": "test/test_cancel.cpp"
+}
