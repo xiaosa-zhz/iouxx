@@ -11,6 +11,7 @@
 ## Medium Priority
 - [ ] Add registration of resources (files, buffers, etc.)
 - [ ] Add version check in both compile time and runtime (when liburing has it)
+- [ ] Add version check for libiouxx itself when 0.1.0 is released
 
 ## Low Priority
 - [ ] Remove fallback around chrono when libc++ implementation is complete

@@ -410,7 +410,8 @@ namespace iouxx {
             return { IO_URING_VERSION_MAJOR, IO_URING_VERSION_MINOR };
         }
 
-        constexpr static bool check_version(int major, int minor) noexcept {
+        constexpr static bool check_version(version_info version) noexcept {
+            auto&& [major, minor] = version;
             if consteval {
                 // Use compile-time check
                 // TODO: replace with liburing macro when available
@@ -449,7 +450,7 @@ namespace iouxx {
                 }
             }
             if (major == -1 || minor == -1) return false;
-            return check_version(major, minor);
+            return check_version({ major, minor });
         }
 
         bool valid() const noexcept { return raw_ring.ring_fd >= 0; }
