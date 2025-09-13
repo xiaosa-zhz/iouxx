@@ -2,14 +2,20 @@
 #ifndef IOUXX_OPERATION_NOOP_H
 #define IOUXX_OPERATION_NOOP_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <utility>
 #include <functional>
 #include <type_traits>
 
 #include "iouringxx.hpp"
+#include "macro_config.hpp" // IWYU pragma: keep
+#include "cxxmodule_helper.hpp" // IWYU pragma: keep
 #include "util/utility.hpp"
-#include "macro_config.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops {
 
     // Noop operation with user-defined callback.
@@ -18,14 +24,14 @@ namespace iouxx::inline iouops {
     {
     public:
         template<utility::not_tag F>
-        explicit noop_operation(iouxx::io_uring_xx& ring, F&& f)
+        explicit noop_operation(iouxx::ring& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
             operation_base(iouxx::op_tag<noop_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        explicit noop_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        explicit noop_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<noop_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -66,7 +72,7 @@ namespace iouxx::inline iouops {
     class noop_operation<void> : public operation_base
     {
     public:
-        explicit noop_operation(iouxx::io_uring_xx& ring)
+        explicit noop_operation(iouxx::ring& ring)
             : operation_base(iouxx::op_tag<noop_operation>, ring)
         {}
 
@@ -85,12 +91,12 @@ namespace iouxx::inline iouops {
     };
 
     template<utility::not_tag F>
-    noop_operation(iouxx::io_uring_xx&, F) -> noop_operation<std::decay_t<F>>;
+    noop_operation(iouxx::ring&, F) -> noop_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    noop_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> noop_operation<F>;
+    noop_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> noop_operation<F>;
 
-    noop_operation(iouxx::io_uring_xx&) -> noop_operation<void>;
+    noop_operation(iouxx::ring&) -> noop_operation<void>;
 
 } // namespace iouxx::iouops
 

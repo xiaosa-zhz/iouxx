@@ -1,0 +1,18 @@
+module;
+#ifndef IOUXX_CONFIG_USE_CXX_MODULE
+#define IOUXX_CONFIG_USE_CXX_MODULE
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
+#include "macro_config.hpp" // IWYU pragma: export
+#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include <liburing.h> // IWYU pragma: export
+#include "util/assertion.hpp" // IWYU pragma: export
+export module iouxx.ops.network.socketio;
+import std;
+import iouxx.util;
+import iouxx.ring;
+export import iouxx.ops.network.ip;
+
+#include "iouops/network/supported.hpp" // IWYU pragma: keep
+#include "iouops/network/sockprep.hpp" // IWYU pragma: keep
+#include "iouops/network/connection.hpp" // IWYU pragma: keep
+#include "iouops/network/sendrecv.hpp" // IWYU pragma: keep

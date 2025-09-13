@@ -1,0 +1,14 @@
+module;
+#ifndef IOUXX_CONFIG_USE_CXX_MODULE
+#define IOUXX_CONFIG_USE_CXX_MODULE
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
+#include "macro_config.hpp" // IWYU pragma: export
+#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include <liburing.h> // IWYU pragma: export
+export module iouxx.ops.timeout;
+import std;
+import iouxx.util;
+import iouxx.ring;
+import iouxx.clock;
+
+#include "iouops/timeout.hpp" // IWYU pragma: keep

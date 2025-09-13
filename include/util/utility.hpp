@@ -2,6 +2,8 @@
 #ifndef IOUXX_UTILITY_H
 #define IOUXX_UTILITY_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include "linux/time_types.h"
 #include "bits/types/struct_iovec.h"
 #include "sys/socket.h"
@@ -15,6 +17,12 @@
 #include <expected>
 #include <span>
 
+#include "macro_config.hpp" // IWYU pragma: export
+#include "cxxmodule_helper.hpp" // IWYU pragma: export
+
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::utility {
 
     template<typename Defer>

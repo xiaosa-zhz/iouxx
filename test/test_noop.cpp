@@ -1,8 +1,18 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops.noop;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <system_error>
 #include <print>
 
 #include "iouringxx.hpp"
 #include "iouops/noop.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
@@ -35,10 +45,9 @@ struct pinned_callback
 
 void test_noop() {
     using namespace std::literals;
-    using namespace iouxx;
-    io_uring_xx ring(64);
+    iouxx::ring ring(64);
     int n = 0;
-    noop_operation noop(ring,
+    iouxx::noop_operation noop(ring,
     [&n](std::error_code ec) {
         std::println("Noop completed!");
         n = 114514;
@@ -48,15 +57,15 @@ void test_noop() {
         TEST_EXPECT(false);
     }
     std::println("Noop task submitted, waiting for completion...");
-    operation_result result = ring.wait_for_result().value();
+    iouxx::operation_result result = ring.wait_for_result().value();
     result();
     TEST_EXPECT(n == 114514);
     std::println("Noop completed with result: {}", result.result());
-    auto sync_noop = ring.make_sync<noop_operation>();
+    auto sync_noop = ring.make_sync<iouxx::noop_operation>();
     auto sync_result = sync_noop.submit_and_wait();
     TEST_EXPECT(sync_result);
-    noop_operation noop2
-        = ring.make<noop_operation>(std::in_place_type<pinned_callback>, 1, 2, 3);
+    iouxx::noop_operation noop2
+        = ring.make<iouxx::noop_operation>(std::in_place_type<pinned_callback>, 1, 2, 3);
     if (auto ec = noop2.submit()) {
         std::println("Failed to submit noop2 task: {}", ec.message());
         TEST_EXPECT(false);
@@ -71,8 +80,8 @@ void test_noop() {
             std::println("Awaited noop failed: {}", res.error().message());
         }
     };
-    noop_operation noop3
-        = ring.make_in_place<noop_operation<decltype(callback)&>>(callback);
+    iouxx::noop_operation noop3
+        = ring.make_in_place<iouxx::noop_operation<decltype(callback)&>>(callback);
     if (auto ec = noop3.submit()) {
         std::println("Failed to submit noop3 task: {}", ec.message());
         TEST_EXPECT(false);

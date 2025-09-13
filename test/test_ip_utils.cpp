@@ -1,3 +1,10 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ops.network.ip;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <source_location>
 #include <string_view>
 #include <print>
@@ -5,6 +12,10 @@
 #include <arpa/inet.h>
 
 #include "iouops/network/ip.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
+
+#include <arpa/inet.h>
 
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \

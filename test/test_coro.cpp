@@ -1,3 +1,11 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <concepts>
 #include <cstddef>
 #include <variant>
@@ -5,6 +13,15 @@
 #include <coroutine>
 #include <utility>
 #include <memory>
+
+#include <chrono>
+#include <print>
+
+#include "iouringxx.hpp"
+#include "iouops/noop.hpp"
+#include "iouops/timeout.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 #include <cassert>
 
@@ -305,13 +322,6 @@ namespace mylib {
 
 } // namespace mylib
 
-#include <chrono>
-#include <print>
-
-#include "iouringxx.hpp"
-#include "iouops/noop.hpp"
-#include "iouops/timeout.hpp"
-
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
         std::println("Assertion failed: {}, {}:{}\n", #__VA_ARGS__, \
@@ -326,7 +336,7 @@ struct noizy {
     ~noizy() { --count; std::println("noizy destructed"); }
 };
 
-mylib::task<int> wait_for(iouxx::io_uring_xx& ring, std::chrono::nanoseconds duration) {
+mylib::task<int> wait_for(iouxx::ring& ring, std::chrono::nanoseconds duration) {
     noizy _;
     auto op = ring.make_await<iouxx::timeout_operation>();
     op.wait_for(duration);
@@ -337,7 +347,7 @@ mylib::task<int> wait_for(iouxx::io_uring_xx& ring, std::chrono::nanoseconds dur
     co_return 42;
 }
 
-mylib::detached_task test(iouxx::io_uring_xx& ring, int& result) {
+mylib::detached_task test(iouxx::ring& ring, int& result) {
     noizy _;
     auto op = ring.make_await<iouxx::noop_operation>();
     std::println("Awaiting noop operation...");
@@ -350,7 +360,7 @@ mylib::detached_task test(iouxx::io_uring_xx& ring, int& result) {
 }
 
 int main() {
-    iouxx::io_uring_xx ring(8);
+    iouxx::ring ring(8);
     int result = 0;
     std::println("Starting task...");
     test(ring, result).start();

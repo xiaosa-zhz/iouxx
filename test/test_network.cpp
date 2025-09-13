@@ -1,3 +1,11 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops.network.socketio;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -19,6 +27,8 @@
 #include "iouops/network/ip.hpp"
 #include "iouops/network/socket.hpp"
 #include "iouops/network/socketio.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 using namespace iouxx;
 using namespace std::literals;
@@ -46,7 +56,7 @@ template<class T>
 }
 
 void echo_server() {
-    io_uring_xx ring(256);
+    ring ring(256);
     network::socket sock = [&ring] {
         auto open = ring.make_sync<network::socket_open_operation>();
         open.domain(network::socket::domain::ipv4)
@@ -209,7 +219,7 @@ void echo_server() {
 }
 
 void echo_client() {
-    io_uring_xx ring(256);
+    ring ring(256);
     network::socket sock = [&ring] {
         auto open = ring.make_sync<network::socket_open_operation>();
         open.domain(network::socket::domain::ipv4)

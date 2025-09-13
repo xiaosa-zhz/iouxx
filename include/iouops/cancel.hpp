@@ -2,6 +2,8 @@
 #ifndef IOUXX_OPERATION_CANCEL_H
 #define IOUXX_OPERATION_CANCEL_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <cstdint>
 #include <functional>
 #include <utility>
@@ -9,8 +11,12 @@
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
-#include "macro_config.hpp"
+#include "macro_config.hpp" // IWYU pragma: keep
+#include "cxxmodule_helper.hpp" // IWYU pragma: keep
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops {
 
     // Cancel operation with user-defined callback by provided identifier.
@@ -20,13 +26,13 @@ namespace iouxx::inline iouops {
     {
     public:
         template<utility::not_tag F>
-        cancel_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
+        cancel_operation(iouxx::ring& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<cancel_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        cancel_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        cancel_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<cancel_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -86,7 +92,7 @@ namespace iouxx::inline iouops {
     class cancel_operation<void> : public operation_base
     {
     public:
-        explicit cancel_operation(iouxx::io_uring_xx& ring) noexcept :
+        explicit cancel_operation(iouxx::ring& ring) noexcept :
             operation_base(iouxx::op_tag<cancel_operation>, ring)
         {}
 
@@ -123,12 +129,12 @@ namespace iouxx::inline iouops {
     };
 
     template<utility::not_tag F>
-    cancel_operation(iouxx::io_uring_xx&, F) -> cancel_operation<std::decay_t<F>>;
+    cancel_operation(iouxx::ring&, F) -> cancel_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    cancel_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> cancel_operation<F>;
+    cancel_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> cancel_operation<F>;
 
-    cancel_operation(iouxx::io_uring_xx&) -> cancel_operation<void>;
+    cancel_operation(iouxx::ring&) -> cancel_operation<void>;
 
     // Cancel operation with user-defined callback by provided file descriptor.
     // On success, callback receive a number indicating how many operations were cancelled.
@@ -137,13 +143,13 @@ namespace iouxx::inline iouops {
     {
     public:
         template<utility::not_tag F>
-        cancel_fd_operation(iouxx::io_uring_xx& ring, F&& f) noexcept :
+        cancel_fd_operation(iouxx::ring& ring, F&& f) noexcept :
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
             callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        cancel_fd_operation(iouxx::io_uring_xx& ring, std::in_place_type_t<F>, Args&&... args)
+        cancel_fd_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring),
             callback(std::forward<Args>(args)...)
@@ -211,7 +217,7 @@ namespace iouxx::inline iouops {
     class cancel_fd_operation<void> : public operation_base
     {
     public:
-        explicit cancel_fd_operation(iouxx::io_uring_xx& ring) noexcept :
+        explicit cancel_fd_operation(iouxx::ring& ring) noexcept :
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring)
         {}
 
@@ -256,12 +262,12 @@ namespace iouxx::inline iouops {
     };
 
     template<utility::not_tag F>
-    cancel_fd_operation(iouxx::io_uring_xx&, F) -> cancel_fd_operation<std::decay_t<F>>;
+    cancel_fd_operation(iouxx::ring&, F) -> cancel_fd_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
-    cancel_fd_operation(iouxx::io_uring_xx&, std::in_place_type_t<F>, Args&&...) -> cancel_fd_operation<F>;
+    cancel_fd_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> cancel_fd_operation<F>;
 
-    cancel_fd_operation(iouxx::io_uring_xx&) -> cancel_fd_operation<void>;
+    cancel_fd_operation(iouxx::ring&) -> cancel_fd_operation<void>;
 
 } // namespace iouxx::iouops
 

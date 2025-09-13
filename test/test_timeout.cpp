@@ -1,9 +1,19 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops.timeout;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <chrono>
 #include <cstdlib>
 #include <print>
 
 #include "iouringxx.hpp"
 #include "iouops/timeout.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
@@ -15,7 +25,7 @@
 
 void test_timeout() {
     using namespace std::literals;
-    iouxx::io_uring_xx ring(64);
+    iouxx::ring ring(64);
     auto timer = ring.make_sync<iouxx::timeout_operation>();
     timer.wait_for(50ms);
     auto start = std::chrono::steady_clock::now();
@@ -34,7 +44,7 @@ void test_timeout() {
 
 void test_multishot_timeout() {
     using namespace std::literals;
-    iouxx::io_uring_xx ring(64);
+    iouxx::ring ring(64);
     bool if_more = true;
     int counter = 0;
     iouxx::multishot_timeout_operation timer(ring,

@@ -2,6 +2,14 @@
 #ifndef IOUXX_OPERATION_FILE_FILE_INSTANCE_H
 #define IOUXX_OPERATION_FILE_FILE_INSTANCE_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
+#include "macro_config.hpp" // IWYU pragma: export
+#include "cxxmodule_helper.hpp" // IWYU pragma: export
+
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::file {
 
     // Warning:

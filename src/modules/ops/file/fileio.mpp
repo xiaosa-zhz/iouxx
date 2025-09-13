@@ -1,0 +1,15 @@
+module;
+#ifndef IOUXX_CONFIG_USE_CXX_MODULE
+#define IOUXX_CONFIG_USE_CXX_MODULE
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
+#include "macro_config.hpp" // IWYU pragma: export
+#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include <liburing.h> // IWYU pragma: export
+export module iouxx.ops.file.fileio;
+import std;
+import iouxx.util;
+import iouxx.ring;
+
+#include "iouops/file/file.hpp" // IWYU pragma: keep
+#include "iouops/file/openclose.hpp" // IWYU pragma: keep
+#include "iouops/file/fileio.hpp" // IWYU pragma: keep
