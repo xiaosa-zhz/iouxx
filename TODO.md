@@ -3,7 +3,6 @@
 ## Work in Progress
 - [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
-- [ ] Add C++ module support
 - [ ] Add module build for gcc when liburing upstream fixed
 
 ## High Priority
@@ -21,6 +20,7 @@
 - [x] ~~Add license file~~
 - [x] ~~Add readme file~~
 - [x] ~~Add test for cancel operation~~
+- [x] ~~Add C++ module support~~
 
 ## Postponed
 - [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)
