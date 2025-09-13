@@ -1,6 +1,9 @@
 #pragma once
+#include "cxxmodule_helper.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_IP_H
 #define IOUXX_OPERATION_NETWORK_IP_H 1
+
+#ifndef IOUXX_USE_CXX_MODULE
 
 #include <cstddef>
 #include <cstdint>
@@ -19,6 +22,9 @@
 #include "util/utility.hpp"
 #include "socket.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network::ip {
 
     using v4raw = std::uint32_t; // network byte order
@@ -694,6 +700,7 @@ namespace iouxx::inline iouops::network::ip {
 
 } // namespace iouxx::iouops::network::ip
 
+IOUXX_EXPORT
 namespace iouxx::literals::inline network_literals {
 
     consteval network::ip::address_v4 operator""_ipv4(const char* str, std::size_t) noexcept {

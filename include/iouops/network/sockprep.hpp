@@ -2,6 +2,8 @@
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_PREPARE_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_PREPARE_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <liburing.h>
 
 #include <cstddef>
@@ -17,6 +19,9 @@
 #include "supported.hpp"
 #include "iouops/file/openclose.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<socket> Callback>

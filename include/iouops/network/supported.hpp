@@ -1,5 +1,4 @@
 #pragma once
-#include <sys/socket.h>
 #ifndef IOUXX_OPERATION_NETWORK_SUPPORTED_H
 #define IOUXX_OPERATION_NETWORK_SUPPORTED_H 1
 
@@ -8,13 +7,19 @@
     * Currently only IPv4 and IPv6 are supported.
 */
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <array>
 #include <variant>
 #include <cstddef>
 
+#include <sys/socket.h>
 #include "socket.hpp"
 #include "ip.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     // Supported socket types.

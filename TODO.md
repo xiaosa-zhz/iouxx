@@ -3,7 +3,8 @@
 ## Work in Progress
 - [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
-- [ ] Add CI/CD pipeline
+- [ ] Add C++ module support
+- [ ] Add module build for gcc when liburing upstream fixed
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
@@ -12,7 +13,6 @@
 - [ ] Add registration of resources (files, buffers, etc.)
 
 ## Low Priority
-- [ ] Add C++ module support
 - [ ] Remove fallback around chrono when libc++ implementation is complete
 - [ ] Remove start_lifetime_as in test_network.cpp when supported
 
@@ -21,6 +21,9 @@
 - [x] ~~Add license file~~
 - [x] ~~Add readme file~~
 - [x] ~~Add test for cancel operation~~
+
+## Postponed
+- [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)
 
 ## Notes
 - Add any additional notes or context here

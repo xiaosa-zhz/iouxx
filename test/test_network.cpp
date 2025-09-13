@@ -1,3 +1,11 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops.network.socketio;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -19,6 +27,8 @@
 #include "iouops/network/ip.hpp"
 #include "iouops/network/socket.hpp"
 #include "iouops/network/socketio.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 using namespace iouxx;
 using namespace std::literals;

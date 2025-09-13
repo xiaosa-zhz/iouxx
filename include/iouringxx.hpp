@@ -56,7 +56,7 @@ namespace iouxx {
         // To use this, the operation type must have:
         //   using result_type = ...;
         //   using callback_type = syncwait_callback<result_type>;
-        // Recommended to use io_uring_xx::make_sync to create such operations.
+        // Recommended to use ring::make_sync to create such operations.
         IOUXX_EXPORT
         template<typename Result>
         class syncwait_callback
@@ -76,7 +76,7 @@ namespace iouxx {
         // To use this, the operation type must have:
         //   using result_type = ...;
         //   using callback_type = awaiter_callback<result_type>;
-        // Recommended to use io_uring_xx::make_await to create such operations.
+        // Recommended to use ring::make_await to create such operations.
         IOUXX_EXPORT
         template<typename Result>
         class awaiter_callback

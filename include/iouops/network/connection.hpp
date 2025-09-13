@@ -1,6 +1,9 @@
 #pragma once
+#include "cxxmodule_helper.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_CONNECTION_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_CONNECTION_H 1
+
+#ifndef IOUXX_USE_CXX_MODULE
 
 #include "sys/socket.h"
 
@@ -17,6 +20,9 @@
 #include "supported.hpp"
 #include "socket.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<void> Callback>

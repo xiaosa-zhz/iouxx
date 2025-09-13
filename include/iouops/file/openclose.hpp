@@ -2,6 +2,8 @@
 #ifndef IOUXX_OPERATION_FILE_CLOSE_H
 #define IOUXX_OPERATION_FILE_CLOSE_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <functional>
 #include <string>
 #include <utility>
@@ -12,6 +14,9 @@
 #include "iouringxx.hpp"
 #include "file.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::file {
 
     enum class open_flag {

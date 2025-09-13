@@ -1,6 +1,9 @@
 #pragma once
+#include "cxxmodule_helper.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_H 1
+
+#ifndef IOUXX_USE_CXX_MODULE
 
 #include "sys/socket.h"
 #include "netdb.h"
@@ -17,6 +20,9 @@
 #include "util/utility.hpp"
 #include "iouops/file/file.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     // Warning:
@@ -88,6 +94,7 @@ namespace iouxx::inline iouops::network {
         type socket_type() const noexcept { return t; }
         [[nodiscard]]
         protocol socket_protocol() const noexcept { return p; }
+        using base::native_handle;
 
         socket() = default;
         socket(const socket&) = default;

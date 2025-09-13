@@ -1,3 +1,11 @@
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+import iouxx.ops;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
+
 #include <concepts>
 #include <cstddef>
 #include <variant>
@@ -5,6 +13,15 @@
 #include <coroutine>
 #include <utility>
 #include <memory>
+
+#include <chrono>
+#include <print>
+
+#include "iouringxx.hpp"
+#include "iouops/noop.hpp"
+#include "iouops/timeout.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
 
 #include <cassert>
 
@@ -304,13 +321,6 @@ namespace mylib {
     };
 
 } // namespace mylib
-
-#include <chrono>
-#include <print>
-
-#include "iouringxx.hpp"
-#include "iouops/noop.hpp"
-#include "iouops/timeout.hpp"
 
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \

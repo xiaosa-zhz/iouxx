@@ -3,6 +3,8 @@
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H 1
 
+#ifndef IOUXX_USE_CXX_MODULE
+
 #include <cstddef>
 #include <utility>
 #include <functional>
@@ -14,6 +16,9 @@
 #include "macro_config.hpp"
 #include "socket.hpp"
 
+#endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     enum class send_flag {

@@ -9,6 +9,8 @@
 #include <cerrno>
 #include <cstring>
 
+// This file is to make clangd work
+
 void echo_server() {
     int sockfd = ::socket(AF_INET, SOCK_STREAM, 6);
     if (sockfd < 0) {
