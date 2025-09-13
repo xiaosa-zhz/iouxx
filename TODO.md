@@ -10,6 +10,7 @@
 
 ## Medium Priority
 - [ ] Add registration of resources (files, buffers, etc.)
+- [ ] Add version check in both compile time and runtime (when liburing has it)
 
 ## Low Priority
 - [ ] Remove fallback around chrono when libc++ implementation is complete

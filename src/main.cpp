@@ -9,7 +9,13 @@
 #include <cerrno>
 #include <cstring>
 
+#include "iouringxx.hpp"
+
 // This file is to make clangd work
+
+static_assert(iouxx::ring::check_version("2.10"));
+constexpr auto version = iouxx::ring::version();
+static_assert(version.major == 2 && version.minor == 9);
 
 void echo_server() {
     int sockfd = ::socket(AF_INET, SOCK_STREAM, 6);

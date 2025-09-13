@@ -22,6 +22,7 @@
 #include <chrono>
 #include <memory>
 #include <coroutine>
+#include <charconv>
 
 #include "macro_config.hpp"
 #include "cxxmodule_helper.hpp"
@@ -399,6 +400,57 @@ namespace iouxx {
         }
 
         ~ring() { exit(); }
+
+        struct version_info {
+            int major;
+            int minor;
+        };
+
+        consteval static version_info version() noexcept {
+            return { IO_URING_VERSION_MAJOR, IO_URING_VERSION_MINOR };
+        }
+
+        constexpr static bool check_version(int major, int minor) noexcept {
+            if consteval {
+                // Use compile-time check
+                // TODO: replace with liburing macro when available
+                return (major > IO_URING_VERSION_MAJOR ||
+                (major == IO_URING_VERSION_MAJOR &&
+                    minor > IO_URING_VERSION_MINOR));
+            } else {
+                // TODO: liburing does not provide runtime version check API yet
+                return true;
+            }
+        }
+
+        constexpr static bool check_version(std::string_view version) noexcept {
+            // Simple parser for "major.minor" format
+            namespace stdv = std::views;
+            int major = -1, minor = -1;
+            auto parts = version | stdv::split('.');
+            for (auto&& part : parts) {
+                std::string_view num(part);
+                if (major == -1) {
+                    auto [ptr, ec] = std::from_chars(
+                        num.data(), num.data() + num.size(), major);
+                    if (ec != std::errc() || ptr != num.data() + num.size()) {
+                        return false;
+                    }
+                    if (major < 0) return false;
+                } else if (minor == -1) {
+                    auto [ptr, ec] = std::from_chars(
+                        num.data(), num.data() + num.size(), minor);
+                    if (ec != std::errc() || ptr != num.data() + num.size()) {
+                        return false;
+                    }
+                    if (minor < 0) return false;
+                } else {
+                    break; // ignore extra parts
+                }
+            }
+            if (major == -1 || minor == -1) return false;
+            return check_version(major, minor);
+        }
 
         bool valid() const noexcept { return raw_ring.ring_fd >= 0; }
 
