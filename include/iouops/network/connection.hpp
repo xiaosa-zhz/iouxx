@@ -123,7 +123,7 @@ namespace iouxx::inline iouops::network {
 
         template<typename SocketInfo>
             requires (std::ranges::contains(supported_domains, ip::get_domain<SocketInfo>()))
-        socket_connect_operation& socket_info(const SocketInfo& addr) & noexcept {
+        socket_connect_operation& peer_socket_info(const SocketInfo& addr) & noexcept {
             this->sock_info = addr;
             return *this;
         }
