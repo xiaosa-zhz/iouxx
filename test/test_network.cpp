@@ -71,77 +71,63 @@ void echo_server() {
             std::abort();
         }
     }();
-    // Test manual, blocking bind by io_uring
-    // {
-    //     struct system_addrsock_info {
-    //         ::sockaddr* addr;
-    //         std::size_t addrlen;
-    //     };
-    //     alignas(std::max_align_t) unsigned char sockaddr_buf[128];
-    //     auto [addr, addrlen] = system_addrsock_info{
-    //         .addr = reinterpret_cast<::sockaddr*>(
-    //             new (&sockaddr_buf) auto(server_addr.to_system_sockaddr())
-    //         ),
-    //         .addrlen = sizeof(server_addr.to_system_sockaddr())
-    //     };
-    //     // if (bind(sock.native_handle(), addr, addrlen) < 0) {
-    //     //     std::println("Bind operation failed: {}", std::strerror(errno));
-    //     //     std::abort();
-    //     // } else {
-    //     //     std::println("Bind operation successful");
-    //     //     std::exit(0);
-    //     // }
-    //     ::io_uring_sqe* sqe = ::io_uring_get_sqe(&ring.native());
-    //     if (!sqe) {
-    //         std::println("Failed to get SQE for bind operation");
-    //         std::abort();
-    //     }
-    //     ::io_uring_prep_bind(sqe, sock.native_handle(), addr, addrlen);
-    //     int ev = ::io_uring_submit(&ring.native());
-    //     if (ev < 0) {
-    //         std::println("Failed to submit bind operation: {}", std::strerror(-ev));
-    //         std::abort();
-    //     }
-    //     ::io_uring_cqe* cqe = nullptr;
-    //     ev = ::io_uring_wait_cqe(&ring.native(), &cqe);
-    //     if (ev < 0) {
-    //         std::println("Failed to wait for bind result: {}", std::strerror(-ev));
-    //         std::abort();
-    //     } else {
-    //         if (cqe->res < 0) {
-    //             std::println("Bind operation failed: {}", std::strerror(-cqe->res));
-    //             std::abort();
-    //         } else {
-    //             std::println("Socket bound successfully");
-    //         }
-    //         ::io_uring_cqe_seen(&ring.native(), cqe);
-    //     }
-    // }
-    [&ring, &sock] {
+    int optval = 1;
+    int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
+        &optval, sizeof(optval));
+    if (resopt < 0) {
+        std::println("Failed to set socket options: {}", std::strerror(errno));
+        ::close(sock.native_handle());
+        std::abort();
+    }
+
+    // Not until kernel 6.11 do io_uring have op bind and op listen
+    bool bind_op_exists = true;
+
+    [&ring, &sock, &bind_op_exists] {
         auto bind = ring.make_sync<network::socket_bind_operation>();
         bind.socket(sock)
             .socket_info(server_addr);
         if (auto res = bind.submit_and_wait()) {
             std::println("Socket bound successfully");
         } else {
-            exit_if_function_not_supported(res.error());
+            if (res.error() == std::errc::function_not_supported) {
+                bind_op_exists = false;
+                return;
+            }
             std::println("Failed to bind socket: {}", res.error().message());
             std::abort();
         }
     }();
-    [&ring, &sock] {
-        auto listen = ring.make_sync<network::socket_listen_operation>();
-        listen.socket(sock)
-            .backlog(128);
-        if (auto res = listen.submit_and_wait()) {
-            std::println("Socket is listening");
-        } else {
-            exit_if_function_not_supported(res.error());
-            std::println("Failed to listen on socket: {}", res.error().message());
+
+    if (bind_op_exists) {
+        [&ring, &sock] {
+            auto listen = ring.make_sync<network::socket_listen_operation>();
+            listen.socket(sock)
+                .backlog(128);
+            if (auto res = listen.submit_and_wait()) {
+                std::println("Socket is listening");
+            } else {
+                exit_if_function_not_supported(res.error());
+                std::println("Failed to listen on socket: {}", res.error().message());
+                std::abort();
+            }
+            server_started.store(true, std::memory_order_release);
+        }();
+    } else {
+        ::sockaddr_in addr = server_addr.to_system_sockaddr();
+        if (::bind(sock.native_handle(),
+                reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+            std::println("Failed to bind socket: {}", std::strerror(errno));
             std::abort();
         }
+        if (::listen(sock.native_handle(), 128) < 0) {
+            std::println("Failed to listen on socket: {}", std::strerror(errno));
+            std::abort();
+        }
+        std::println("Socket is listening");
         server_started.store(true, std::memory_order_release);
-    }();
+    }
+
     network::connection connection = [&ring, &sock] {
         auto accept = ring.make_sync<network::socket_accept_operation>();
         accept.peer_socket(sock);
@@ -159,7 +145,7 @@ void echo_server() {
         std::size_t received = 0;
         std::println("Waiting for data...");
         auto recv = ring.make_sync<network::socket_recv_operation>();
-        recv.socket(connection)
+        recv.connection(connection)
             .buffer(buffer);
         if (auto res = recv.submit_and_wait()) {
             received = *res;
@@ -181,7 +167,7 @@ void echo_server() {
 
         std::println("Echoing back...");
         auto send = ring.make_sync<network::socket_send_operation>();
-        send.socket(connection)
+        send.connection(connection)
             .buffer(std::span(buffer.data(), received));
         if (auto res = send.submit_and_wait()) {
             std::println("Echoed back {} bytes", *res);
@@ -234,26 +220,50 @@ void echo_client() {
             std::abort();
         }
     }();
+    int optval = 1;
+    int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
+        &optval, sizeof(optval));
+    if (resopt < 0) {
+        std::println("Failed to set socket options: {}", std::strerror(errno));
+        ::close(sock.native_handle());
+        return;
+    }
+    
+    // Not until kernel 6.11 do io_uring have op bind and op listen
+    bool bind_op_exists = true;
 
     // optional bind client local address (useful to show symmetry)
-    [&ring, &sock] {
+    [&ring, &sock, &bind_op_exists] {
         auto bind = ring.make_sync<network::socket_bind_operation>();
         bind.socket(sock)
             .socket_info(client_addr);
         if (auto res = bind.submit_and_wait()) {
             std::println("Client socket bound successfully");
         } else {
-            exit_if_function_not_supported(res.error());
+            if (res.error() == std::errc::function_not_supported) {
+                bind_op_exists = false;
+                return;
+            }
             std::println("Failed to bind client socket: {}", res.error().message());
             std::abort();
         }
     }();
 
+    if (!bind_op_exists) {
+        ::sockaddr_in addr = client_addr.to_system_sockaddr();
+        if (::bind(sock.native_handle(),
+                reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+            std::println("Failed to bind client socket: {}", std::strerror(errno));
+            std::abort();
+        }
+        std::println("Client socket bound successfully");
+    }
+
     // connect
     [&ring, &sock] {
         auto connect = ring.make_sync<network::socket_connect_operation>();
         connect.socket(sock)
-            .socket_info(server_addr);
+            .peer_socket_info(server_addr);
         if (auto res = connect.submit_and_wait()) {
             std::println("Connected to server");
         } else {
@@ -283,6 +293,7 @@ void echo_client() {
         }();
         // recv
         [&ring, &sock, &rxbuf, i] {
+            std::println("Waiting for echo (msg #{})...", i + 1);
             auto recv = ring.make_sync<network::socket_recv_operation>();
             recv.socket(sock)
                 .buffer(rxbuf);
