@@ -23,6 +23,8 @@
 #include <memory>
 #include <coroutine>
 #include <charconv>
+#include <limits>
+#include <format>
 
 #include "macro_config.hpp"
 #include "cxxmodule_helper.hpp"
@@ -114,8 +116,10 @@ namespace iouxx {
             operation_identifier(const operation_identifier&) = default;
             operation_identifier& operator=(const operation_identifier&) = default;
 
-            friend bool operator==(const operation_identifier&, const operation_identifier&) = default;
-            friend auto operator<=>(const operation_identifier&, const operation_identifier&) = default;
+            friend constexpr bool operator==(
+                const operation_identifier&, const operation_identifier&) = default;
+            friend constexpr auto operator<=>(
+                const operation_identifier&, const operation_identifier&) = default;
 
             void* user_data() const noexcept {
                 return static_cast<void*>(raw);
@@ -402,55 +406,92 @@ namespace iouxx {
         ~ring() { exit(); }
 
         struct version_info {
-            int major;
-            int minor;
-        };
+            int major = std::numeric_limits<int>::max();
+            int minor = std::numeric_limits<int>::max();
 
-        consteval static version_info version() noexcept {
-            return { IO_URING_VERSION_MAJOR, IO_URING_VERSION_MINOR };
-        }
-
-        constexpr static bool check_version(version_info version) noexcept {
-            auto&& [major, minor] = version;
-            if consteval {
-                // Use compile-time check
-                // TODO: replace with liburing macro when available
-                return (major > IO_URING_VERSION_MAJOR ||
-                (major == IO_URING_VERSION_MAJOR &&
-                    minor > IO_URING_VERSION_MINOR));
-            } else {
-                // TODO: liburing does not provide runtime version check API yet
-                return true;
-            }
-        }
-
-        constexpr static bool check_version(std::string_view version) noexcept {
-            // Simple parser for "major.minor" format
-            namespace stdv = std::views;
-            int major = -1, minor = -1;
-            auto parts = version | stdv::split('.');
-            for (auto&& part : parts) {
-                std::string_view num(part);
-                if (major == -1) {
-                    auto [ptr, ec] = std::from_chars(
-                        num.data(), num.data() + num.size(), major);
-                    if (ec != std::errc() || ptr != num.data() + num.size()) {
-                        return false;
-                    }
-                    if (major < 0) return false;
-                } else if (minor == -1) {
-                    auto [ptr, ec] = std::from_chars(
-                        num.data(), num.data() + num.size(), minor);
-                    if (ec != std::errc() || ptr != num.data() + num.size()) {
-                        return false;
-                    }
-                    if (minor < 0) return false;
+            // Get current liburing version.
+            // Note: this is compile-time constant if used in consteval context,
+            //  fetch version info from header file;
+            //  Otherwise, fetch version info from loaded liburing.so at runtime.
+            constexpr static version_info current() noexcept {
+                if consteval {
+                    return { IO_URING_VERSION_MAJOR, IO_URING_VERSION_MINOR };
                 } else {
-                    break; // ignore extra parts
+                    return {
+                        ::io_uring_major_version(),
+                        ::io_uring_minor_version(),
+                    };
                 }
             }
-            if (major == -1 || minor == -1) return false;
-            return check_version({ major, minor });
+
+            consteval static version_info invalid() noexcept { return {}; }
+
+            constexpr static version_info from_string(std::string_view version) noexcept {
+                // Simple parser for "major.minor" format
+                namespace stdv = std::views;
+                int major = -1, minor = -1;
+                auto parts = version | stdv::split('.');
+                for (auto&& part : parts) {
+                    std::string_view num(part);
+                    if (major == -1) {
+                        auto [ptr, ec] = std::from_chars(
+                            num.data(), num.data() + num.size(), major);
+                        if (ec != std::errc() || ptr != num.data() + num.size()) {
+                            return invalid();
+                        }
+                        if (major < 0) return invalid();
+                    } else if (minor == -1) {
+                        auto [ptr, ec] = std::from_chars(
+                            num.data(), num.data() + num.size(), minor);
+                        if (ec != std::errc() || ptr != num.data() + num.size()) {
+                            return invalid();
+                        }
+                        if (minor < 0) return invalid();
+                    } else {
+                        return invalid();
+                    }
+                }
+                if (major == -1 || minor == -1) return invalid();
+                return { major, minor };
+            }
+
+            friend constexpr bool operator==(
+                const version_info&, const version_info&) = default;
+            friend constexpr auto operator<=>(
+                const version_info&, const version_info&) = default;
+            
+            friend constexpr bool operator==(
+                const version_info& ver, std::string_view str) noexcept {
+                return ver == from_string(str);
+            }
+            friend constexpr auto operator<=>(
+                const version_info& ver, std::string_view str) noexcept {
+                // Note: if str is invalid version, str > ver always holds,
+                //  which means invalid version is always NOT supported.
+                return ver <=> from_string(str);
+            }
+        };
+
+        // Get current liburing version, see version_info::current()
+        constexpr static version_info version() noexcept {
+            return version_info::current();
+        }
+
+        // Input minimum required version.
+        // Returns TRUE if requirement > current version (i.e. NOT supported).
+        constexpr static bool check_version(version_info requirement) noexcept {
+            auto&& [major, minor] = requirement;
+            if consteval {
+                return IO_URING_CHECK_VERSION(major, minor);
+            } else {
+                return ::io_uring_check_version(major, minor);
+            }
+        }
+
+        // See above, input string in "major.minor" format.
+        // Returns TRUE if NOT supported.
+        constexpr static bool check_version(std::string_view requirement) noexcept {
+            return check_version(version_info::from_string(requirement));
         }
 
         bool valid() const noexcept { return raw_ring.ring_fd >= 0; }
@@ -646,5 +687,54 @@ struct std::hash<iouxx::iouops::operation_identifier>
         return std::hash<void*>{}(id.user_data());
     }
 };
+
+namespace std {
+
+    // Formatter for iouxx::iouops::operation_identifier
+    template<typename CharT>
+    struct formatter<iouxx::iouops::operation_identifier, CharT> : formatter<void*, CharT>
+    {
+        using base = formatter<void*, char>;
+        using base::parse;
+
+        template<class FormatContext>
+        constexpr auto format(const iouxx::iouops::operation_identifier& id, FormatContext& ctx) const {
+            return base::format(id.user_data(), ctx);
+        }
+    };
+
+    // Formatter for iouxx::ring::version_info
+    template<>
+    struct formatter<iouxx::ring::version_info, char>
+    {
+        char seperator = '.';
+
+        // Accepts optional seperator character, default is '.'
+        constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
+            auto it = ctx.begin();
+            auto end = ctx.end();
+            if (it != end && *it != '}') {
+                seperator = *it++;
+            }
+            if (it != end && *it != '}') {
+                throw std::format_error(
+                    "Invalid format for iouxx::ring::version_info, "
+                    "expect up to one character as seperator"
+                );
+            }
+            return it;
+        }
+
+        template<class FormatContext>
+        constexpr auto format(const iouxx::ring::version_info& ver, FormatContext& ctx) const {
+            auto out = ctx.out();
+            out = std::format_to(out, "{}", ver.major);
+            out = std::format_to(out, "{}", seperator);
+            out = std::format_to(out, "{}", ver.minor);
+            return out;
+        }
+    };
+
+} // namespace std
 
 #endif // IOUXX_LIBURING_CXX_WRAPER_H

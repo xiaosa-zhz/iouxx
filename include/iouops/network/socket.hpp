@@ -163,7 +163,7 @@ namespace iouxx::inline iouops::network {
                 return no != protocol::unknown;
             }
 
-            constexpr friend bool operator==(const entry& lhs, const entry& rhs) noexcept {
+            friend constexpr bool operator==(const entry& lhs, const entry& rhs) noexcept {
                 return lhs.no == rhs.no;
             }
         };
@@ -234,11 +234,11 @@ namespace iouxx::inline iouops::network {
                 return tmp;
             }
 
-            friend bool operator==(const iterator& lhs, const iterator& rhs) noexcept {
+            friend constexpr bool operator==(const iterator& lhs, const iterator& rhs) noexcept {
                 return lhs.iter == rhs.iter;
             }
 
-            friend bool operator==(const iterator& iter, std::default_sentinel_t) noexcept {
+            friend constexpr bool operator==(const iterator& iter, std::default_sentinel_t) noexcept {
                 return iter.iter == iter.end;
             }
 
