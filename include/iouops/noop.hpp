@@ -7,6 +7,7 @@
 #include <utility>
 #include <functional>
 #include <type_traits>
+#include <system_error>
 
 #include "iouringxx.hpp"
 #include "macro_config.hpp" // IWYU pragma: keep
@@ -42,10 +43,36 @@ namespace iouxx::inline iouops {
 
         static constexpr std::uint8_t opcode = IORING_OP_NOP;
 
+        // Set a pseudo result code to be passed to callback.
+        // This is useful for debugging or testing.
+        // Set to 0 will not enable this feature.
+        // Note: the 'void' callback version does not support this,
+        //  since there is no way to obtain the result code.
+        noop_operation& pseudo_result(std::uint32_t res = 0) & noexcept {
+            result_code = -res;
+            return *this;
+        }
+
+        noop_operation& pseudo_result(std::error_code ec) & noexcept {
+            pseudo_result(ec.value());
+            return *this;
+        }
+
+        noop_operation& pseudo_result(std::error_condition ec) & noexcept {
+            pseudo_result(ec.value());
+            return *this;
+        }
+
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_nop(sqe);
+            if (result_code != 0) {
+                // io_uring_prep_nop has not support for injecting result,
+                // we have to set the flag and result manually.
+                sqe->nop_flags |= IORING_NOP_INJECT_RESULT;
+                sqe->len = result_code;
+            }
         }
 
         void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
@@ -63,6 +90,7 @@ namespace iouxx::inline iouops {
             }
         }
 
+        int result_code = 0;
         [[no_unique_address]] callback_type callback;
     };
 

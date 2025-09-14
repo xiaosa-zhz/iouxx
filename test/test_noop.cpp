@@ -89,6 +89,12 @@ void test_noop() {
     std::println("Noop3 task submitted, waiting for completion...");
     result = ring.wait_for_result().value();
     result();
+    iouxx::noop_operation noop4 = ring.make_sync<iouxx::noop_operation>();
+    noop4.pseudo_result(std::errc::invalid_argument);
+    auto sync_result4 = noop4.submit_and_wait();
+    TEST_EXPECT(!sync_result4);
+    TEST_EXPECT(sync_result4.error() == std::errc::invalid_argument);
+    std::println("{}", sync_result4.error().message());
 }
 
 int main() {
