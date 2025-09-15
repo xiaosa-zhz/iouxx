@@ -680,6 +680,7 @@ namespace iouxx {
 } // namespace iouxx
 
 // Hash support for iouxx::iouops::operation_identifier
+IOUXX_EXPORT
 template<>
 struct std::hash<iouxx::iouops::operation_identifier>
 {
@@ -688,6 +689,7 @@ struct std::hash<iouxx::iouops::operation_identifier>
     }
 };
 
+IOUXX_EXPORT
 namespace std {
 
     // Formatter for iouxx::iouops::operation_identifier

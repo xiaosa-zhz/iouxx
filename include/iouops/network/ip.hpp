@@ -722,6 +722,7 @@ namespace iouxx::literals::inline network_literals {
 } // namespace iouxx::literals::network_literals
 
 // std::formatter specializations for IPv4 / IPv6 addresses
+IOUXX_EXPORT
 namespace std {
 
     template<>

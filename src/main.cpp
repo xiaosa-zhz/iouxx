@@ -1,15 +1,24 @@
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#ifdef IOUXX_CONFIG_USE_CXX_MODULE
+
+import std;
+import iouxx.ring;
+
+#else // !IOUXX_CONFIG_USE_CXX_MODULE
 
 #include <thread>
 #include <array>
 #include <string_view>
 #include <print>
-#include <cerrno>
 #include <cstring>
 
 #include "iouringxx.hpp"
+
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
+
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <cerrno>
 
 // This file is to make clangd work
 
