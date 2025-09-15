@@ -156,6 +156,20 @@ namespace iouxx {
         template<typename Operation>
         struct operation_traits {};
 
+        // Forward declaration
+        template<typename Operation>
+        consteval bool test_operation_methods() noexcept;
+
+        IOUXX_EXPORT
+        template<typename Operation>
+        concept operation = std::derived_from<Operation, operation_base>
+            && requires {
+                typename Operation::callback_type;
+                typename Operation::result_type;
+                { Operation::opcode } -> std::convertible_to<std::uint8_t>;
+                requires (test_operation_methods<Operation>());
+            };
+
         // Base class for operations.
         // Derived class must implement:
         //   void build() & noexcept;
@@ -174,7 +188,7 @@ namespace iouxx {
             operation_base(operation_base&&) = delete;
             operation_base& operator=(operation_base&&) = delete;
 
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
             ::io_uring_sqe* to_sqe(this Self& self) noexcept {
                 ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring_ptr->native());
                 if (!sqe) return nullptr;
@@ -183,14 +197,14 @@ namespace iouxx {
                 return sqe;
             }
 
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
                 requires (!utility::is_specialization_of_v<
                     syncwait_callback, typename Self::callback_type>)
             std::error_code submit(this Self& self) noexcept {
                 return self.do_submit();
             }
 
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
                 requires (utility::is_specialization_of_v<
                     syncwait_callback, typename Self::callback_type>)
             auto submit_and_wait(this Self& self)
@@ -207,7 +221,7 @@ namespace iouxx {
                 }
             }
 
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
             class operation_awaiter
             {
                 using operation_type = Self;
@@ -246,7 +260,7 @@ namespace iouxx {
                 expected_type result = std::unexpected(std::error_code());
             };
 
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
                 requires (utility::is_specialization_of_v<
                     awaiter_callback, typename Self::callback_type>)
             operation_awaiter<Self> operator co_await(this Self& self) noexcept {
@@ -273,7 +287,7 @@ namespace iouxx {
             using callback_wrapper_type =
                 void (*)(operation_base*, int, std::int32_t) IOUXX_CALLBACK_NOEXCEPT;
 
-            template<std::derived_from<operation_base> Derived>
+            template<operation Derived>
             static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
                 IOUXX_CALLBACK_NOEXCEPT_IF(utility::eligible_nothrow_callback<
                     typename Derived::callback_type, typename Derived::result_type>) {
@@ -282,14 +296,14 @@ namespace iouxx {
             }
 
             // Type erasure here
-            template<std::derived_from<operation_base> Derived>
+            template<operation Derived>
             explicit operation_base(operation_t<Derived>, ring& ring) noexcept
                 : do_callback_ptr(&callback_wrapper<Derived>), ring_ptr(&ring)
             {}
 
             // Enable feature test by define IOUXX_CONFIG_ENABLE_FEATURE_TESTS.
             // Always returns success if feature test is disabled.
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
             std::error_code feature_test(this Self& self) noexcept {
 #if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
                 if (!::io_uring_opcode_supported(self.ring_ptr->ring_probe(),
@@ -300,7 +314,7 @@ namespace iouxx {
                 return std::error_code();
             }
 
-            template<std::derived_from<operation_base> Self>
+            template<operation Self>
             std::error_code do_submit(this Self& self) noexcept {
                 if (std::error_code test = self.feature_test()) {
                     return test;
@@ -309,7 +323,7 @@ namespace iouxx {
                 return self.ring_ptr->submit(self.to_sqe());
             }
 
-            template<std::derived_from<operation_base> Self, typename Result>
+            template<operation Self, typename Result>
                 requires (utility::is_specialization_of_v<
                     awaiter_callback, typename Self::callback_type>)
             void setup_awaiter_callback(this Self& self,
@@ -319,10 +333,23 @@ namespace iouxx {
                 self.callback.result = &result;
             }
 
+            template<typename Operation>
+            consteval static bool test_operation_methods() noexcept {
+                return requires (Operation op,
+                    ::io_uring_sqe* sqe, int ev, std::int32_t cqe_flags) {
+                    { op.build(sqe) } noexcept;
+                    op.do_callback(ev, cqe_flags);
+                };
+            }
+
+            template<typename Operation>
+            friend consteval bool test_operation_methods() noexcept;
+
             callback_wrapper_type do_callback_ptr = nullptr;
             ring* ring_ptr = nullptr;
         };
 
+        IOUXX_EXPORT
         template<template<typename...> class Operation, typename Callback, typename... Args>
             requires std::derived_from<Operation<Callback, Args...>, operation_base>
         struct operation_traits<Operation<Callback, Args...>> {
@@ -332,6 +359,11 @@ namespace iouxx {
             template<typename... NewArgs>
             using rebind = Operation<NewArgs...>;
         };
+
+        template<typename Operation>
+        consteval bool test_operation_methods() noexcept {
+            return operation_base::test_operation_methods<Operation>();
+        }
 
     } // namespace iouxx::iouops
 
