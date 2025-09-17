@@ -350,9 +350,10 @@ namespace iouxx {
             };
 
             template<typename Operation>
-            static constexpr bool test_operation_members_v = std::same_as<
-                typename Operation::callback_type,
-                decltype(std::declval<Operation&>().callback)>;
+            static constexpr bool test_operation_members_v = requires {
+                requires std::same_as<typename Operation::callback_type,
+                    decltype(std::declval<Operation&>().callback)>;
+            };
 
             template<typename Operation>
             friend consteval bool test_operation_methods() noexcept;
