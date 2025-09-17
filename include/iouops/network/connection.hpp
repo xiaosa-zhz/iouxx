@@ -345,8 +345,13 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_SHUTDOWN;
 
-        socket_shutdown_operation& connection(const connection& s) & noexcept {
+        socket_shutdown_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();
+            return *this;
+        }
+
+        socket_shutdown_operation& socket(const connection& c) & noexcept {
+            this->fd = c.native_handle();
             return *this;
         }
 

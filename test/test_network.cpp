@@ -145,7 +145,7 @@ void echo_server() {
         std::size_t received = 0;
         std::println("Waiting for data...");
         auto recv = ring.make_sync<network::socket_recv_operation>();
-        recv.connection(connection)
+        recv.socket(connection)
             .buffer(buffer);
         if (auto res = recv.submit_and_wait()) {
             received = *res;
@@ -167,7 +167,7 @@ void echo_server() {
 
         std::println("Echoing back...");
         auto send = ring.make_sync<network::socket_send_operation>();
-        send.connection(connection)
+        send.socket(connection)
             .buffer(std::span(buffer.data(), received));
         if (auto res = send.submit_and_wait()) {
             std::println("Echoed back {} bytes", *res);
@@ -180,7 +180,7 @@ void echo_server() {
 
     [&ring, &connection] {
         auto shutdown = ring.make_sync<network::socket_shutdown_operation>();
-        shutdown.connection(connection)
+        shutdown.socket(connection)
             .options(network::shutdown_option::rdwr);
         if (auto res = shutdown.submit_and_wait()) {
             std::println("Connection shutdown successfully");
@@ -332,7 +332,7 @@ void echo_client() {
     // shutdown + close
     [&ring, &sock] {
         auto shutdown = ring.make_sync<network::socket_shutdown_operation>();
-        shutdown.connection(network::connection(sock, sock.native_handle()))
+        shutdown.socket(sock)
             .options(network::shutdown_option::rdwr);
         if (auto res = shutdown.submit_and_wait()) {
             std::println("Client shutdown successfully");

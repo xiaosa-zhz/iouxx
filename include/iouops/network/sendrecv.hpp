@@ -62,15 +62,12 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_SEND;
 
-        // Note: if you do want to convert something else to socket,
-        //  make it explicit.
-        template<std::same_as<socket> Socket>
-        socket_send_operation& socket(const Socket& s) & noexcept {
+        socket_send_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();
             return *this;
         }
 
-        socket_send_operation& connection(const connection& c) & noexcept {
+        socket_send_operation& socket(const connection& c) & noexcept {
             this->fd = c.native_handle();
             return *this;
         }
@@ -158,15 +155,12 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_RECV;
 
-        // Note: if you do want to convert something else to socket,
-        //  make it explicit.
-        template<std::same_as<socket> Socket>
-        socket_recv_operation& socket(const Socket& s) & noexcept {
+        socket_recv_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();
             return *this;
         }
 
-        socket_recv_operation& connection(const connection& c) & noexcept {
+        socket_recv_operation& socket(const connection& c) & noexcept {
             this->fd = c.native_handle();
             return *this;
         }
