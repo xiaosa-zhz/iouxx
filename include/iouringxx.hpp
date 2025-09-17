@@ -160,6 +160,10 @@ namespace iouxx {
         template<typename Operation>
         consteval bool test_operation_methods() noexcept;
 
+        // Forward declaration
+        template<typename Operation>
+        consteval bool test_operation_members() noexcept;
+
         IOUXX_EXPORT
         template<typename Operation>
         concept operation = std::derived_from<Operation, operation_base>
@@ -169,6 +173,18 @@ namespace iouxx {
                 { Operation::opcode } -> std::convertible_to<std::uint8_t>;
                 requires (test_operation_methods<Operation>());
             };
+
+        IOUXX_EXPORT
+        template<typename Operation>
+        concept syncwait_operation = operation<Operation>
+            && utility::is_specialization_of_v<syncwait_callback, typename Operation::callback_type>
+            && (test_operation_members<Operation>());
+
+        IOUXX_EXPORT
+        template<typename Operation>
+        concept awaiter_operation = operation<Operation>
+            && utility::is_specialization_of_v<awaiter_callback, typename Operation::callback_type>
+            && (test_operation_members<Operation>());
 
         // Base class for operations.
         // Derived class must implement:
@@ -198,15 +214,12 @@ namespace iouxx {
             }
 
             template<operation Self>
-                requires (!utility::is_specialization_of_v<
-                    syncwait_callback, typename Self::callback_type>)
+                requires (!syncwait_operation<Self>) && (!awaiter_operation<Self>) 
             std::error_code submit(this Self& self) noexcept {
                 return self.do_submit();
             }
 
-            template<operation Self>
-                requires (utility::is_specialization_of_v<
-                    syncwait_callback, typename Self::callback_type>)
+            template<syncwait_operation Self>
             auto submit_and_wait(this Self& self)
                 noexcept -> typename Self::callback_type::expected_type {
                 if (std::error_code res = self.do_submit()) {
@@ -221,7 +234,7 @@ namespace iouxx {
                 }
             }
 
-            template<operation Self>
+            template<awaiter_operation Self>
             class operation_awaiter
             {
                 using operation_type = Self;
@@ -260,9 +273,7 @@ namespace iouxx {
                 expected_type result = std::unexpected(std::error_code());
             };
 
-            template<operation Self>
-                requires (utility::is_specialization_of_v<
-                    awaiter_callback, typename Self::callback_type>)
+            template<awaiter_operation Self>
             operation_awaiter<Self> operator co_await(this Self& self) noexcept {
                 return operation_awaiter<Self>(self);
             }
@@ -323,9 +334,7 @@ namespace iouxx {
                 return self.ring_ptr->submit(self.to_sqe());
             }
 
-            template<operation Self, typename Result>
-                requires (utility::is_specialization_of_v<
-                    awaiter_callback, typename Self::callback_type>)
+            template<awaiter_operation Self, typename Result>
             void setup_awaiter_callback(this Self& self,
                 std::coroutine_handle<> handle,
                 std::expected<Result, std::error_code>& result) noexcept {
@@ -334,16 +343,22 @@ namespace iouxx {
             }
 
             template<typename Operation>
-            consteval static bool test_operation_methods() noexcept {
-                return requires (Operation op,
-                    ::io_uring_sqe* sqe, int ev, std::int32_t cqe_flags) {
-                    { op.build(sqe) } noexcept;
-                    op.do_callback(ev, cqe_flags);
-                };
-            }
+            static constexpr bool test_operation_methods_v = requires (
+                Operation op, ::io_uring_sqe* sqe, int ev, std::int32_t cqe_flags) {
+                { op.build(sqe) } noexcept;
+                op.do_callback(ev, cqe_flags);
+            };
+
+            template<typename Operation>
+            static constexpr bool test_operation_members_v = std::same_as<
+                typename Operation::callback_type,
+                decltype(std::declval<Operation&>().callback)>;
 
             template<typename Operation>
             friend consteval bool test_operation_methods() noexcept;
+
+            template<typename Operation>
+            friend consteval bool test_operation_members() noexcept;
 
             callback_wrapper_type do_callback_ptr = nullptr;
             ring* ring_ptr = nullptr;
@@ -351,18 +366,24 @@ namespace iouxx {
 
         IOUXX_EXPORT
         template<template<typename...> class Operation, typename Callback, typename... Args>
-            requires std::derived_from<Operation<Callback, Args...>, operation_base>
+            requires operation<Operation<Callback, Args...>>
         struct operation_traits<Operation<Callback, Args...>> {
-            using operation_type = Operation<Callback>;
+            using operation_type = Operation<Callback, Args...>;
             using callback_type = typename operation_type::callback_type;
             using result_type = typename operation_type::result_type;
+            static constexpr std::uint8_t opcode = operation_type::opcode;
             template<typename... NewArgs>
             using rebind = Operation<NewArgs...>;
         };
 
         template<typename Operation>
         consteval bool test_operation_methods() noexcept {
-            return operation_base::test_operation_methods<Operation>();
+            return operation_base::test_operation_methods_v<Operation>;
+        }
+
+        template<typename Operation>
+        consteval bool test_operation_members() noexcept {
+            return operation_base::test_operation_members_v<Operation>;
         }
 
     } // namespace iouxx::iouops
