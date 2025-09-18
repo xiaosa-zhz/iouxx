@@ -118,7 +118,7 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout(sqe, &ts, 0, flags);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
@@ -204,7 +204,7 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout(sqe, &ts, count, flags);
         }
 
-        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev == -ETIME) {
                 ev = 0; // not an error for pure timeout
@@ -265,7 +265,7 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_timeout_remove(sqe, id.user_data64(), 0);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {

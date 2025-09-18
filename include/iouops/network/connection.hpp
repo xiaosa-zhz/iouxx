@@ -1,5 +1,4 @@
 #pragma once
-#include "cxxmodule_helper.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_CONNECTION_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_CONNECTION_H 1
 
@@ -66,7 +65,7 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_listen(sqe, sock.native_handle(), bl);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
@@ -140,7 +139,7 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_connect(sqe, sock.native_handle(), addr, addrlen);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
@@ -216,7 +215,7 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, connection(sock, ev));
@@ -290,7 +289,7 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_multishot_accept(sqe, sock.native_handle(), addr, addrlen, flags);
         }
 
-        void do_callback(int ev, std::int32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, multishot_accept_result{
@@ -366,7 +365,7 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_shutdown(sqe, fd, std::to_underlying(how_opt));
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {

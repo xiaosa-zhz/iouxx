@@ -17,14 +17,14 @@ namespace iouxx::inline iouops::file {
     class file
     {
     public:
-        file() = default;
-        file(const file&) = default;
-        file& operator=(const file&) = default;
+        constexpr file() = default;
+        constexpr file(const file&) = default;
+        constexpr file& operator=(const file&) = default;
 
-        explicit file(int fd) noexcept : fd(fd) {}
+        constexpr explicit file(int fd) noexcept : fd(fd) {}
 
         [[nodiscard]]
-        int native_handle() const noexcept { return fd; }
+        constexpr int native_handle() const noexcept { return fd; }
 
     private:
         int fd = -1;
@@ -38,6 +38,25 @@ namespace iouxx::inline iouops::file {
     {
     public:
         using file::file; // inherit constructors
+    };
+
+    // io_uring fixed file
+    class fixed_file
+    {
+    public:
+        constexpr fixed_file() = default;
+        constexpr fixed_file(const fixed_file&) = default;
+        constexpr fixed_file& operator=(const fixed_file&) = default;
+
+        constexpr explicit fixed_file(int index) noexcept
+            : fd_index(index)
+        {}
+
+        [[nodiscard]]
+        constexpr int index() const noexcept { return fd_index; }
+
+    private:
+        int fd_index = -1;
     };
 
 } // namespace iouxx::iouops::file

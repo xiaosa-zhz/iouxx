@@ -25,6 +25,7 @@
 #include <charconv>
 #include <limits>
 #include <format>
+#include <functional>
 
 #include "macro_config.hpp"
 #include "cxxmodule_helper.hpp"
@@ -191,7 +192,7 @@ namespace iouxx {
         // Base class for operations.
         // Derived class must implement:
         //   void build() & noexcept;
-        //   void do_callback(int ev, std::int32_t cqe_flags);
+        //   void do_callback(int ev, std::uint32_t cqe_flags);
         // Warning:
         // User of operations should create and store operation objects
         // in their own context, make sure the operation object outlives
@@ -389,6 +390,65 @@ namespace iouxx {
             return operation_base::test_operation_members_v<Operation>;
         }
 
+        IOUXX_EXPORT
+        struct management_info {
+            std::int32_t ev;
+            std::uint32_t cqe_flags;
+            iouxx::ring* ring;
+        };
+
+        // Operation for management purpose.
+        // Callback will receive an pointer to ring object.
+        IOUXX_EXPORT
+        template<std::invocable<management_info> Callback>
+        class ring_management_operation : public operation_base
+        {
+        public:
+            template<utility::not_tag F>
+            explicit ring_management_operation(iouxx::ring& ring, F&& f)
+                noexcept(utility::nothrow_constructible_callback<F>) :
+                operation_base(iouxx::op_tag<ring_management_operation>, ring),
+                callback(std::forward<F>(f))
+            {}
+
+            template<typename F, typename... Args>
+            explicit ring_management_operation(iouxx::ring& ring,
+                std::in_place_type_t<F>, Args&&... args)
+                noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+                operation_base(iouxx::op_tag<ring_management_operation>, ring),
+                callback(std::forward<Args>(args)...)
+            {}
+
+            using callback_type = Callback;
+            using result_type = management_info;
+
+            static constexpr std::uint8_t opcode = IORING_OP_NOP;
+
+        private:
+            friend operation_base;
+            void build(::io_uring_sqe* sqe) & noexcept {
+                ::io_uring_prep_nop(sqe);
+            }
+
+            void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT {
+                std::invoke(callback, management_info{
+                    ev, cqe_flags, this->ring_ptr
+                });
+            }
+
+            [[no_unique_address]] callback_type callback;
+        };
+
+        IOUXX_EXPORT
+        template<utility::not_tag F>
+        ring_management_operation(iouxx::ring&, F) 
+            -> ring_management_operation<std::decay_t<F>>;
+
+        IOUXX_EXPORT
+        template<typename F, typename... Args>
+        ring_management_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+            -> ring_management_operation<F>;
+
     } // namespace iouxx::iouops
 
     IOUXX_EXPORT
@@ -409,6 +469,12 @@ namespace iouxx {
             return std::exchange(cqe_flags, flags);
         }
 
+        // Test if result is from a operation.
+        // Some operation results may not come from sqe submission.
+        explicit constexpr operator bool() const noexcept {
+            return cb;
+        }
+
         void callback() const IOUXX_CALLBACK_NOEXCEPT {
             cb->callback(res, cqe_flags);
         }
@@ -424,13 +490,9 @@ namespace iouxx {
     private:
         friend ring;
         explicit operation_result(io_uring_cqe* cqe) noexcept :
-            cb(from_user_data(::io_uring_cqe_get_data(cqe))),
+            cb(static_cast<iouops::operation_base*>(::io_uring_cqe_get_data(cqe))),
             res(cqe->res), cqe_flags(cqe->flags)
         {}
-
-        static iouops::operation_base* from_user_data(void* data) noexcept {
-            return static_cast<iouops::operation_base*>(data);
-        }
 
         iouops::operation_base* cb;
         std::int32_t res;
@@ -645,7 +707,7 @@ namespace iouxx {
             if (ev < 0) {
                 return utility::fail(-ev);
             }
-            operation_result result(cqe);
+            operation_result result = to_result(cqe);
             ::io_uring_cqe_seen(&raw_ring, cqe);
             return result;
         }
@@ -664,9 +726,32 @@ namespace iouxx {
             if (ev < 0) {
                 return utility::fail(-ev);
             }
-            operation_result result(cqe);
+            operation_result result = to_result(cqe);
             ::io_uring_cqe_seen(&raw_ring, cqe);
             return result;
+        }
+
+        std::error_code register_buffer_table(std::size_t size) noexcept {
+            assert(valid());
+            int ev = ::io_uring_register_buffers_sparse(&raw_ring, size);
+            return utility::make_system_error_code(-ev);
+        }
+
+        template<utility::buffer_range Buffers>
+        std::error_code update_buffer_table(
+            std::size_t offset, Buffers&& buffers) noexcept {
+            assert(valid());
+            std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
+                | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
+                    using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
+                    return utility::to_iovec(
+                        std::span<byte_type>(std::forward<Buffer>(buffer))
+                    );
+                })
+                | std::ranges::to<std::vector<::iovec>>();
+            int ev = ::io_uring_register_buffers_update_tag(
+                &raw_ring, offset, iovecs.data(), nullptr, iovecs.size());
+            return utility::make_system_error_code(-ev);
         }
 
         template<utility::buffer_range Buffers>
@@ -685,11 +770,50 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        // TODO
         std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
             assert(valid());
             int ev = ::io_uring_register_files_sparse(&raw_ring, size);
             return utility::make_system_error_code(-ev);
+        }
+
+        std::error_code update_direct_descriptor_table(
+            std::size_t offset, std::span<const int>& fds) noexcept {
+            assert(valid());
+            int ev = ::io_uring_register_files_update(
+                &raw_ring, offset, fds.data(), fds.size());
+            return utility::make_system_error_code(-ev);
+        }
+
+        std::error_code register_direct_descriptors(
+            std::span<const int>& fds) noexcept {
+            assert(valid());
+            int ev = ::io_uring_register_files(&raw_ring, fds.data(), fds.size());
+            return utility::make_system_error_code(-ev);
+        }
+
+        template<utility::not_tag Callback>
+            requires std::invocable<std::decay_t<Callback>&, iouops::management_info>
+        void set_unregistration_callback(Callback&& callback)
+            noexcept(utility::nothrow_constructible_callback<Callback>) {
+            assert(valid());
+            using callback_type = std::decay_t<Callback>;
+            using operation_type = iouops::ring_management_operation<callback_type>;
+            auto cb = std::make_unique<operation_type>(
+                *this, std::forward<Callback>(callback));
+            unregistration_callback = unregistration_callback_handle(
+                cb.release(), &do_delete<operation_type>);
+        }
+
+        template<std::invocable<iouops::management_info> F>
+        void set_unregistration_callback(std::in_place_type_t<F>, auto&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, decltype(args)...>) {
+            assert(valid());
+            using callback_type = F;
+            using operation_type = iouops::ring_management_operation<callback_type>;
+            auto cb = std::make_unique<operation_type>(
+                *this, std::in_place_type<F>, std::forward<decltype(args)>(args)...);
+            unregistration_callback = unregistration_callback_handle(
+                cb.release(), &do_delete<operation_type>);
         }
 
         ::io_uring* native() & noexcept {
@@ -722,15 +846,47 @@ namespace iouxx {
             return std::error_code();
         }
 
+        operation_result to_result(::io_uring_cqe* cqe) noexcept {
+            if (cqe->user_data == 0) {
+                cqe->user_data = static_cast<std::uint64_t>(
+                    reinterpret_cast<std::uintptr_t>(unregistration_callback.get())
+                );
+            }
+            return operation_result(cqe);
+        }
+
         struct probe_deleter {
             void operator()(::io_uring_probe* probe) const noexcept {
                 ::io_uring_free_probe(probe);
             }
         };
+
         using probe_handle = std::unique_ptr<::io_uring_probe, probe_deleter>;
+
+        struct noop_callback {
+            constexpr static void operator()(iouops::management_info) noexcept {}
+        };
+
+        using noop_callback_operation = iouops::ring_management_operation<noop_callback>;
+
+        using deleter_type = void (*)(iouops::operation_base*) noexcept;
+
+        template<typename Operation>
+        static void do_delete(iouops::operation_base* op) noexcept {
+            std::default_delete<Operation>{}(static_cast<Operation*>(op));
+        }
+
+        using unregistration_callback_handle = std::unique_ptr<operation_base, deleter_type>;
+
+        unregistration_callback_handle noop_callback_handle() {
+            auto cb = std::make_unique<noop_callback_operation>(*this, noop_callback{});
+            return unregistration_callback_handle(
+                cb.release(), &do_delete<noop_callback_operation>);
+        }
 
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
+        unregistration_callback_handle unregistration_callback = noop_callback_handle();
     };
 
 } // namespace iouxx

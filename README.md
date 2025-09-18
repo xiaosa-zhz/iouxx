@@ -119,7 +119,7 @@ xmake.lua               # 构建脚本
 
 1. 继承 `operation_base`，构造时传入 `op_tag<Derived>` 与 `ring.native()`。
 2. 实现 `void build(io_uring_sqe*) & noexcept` 填充 SQE。
-3. 实现 `void do_callback(int ev, std::int32_t flags)` 解析结果并调用用户回调。
+3. 实现 `void do_callback(int ev, std::uint32_t flags)` 解析结果并调用用户回调。
 4. 用户持有实例并调用 `submit()`；完成后通过 `operation_result` 调用其 `operator()` 触发回调。
 
 ## ⚠️ 注意事项

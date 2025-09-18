@@ -1,5 +1,4 @@
 #pragma once
-#include "cxxmodule_helper.hpp"
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_H 1
 
@@ -73,32 +72,32 @@ namespace iouxx::inline iouops::network {
             );
         }
 
-        static constexpr int UNKNOWN_PROTOCOL_NO = -1;
-        static constexpr int PROTOCOL_NO_LIMIT = 256;
+        static constexpr int unknown_protocol_no = -1;
+        static constexpr int protocol_no_limit = 256;
 
         enum class protocol
         {
-            unknown = UNKNOWN_PROTOCOL_NO,
+            unknown = unknown_protocol_no,
             // No entries here
             // Use helper function to map protocol name to number
-            max_protocol_no = PROTOCOL_NO_LIMIT,
+            max_protocol_no = protocol_no_limit,
         };
 
-        explicit socket(int fd, domain d, type t, protocol p) noexcept
+        constexpr explicit socket(int fd, domain d, type t, protocol p) noexcept
             : base(fd), d(d), t(t), p(p)
         {}
 
         [[nodiscard]]
-        domain socket_domain() const noexcept { return d; }
+        constexpr domain socket_domain() const noexcept { return d; }
         [[nodiscard]]
-        type socket_type() const noexcept { return t; }
+        constexpr type socket_type() const noexcept { return t; }
         [[nodiscard]]
-        protocol socket_protocol() const noexcept { return p; }
+        constexpr protocol socket_protocol() const noexcept { return p; }
         using base::native_handle;
 
-        socket() = default;
-        socket(const socket&) = default;
-        socket& operator=(const socket&) = default;
+        constexpr socket() = default;
+        constexpr socket(const socket&) = default;
+        constexpr socket& operator=(const socket&) = default;
 
     private:
         domain d = domain::unspec;
@@ -120,11 +119,11 @@ namespace iouxx::inline iouops::network {
     class connection : public socket
     {
     public:
-        connection() = default;
-        connection(const connection&) = default;
-        connection& operator=(const connection&) = default;
+        constexpr connection() = default;
+        constexpr connection(const connection&) = default;
+        constexpr connection& operator=(const connection&) = default;
 
-        explicit connection(const socket& sock, int fd) :
+        constexpr explicit connection(const socket& sock, int fd) :
             socket(sock), conn_fd(fd)
         {}
 
@@ -151,9 +150,6 @@ namespace iouxx::inline iouops::network {
             return db;
         }
 
-        static constexpr int UNKNOWN_PROTOCOL_NO = socket::UNKNOWN_PROTOCOL_NO;
-        static constexpr int PROTOCOL_NO_LIMIT = socket::PROTOCOL_NO_LIMIT;
-
         struct [[nodiscard]] entry {
             std::string name = "unknown";
             std::vector<std::string> alias = { "Unknown", "UNKNOWN" };
@@ -174,6 +170,10 @@ namespace iouxx::inline iouops::network {
             .no = protocol::unknown
         };
 
+        consteval static std::size_t capacity() noexcept {
+            return socket::protocol_no_limit;
+        }
+
         const entry& get(std::string_view name) const noexcept {
             auto it = name_index.find(name);
             if (it != name_index.end()) {
@@ -185,7 +185,7 @@ namespace iouxx::inline iouops::network {
 
         const entry& get(protocol p) const noexcept {
             const int no = std::to_underlying(p);
-            if (no >= 0 && no < PROTOCOL_NO_LIMIT) {
+            if (no >= 0 && no < capacity()) {
                 return db[no];
             } else {
                 return unknown_protocol;
@@ -200,7 +200,7 @@ namespace iouxx::inline iouops::network {
         [[nodiscard]]
         bool contains(protocol p) const noexcept {
             const int no = std::to_underlying(p);
-            return no >= 0 && no < PROTOCOL_NO_LIMIT
+            return no >= 0 && no < capacity()
                 && db[no].no != protocol::unknown;
         }
 
@@ -279,7 +279,7 @@ namespace iouxx::inline iouops::network {
             utility::defer _([] { ::endprotoent(); });
             while ((raw_entry = ::getprotoent()) != nullptr) {
                 int no = raw_entry->p_proto;
-                if (no >= PROTOCOL_NO_LIMIT) {
+                if (no >= capacity()) {
                     throw std::runtime_error("Protocol number too large");
                 }
                 entry& db_entry = db[no];
@@ -316,7 +316,7 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        std::vector<entry> db = std::vector<entry>(PROTOCOL_NO_LIMIT);
+        std::vector<entry> db = std::vector<entry>(capacity());
         std::flat_map<std::string_view, std::size_t> name_index{};
         std::size_t total = 0;
     };

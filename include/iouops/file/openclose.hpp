@@ -55,10 +55,55 @@ namespace iouxx::inline iouops::file {
         );
     }
 
-    inline constexpr int current_directory = AT_FDCWD;
+    inline constexpr directory current_directory{ AT_FDCWD };
+
+} // namespace iouxx::iouops::file
+
+namespace iouxx::inline iouops::file {
+
+    class file_open_operation_base
+    {
+    public:
+        template<typename Self, typename Path>
+        Self& path(this Self& self, Path&& path) noexcept {
+            self.pathstr = std::forward<Path>(path);
+            return self;
+        }
+
+        template<typename Self>
+        Self& directory(this Self& self, directory dir) noexcept {
+            self.dirfd = dir.native_handle();
+            return self;
+        }
+
+        template<typename Self>
+        Self& options(this Self& self, open_flag flags) noexcept {
+            self.flags = flags;
+            return self;
+        }
+
+        template<typename Self>
+        Self& mode(this Self& self, open_mode mode) noexcept {
+            self.modes = mode;
+            return self;
+        }
+
+    protected:
+        std::string pathstr;
+        int dirfd = current_directory.native_handle();
+        open_flag flags = open_flag::unspec;
+        open_mode modes = open_mode::uread | open_mode::uwrite;
+    };
+
+} // namespace iouxx::iouops::file
+
+IOUXX_EXPORT
+namespace iouxx::inline iouops::file {
+
+    // TODO: change openat to openat2
 
     template<utility::eligible_callback<file> Callback>
-    class file_open_operation : public operation_base
+    class file_open_operation : public operation_base, public file_open_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -80,27 +125,6 @@ namespace iouxx::inline iouops::file {
 
         static constexpr std::uint8_t opcode = IORING_OP_OPENAT;
 
-        template<typename Path>
-        file_open_operation& path(Path&& path) & noexcept {
-            this->pathstr = std::forward<Path>(path);
-            return *this;
-        }
-
-        file_open_operation& directory(directory dirfd) & noexcept {
-            this->dirfd = dirfd.native_handle();
-            return *this;
-        }
-
-        file_open_operation& options(open_flag flags) & noexcept {
-            this->flags = flags;
-            return *this;
-        }
-
-        file_open_operation& mode(open_mode mode) & noexcept {
-            this->modes = mode;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -111,7 +135,7 @@ namespace iouxx::inline iouops::file {
             );
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, file(ev));
@@ -120,10 +144,6 @@ namespace iouxx::inline iouops::file {
             }
         }
 
-        std::string pathstr;
-        int dirfd = current_directory;
-        open_flag flags = open_flag::unspec;
-        open_mode modes = open_mode::uread | open_mode::uwrite;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -132,6 +152,67 @@ namespace iouxx::inline iouops::file {
 
     template<typename F, typename... Args>
     file_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_open_operation<F>;
+
+    inline constexpr int alloc_index = IORING_FILE_INDEX_ALLOC;
+
+    template<utility::eligible_callback<fixed_file> Callback>
+    class fixed_file_open_operation : public operation_base, public file_open_operation_base
+    {
+    public:
+        template<utility::not_tag F>
+        explicit fixed_file_open_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<fixed_file_open_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit fixed_file_open_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<fixed_file_open_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = fixed_file;
+
+        static constexpr std::uint8_t opcode = IORING_OP_OPENAT;
+
+        fixed_file_open_operation& index(int index = alloc_index) & noexcept {
+            this->file_index = index;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_openat_direct(sqe, dirfd,
+                pathstr.c_str(),
+                std::to_underlying(flags),
+                std::to_underlying(modes),
+                file_index
+            );
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, fixed_file(ev));
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        int file_index = alloc_index;
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::not_tag F>
+    fixed_file_open_operation(iouxx::ring&, F) -> fixed_file_open_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    fixed_file_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> fixed_file_open_operation<F>;
 
     template<utility::eligible_callback<void> Callback>
     class file_close_operation : public operation_base
@@ -156,8 +237,15 @@ namespace iouxx::inline iouops::file {
 
         static constexpr std::uint8_t opcode = IORING_OP_CLOSE;
 
-        file_close_operation& file(int fd) & noexcept {
-            this->fd = fd;
+        file_close_operation& file(const file& f) & noexcept {
+            this->fd = f.native_handle();
+            this->is_fixed = false;
+            return *this;
+        }
+
+        file_close_operation& file(const fixed_file& f) & noexcept {
+            this->fd = f.index();
+            this->is_fixed = true;
             return *this;
         }
 
@@ -165,9 +253,12 @@ namespace iouxx::inline iouops::file {
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_close(sqe, fd);
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {
@@ -183,6 +274,7 @@ namespace iouxx::inline iouops::file {
         }
 
         int fd = -1;
+        bool is_fixed = false;
         [[no_unique_address]] callback_type callback;
     };
 

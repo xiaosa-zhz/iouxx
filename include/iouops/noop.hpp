@@ -75,7 +75,7 @@ namespace iouxx::inline iouops {
             }
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {

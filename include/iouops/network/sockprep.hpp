@@ -76,7 +76,7 @@ namespace iouxx::inline iouops::network {
             );
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 std::invoke(callback, socket(
@@ -108,12 +108,12 @@ namespace iouxx::inline iouops::network {
         using base::base;
 
         socket_close_operation& socket(const socket& s) & noexcept {
-            this->base::file(s.native_handle());
+            this->base::file(s);
             return *this;
         }
 
         // Shadow the file::file_close_operation's file() method to avoid misuse
-        void file(int fd) & noexcept = delete;
+        void file(const file::file&) & noexcept = delete;
     };
 
     template<utility::eligible_callback<void> Callback>
@@ -173,7 +173,7 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_bind(sqe, sock.native_handle(), addr, addrlen);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::callback<callback_type, void>) {
                 if (ev == 0) {

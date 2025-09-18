@@ -64,7 +64,7 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_cancel(sqe, id.user_data(), flags);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             std::size_t cancelled_count = 0;
             if (ev >= 0) {
@@ -189,7 +189,7 @@ namespace iouxx::inline iouops {
             ::io_uring_prep_cancel_fd(sqe, fd, flags);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             std::size_t cancelled_count = 0;
             if (ev >= 0) {
