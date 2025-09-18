@@ -47,6 +47,11 @@ namespace iouxx::inline iouops::network {
         }
 
         void from_system_sockaddr() {
+            if (addrlen > sizeof(sockaddr_buf)) {
+                // Socket not supported yet
+                sock_info.emplace<unspecified_socket_info>();
+                return;
+            }
             // TODO: start_lifetime_as
             ::sockaddr* addr = std::launder(reinterpret_cast<::sockaddr*>(sockaddr_buf.data()));
             ::socklen_t* addrlen = &this->addrlen;
