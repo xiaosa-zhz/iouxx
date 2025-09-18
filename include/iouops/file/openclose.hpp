@@ -1,4 +1,5 @@
 #pragma once
+#include <liburing.h>
 #ifndef IOUXX_OPERATION_FILE_CLOSE_H
 #define IOUXX_OPERATION_FILE_CLOSE_H 1
 
@@ -252,9 +253,10 @@ namespace iouxx::inline iouops::file {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            ::io_uring_prep_close(sqe, fd);
             if (is_fixed) {
-                sqe->flags |= IOSQE_FIXED_FILE;
+                ::io_uring_prep_close_direct(sqe, fd);
+            } else {
+                ::io_uring_prep_close(sqe, fd);
             }
         }
 
