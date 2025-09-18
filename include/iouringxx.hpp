@@ -787,33 +787,42 @@ namespace iouxx {
         std::error_code register_direct_descriptors(
             std::span<const int>& fds) noexcept {
             assert(valid());
-            int ev = ::io_uring_register_files(&raw_ring, fds.data(), fds.size());
+            int ev = ::io_uring_register_files(
+                &raw_ring, fds.data(), fds.size());
             return utility::make_system_error_code(-ev);
         }
 
         template<utility::not_tag Callback>
             requires std::invocable<std::decay_t<Callback>&, iouops::management_info>
-        void set_unregistration_callback(Callback&& callback)
+        std::error_code set_unregistration_callback(Callback&& callback)
             noexcept(utility::nothrow_constructible_callback<Callback>) {
             assert(valid());
             using callback_type = std::decay_t<Callback>;
             using operation_type = iouops::ring_management_operation<callback_type>;
-            auto cb = std::make_unique<operation_type>(
-                *this, std::forward<Callback>(callback));
-            unregistration_callback = unregistration_callback_handle(
-                cb.release(), &do_delete<operation_type>);
+            operation_type* cb = new (std::nothrow)
+                operation_type(*this, std::forward<Callback>(callback));
+            if (!cb) {
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
+            unregistration_callback =
+                unregistration_callback_handle(cb, &do_delete<operation_type>);
+            return std::error_code();
         }
 
-        template<std::invocable<iouops::management_info> F>
-        void set_unregistration_callback(std::in_place_type_t<F>, auto&&... args)
+        template<std::invocable<iouops::management_info> F, typename... Args>
+        std::error_code set_unregistration_callback(std::in_place_type_t<F> tag, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, decltype(args)...>) {
             assert(valid());
             using callback_type = F;
             using operation_type = iouops::ring_management_operation<callback_type>;
-            auto cb = std::make_unique<operation_type>(
-                *this, std::in_place_type<F>, std::forward<decltype(args)>(args)...);
-            unregistration_callback = unregistration_callback_handle(
-                cb.release(), &do_delete<operation_type>);
+            operation_type* cb = new (std::nothrow)
+                operation_type(*this, tag, std::forward<Args>(args)...);
+            if (!cb) {
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
+            unregistration_callback =
+                unregistration_callback_handle(cb, &do_delete<operation_type>);
+            return std::error_code();
         }
 
         ::io_uring* native() & noexcept {
