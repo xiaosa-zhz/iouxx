@@ -10,6 +10,7 @@ import iouxx.ring;
 #include <string_view>
 #include <print>
 #include <cstring>
+#include <cstddef>
 
 #include "iouringxx.hpp"
 
@@ -52,12 +53,16 @@ void echo_server() {
         ::close(sockfd);
         return;
     }
-    int fd = ::accept4(sockfd, nullptr, nullptr, SOCK_CLOEXEC);
+    std::array<unsigned char, sizeof(::sockaddr_in)> addr_buffer;
+    ::socklen_t len = 28;
+    int fd = ::accept4(sockfd,
+        (::sockaddr*) addr_buffer.data(), &len, SOCK_CLOEXEC);
     if (fd < 0) {
         std::println("Failed to accept connection: {}", std::strerror(errno));
         ::close(sockfd);
         return;
     }
+    std::println("Peer: {} {::x}", len, addr_buffer);
     std::array<char, 1024> buffer{};
     while (true) {
         int size = ::recv(fd, buffer.data(), buffer.size() - 1, 0);

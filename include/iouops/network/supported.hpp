@@ -24,7 +24,7 @@ namespace iouxx::inline iouops::network {
 
     // Supported socket types.
     // Socket info type needs to provide:
-    //   static constexpr socket::domain domain;
+    //   static constexpr domain domain;
     //   /* system sockaddr type */ to_system_sockaddr() const noexcept;
     using supported_socket_type = std::variant<
         unspecified_socket_info,
@@ -39,6 +39,15 @@ namespace iouxx::inline iouops::network {
         };
     }(std::make_index_sequence<std::variant_size_v<supported_socket_type>>{});
 
+    inline constexpr std::array domain_setters =
+        []<std::size_t... Is>(std::index_sequence<Is...>) {
+        return std::array<void(*)(supported_socket_type&), sizeof...(Is)>{
+            +[](supported_socket_type& sock_info) noexcept {
+                sock_info.emplace<Is>();
+            }...
+        };
+    }(std::make_index_sequence<std::variant_size_v<supported_socket_type>>{});
+
     inline constexpr std::size_t sockaddr_buffer_size =
         []<std::size_t... Is>(std::index_sequence<Is...>) {
         return std::ranges::max({ sizeof(::sockaddr),
@@ -48,6 +57,21 @@ namespace iouxx::inline iouops::network {
     }(std::make_index_sequence<std::variant_size_v<supported_socket_type>>{});
 
     using sockaddr_buffer_type = std::array<std::byte, sockaddr_buffer_size>;
+
+    constexpr std::size_t domain_to_index(socket_config::domain domain) noexcept {
+        constexpr std::array domain_to_index_map = []{
+            std::array<std::size_t, std::to_underlying(socket_config::domain::max)> map{};
+            for (std::size_t i = 0; i < supported_domains.size(); ++i) {
+                map[std::to_underlying(supported_domains[i])] = i;
+            }
+            return map;
+        }();
+        auto idx = std::to_underlying(domain);
+        if (idx >= domain_to_index_map.size()) {
+            return 0; // unspec
+        }
+        return domain_to_index_map[idx];
+    }
 
 } // namespace iouxx::iouops::network
 

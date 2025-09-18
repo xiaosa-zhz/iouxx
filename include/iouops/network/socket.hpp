@@ -24,11 +24,8 @@
 IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
-    // Warning:
-    // This class is NOT a RAII wrapper of socket fd.
-    class socket : public file::file
+    class socket_config
     {
-        using base = file;
     public:
         enum class domain
         {
@@ -79,12 +76,16 @@ namespace iouxx::inline iouops::network {
         {
             unknown = unknown_protocol_no,
             // No entries here
-            // Use helper function to map protocol name to number
+            // Use helper function to map socket_config::protocol name to number
             max_protocol_no = protocol_no_limit,
         };
 
-        constexpr explicit socket(int fd, domain d, type t, protocol p) noexcept
-            : base(fd), d(d), t(t), p(p)
+        constexpr socket_config() = default;
+        constexpr socket_config(const socket_config&) = default;
+        constexpr socket_config& operator=(const socket_config&) = default;
+
+        constexpr socket_config(domain d, type t, socket_config::protocol p) noexcept
+            : d(d), t(t), p(p)
         {}
 
         [[nodiscard]]
@@ -92,26 +93,62 @@ namespace iouxx::inline iouops::network {
         [[nodiscard]]
         constexpr type socket_type() const noexcept { return t; }
         [[nodiscard]]
-        constexpr protocol socket_protocol() const noexcept { return p; }
-        using base::native_handle;
+        constexpr socket_config::protocol socket_protocol() const noexcept { return p; }
 
+    protected:
+        domain d = domain::unspec;
+        type t = type::stream;
+        socket_config::protocol p = socket_config::protocol::unknown;
+    };
+
+    // Warning:
+    // This class is NOT a RAII wrapper of socket fd.
+    class socket : public file::file, protected socket_config
+    {
+    public:
         constexpr socket() = default;
         constexpr socket(const socket&) = default;
         constexpr socket& operator=(const socket&) = default;
 
-    private:
-        domain d = domain::unspec;
-        type t = type::stream;
-        protocol p = protocol::unknown;
+        constexpr explicit socket(int fd, domain d, type t, socket_config::protocol p) noexcept
+            : file(fd), socket_config(d, t, p)
+        {}
+
+        using file::native_handle;
+        using socket_config::socket_domain;
+        using socket_config::socket_type;
+        using socket_config::socket_protocol;
     };
+
+    class fixed_socket : public file::fixed_file, protected socket_config
+    {
+    public:
+        constexpr fixed_socket() = default;
+        constexpr fixed_socket(const fixed_socket&) = default;
+        constexpr fixed_socket& operator=(const fixed_socket&) = default;
+
+        constexpr explicit fixed_socket(int index, domain d, type t, socket_config::protocol p) noexcept
+            : fixed_file(index), socket_config(d, t, p)
+        {}
+
+        using fixed_file::index;
+        using socket_config::socket_domain;
+        using socket_config::socket_type;
+        using socket_config::socket_protocol;
+    };
+
+    using socket_variant = std::variant<socket, fixed_socket>;
 
     struct unspecified_socket_info
     {
-        static constexpr socket::domain domain = socket::domain::unspec;
+        static constexpr socket_config::domain domain = socket_config::domain::unspec;
 
         constexpr ::sockaddr to_system_sockaddr() const noexcept {
             return ::sockaddr{};
         }
+
+        constexpr void from_system_sockaddr(
+            const ::sockaddr*, const ::socklen_t*) const noexcept {}
     };
 
     // Warning:
@@ -135,13 +172,30 @@ namespace iouxx::inline iouops::network {
         int conn_fd = -1;
     };
 
+    class fixed_connection : public fixed_socket
+    {
+    public:
+        constexpr fixed_connection() = default;
+        constexpr fixed_connection(const fixed_connection&) = default;
+        constexpr fixed_connection& operator=(const fixed_connection&) = default;
+
+        constexpr explicit fixed_connection(const fixed_socket& sock, int index) :
+            fixed_socket(sock), conn_index(index)
+        {}
+
+        // Note: if socket fd is wanted, use fixed_socket::index()
+        [[nodiscard]]
+        int index() const noexcept { return conn_index; }
+
+    private:
+        int conn_index = -1;
+    };
+
     class protocol_database : public std::ranges::view_interface<protocol_database>
     {
     public:
         protocol_database(const protocol_database&) = delete;
         protocol_database& operator=(const protocol_database&) = delete;
-
-        using protocol = socket::protocol;
 
         // Warning: need exclusive access to netdb.h functions
         [[nodiscard]]
@@ -153,10 +207,10 @@ namespace iouxx::inline iouops::network {
         struct [[nodiscard]] entry {
             std::string name = "unknown";
             std::vector<std::string> alias = { "Unknown", "UNKNOWN" };
-            protocol no = protocol::unknown;
+            socket_config::protocol no = socket_config::protocol::unknown;
 
             constexpr explicit operator bool() const noexcept {
-                return no != protocol::unknown;
+                return no != socket_config::protocol::unknown;
             }
 
             friend constexpr bool operator==(const entry& lhs, const entry& rhs) noexcept {
@@ -167,11 +221,11 @@ namespace iouxx::inline iouops::network {
         inline static const entry unknown_protocol = {
             .name = "unknown",
             .alias = { "Unknown", "UNKNOWN" },
-            .no = protocol::unknown
+            .no = socket_config::protocol::unknown
         };
 
         consteval static std::size_t capacity() noexcept {
-            return socket::protocol_no_limit;
+            return socket_config::protocol_no_limit;
         }
 
         const entry& get(std::string_view name) const noexcept {
@@ -183,7 +237,7 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        const entry& get(protocol p) const noexcept {
+        const entry& get(socket_config::protocol p) const noexcept {
             const int no = std::to_underlying(p);
             if (no >= 0 && no < capacity()) {
                 return db[no];
@@ -198,10 +252,10 @@ namespace iouxx::inline iouops::network {
         }
 
         [[nodiscard]]
-        bool contains(protocol p) const noexcept {
+        bool contains(socket_config::protocol p) const noexcept {
             const int no = std::to_underlying(p);
             return no >= 0 && no < capacity()
-                && db[no].no != protocol::unknown;
+                && db[no].no != socket_config::protocol::unknown;
         }
 
         std::size_t size() const noexcept { return total; }
@@ -273,22 +327,22 @@ namespace iouxx::inline iouops::network {
             // TODO: flat_* lacks reserve() method for now
             // name_index.reserve(PROTOCOL_NO_LIMIT);
 
-            // Load protocol database
+            // Load socket_config::protocol database
             ::protoent* raw_entry = nullptr;
             ::setprotoent(1);
             utility::defer _([] { ::endprotoent(); });
             while ((raw_entry = ::getprotoent()) != nullptr) {
                 int no = raw_entry->p_proto;
                 if (no >= capacity()) {
-                    throw std::runtime_error("Protocol number too large");
+                    throw std::runtime_error("socket_config::protocol number too large");
                 }
                 entry& db_entry = db[no];
-                if (db_entry.no != protocol::unknown) {
+                if (db_entry.no != socket_config::protocol::unknown) {
                     // Duplicate entry
                     continue;
                 }
                 ++total;
-                db_entry.no = static_cast<protocol>(no);
+                db_entry.no = static_cast<socket_config::protocol>(no);
                 db_entry.name.clear();
                 db_entry.alias.clear();
                 if (char* name = raw_entry->p_name) {
@@ -323,14 +377,36 @@ namespace iouxx::inline iouops::network {
 
     static_assert(std::ranges::forward_range<protocol_database>);
 
-    inline socket::protocol to_protocol(std::string_view name) noexcept {
+    inline socket_config::protocol to_protocol(std::string_view name) noexcept {
         return protocol_database::instance().get(name).no;
     }
 
-    inline std::string_view get_protocol_name(socket::protocol p) noexcept {
+    inline std::string_view get_protocol_name(socket_config::protocol p) noexcept {
         return protocol_database::instance().get(p).name;
     }
 
 } // namespace iouxx::iouops::network
+
+IOUXX_EXPORT
+template<>
+struct std::formatter<iouxx::iouops::network::unspecified_socket_info>
+{
+    using unspec = iouxx::iouops::network::unspecified_socket_info;
+
+    // No format spec supported; ensure it's either empty or '}' reached
+    constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
+        auto it = ctx.begin();
+        auto end = ctx.end();
+        if (it != end && *it != '}') {
+            throw format_error("invalid format spec for unspecifiedsock");
+        }
+        return it;
+    }
+
+    template<class FormatContext>
+    constexpr auto format(const unspec&, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "unspecified socket");
+    }
+};
 
 #endif // IOUXX_OPERATION_NETWORK_SOCKET_H

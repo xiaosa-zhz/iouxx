@@ -59,8 +59,8 @@ void echo_server() {
     ring ring(256);
     network::socket sock = [&ring] {
         auto open = ring.make_sync<network::socket_open_operation>();
-        open.domain(network::socket::domain::ipv4)
-            .type(network::socket::type::stream)
+        open.domain(network::socket_config::domain::ipv4)
+            .type(network::socket_config::type::stream)
             .protocol(network::to_protocol("tcp"));
         if (auto res = open.submit_and_wait()) {
             std::println("Server socket created: {}", res->native_handle());
@@ -130,10 +130,17 @@ void echo_server() {
 
     network::connection connection = [&ring, &sock] {
         auto accept = ring.make_sync<network::socket_accept_operation>();
-        accept.peer_socket(sock);
+        accept.socket(sock);
         if (auto res = accept.submit_and_wait()) {
-            std::println("Accepted connection: {}", res->native_handle());
-            return std::move(*res);
+            auto&& [conn, peer] = *res;
+            std::println("Accepted connection: {}", conn.native_handle());
+            auto& info = std::get<network::ip::socket_v4_info>(peer);
+            std::println("Peer address: {}", info);
+            if (info != client_addr) {
+                std::println("Peer address does not match expected client address");
+                std::abort();
+            }
+            return std::move(conn);
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to accept connection: {}", res.error().message());
@@ -208,8 +215,8 @@ void echo_client() {
     ring ring(256);
     network::socket sock = [&ring] {
         auto open = ring.make_sync<network::socket_open_operation>();
-        open.domain(network::socket::domain::ipv4)
-            .type(network::socket::type::stream)
+        open.domain(network::socket_config::domain::ipv4)
+            .type(network::socket_config::type::stream)
             .protocol(network::to_protocol("tcp"));
         if (auto res = open.submit_and_wait()) {
             std::println("Client socket created: {}", res->native_handle());
@@ -357,7 +364,7 @@ void echo_client() {
 }
 
 int main() {
-    if (network::to_protocol("tcp") == network::socket::protocol::unknown) {
+    if (network::to_protocol("tcp") == network::socket_config::protocol::unknown) {
         std::println("Protocol database not initialized, aborting");
         std::abort();
     }

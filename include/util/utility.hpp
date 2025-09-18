@@ -39,6 +39,11 @@ namespace iouxx::utility {
         std::size_t addrlen;
     };
 
+    template<typename... F>
+    struct overloaded : F... {
+        using F::operator()...;
+    };
+
     constexpr auto to_kernel_timespec(std::chrono::nanoseconds stdtime)
         noexcept -> ::__kernel_timespec {
         ::__kernel_timespec ts;

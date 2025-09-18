@@ -63,11 +63,25 @@ namespace iouxx::inline iouops::network {
 
         socket_send_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();
+            this->is_fixed = false;
+            return *this;
+        }
+
+        socket_send_operation& socket(const fixed_socket& s) & noexcept {
+            this->fd = s.index();
+            this->is_fixed = true;
             return *this;
         }
 
         socket_send_operation& socket(const connection& c) & noexcept {
             this->fd = c.native_handle();
+            this->is_fixed = false;
+            return *this;
+        }
+
+        socket_send_operation& socket(const fixed_connection& c) & noexcept {
+            this->fd = c.index();
+            this->is_fixed = true;
             return *this;
         }
 
@@ -89,6 +103,9 @@ namespace iouxx::inline iouops::network {
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_send(sqe, fd, buf, len,
                 std::to_underlying(flags));
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
         }
 
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
@@ -103,6 +120,7 @@ namespace iouxx::inline iouops::network {
         const void* buf = nullptr;
         std::size_t len = 0;
         int fd = -1;
+        bool is_fixed = false;
         send_flag flags = send_flag::none;
         [[no_unique_address]] callback_type callback;
     };
@@ -156,11 +174,25 @@ namespace iouxx::inline iouops::network {
 
         socket_recv_operation& socket(const socket& s) & noexcept {
             this->fd = s.native_handle();
+            this->is_fixed = false;
+            return *this;
+        }
+
+        socket_recv_operation& socket(const fixed_socket& s) & noexcept {
+            this->fd = s.index();
+            this->is_fixed = true;
             return *this;
         }
 
         socket_recv_operation& socket(const connection& c) & noexcept {
             this->fd = c.native_handle();
+            this->is_fixed = false;
+            return *this;
+        }
+
+        socket_recv_operation& socket(const fixed_connection& c) & noexcept {
+            this->fd = c.index();
+            this->is_fixed = true;
             return *this;
         }
 
@@ -182,6 +214,9 @@ namespace iouxx::inline iouops::network {
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_recv(sqe, fd, buf, len,
                 std::to_underlying(flags));
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
         }
 
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
@@ -196,6 +231,7 @@ namespace iouxx::inline iouops::network {
         void* buf = nullptr;
         std::size_t len = 0;
         int fd = -1;
+        bool is_fixed = false;
         recv_flag flags = recv_flag::none;
         [[no_unique_address]] callback_type callback;
     };

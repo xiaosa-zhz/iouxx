@@ -1,5 +1,6 @@
 add_rules("mode.debug", "mode.release")
 add_files("src/*.cpp")
+-- add_files("test/test_network.cpp")
 add_includedirs("include")
 add_defines("IOUXX_CONFIG_ENABLE_FEATURE_TESTS")
 add_requires("liburing")

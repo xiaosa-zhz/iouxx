@@ -4,8 +4,12 @@
 
 #ifndef IOUXX_USE_CXX_MODULE
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <utility>
 #include <bit>
 #include <array>
@@ -20,6 +24,7 @@
 
 #include "util/utility.hpp"
 #include "socket.hpp"
+#include "util/assertion.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
 
@@ -74,7 +79,7 @@ namespace iouxx::inline iouops::network::ip {
     class address_v4
     {
     public:
-        static constexpr socket::domain domain = socket::domain::ipv4;
+        static constexpr socket_config::domain domain = socket_config::domain::ipv4;
 
         constexpr address_v4() = default;
 
@@ -184,7 +189,7 @@ namespace iouxx::inline iouops::network::ip {
     class address_v6
     {
     public:
-        static constexpr socket::domain domain = socket::domain::ipv6;
+        static constexpr socket_config::domain domain = socket_config::domain::ipv6;
 
         constexpr address_v6() = default;
 
@@ -492,7 +497,7 @@ namespace iouxx::inline iouops::network::ip {
     class socket_v4_info
     {
     public:
-        static constexpr socket::domain domain = address_v4::domain;
+        static constexpr socket_config::domain domain = address_v4::domain;
 
         constexpr socket_v4_info() = default;
 
@@ -513,6 +518,17 @@ namespace iouxx::inline iouops::network::ip {
                 .sin_addr = std::bit_cast<::in_addr>(addr.raw()),
                 .sin_zero = {}
             };
+        }
+
+        constexpr void from_system_sockaddr(
+            const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
+            assert(*addrlen == sizeof(::sockaddr_in));
+            ::sockaddr_in addr4;
+            std::memcpy(&addr4, addr, sizeof(::sockaddr_in));
+            *this = socket_v4_info(
+                address_v4(std::bit_cast<v4raw>(addr4.sin_addr)),
+                ip::port(addr4.sin_port)
+            );
         }
 
         friend constexpr bool operator==(const socket_v4_info&, const socket_v4_info&) = default;
@@ -595,7 +611,7 @@ namespace iouxx::inline iouops::network::ip {
     class socket_v6_info
     {
     public:
-        static constexpr socket::domain domain = address_v6::domain;
+        static constexpr socket_config::domain domain = address_v6::domain;
 
         constexpr socket_v6_info() = default;
 
@@ -617,6 +633,17 @@ namespace iouxx::inline iouops::network::ip {
                 .sin6_addr = std::bit_cast<in6_addr>(addr.raw()),
                 .sin6_scope_id = 0
             };
+        }
+
+        constexpr void from_system_sockaddr(
+            const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
+            assert(*addrlen == sizeof(::sockaddr_in6));
+            ::sockaddr_in6 addr6;
+            std::memcpy(&addr6, addr, sizeof(::sockaddr_in6));
+            *this = socket_v6_info(
+                address_v6(std::bit_cast<v6raw>(addr6.sin6_addr)),
+                ip::port(addr6.sin6_port)
+            );
         }
 
         friend constexpr bool operator==(const socket_v6_info&, const socket_v6_info&) = default;
@@ -693,7 +720,7 @@ namespace iouxx::inline iouops::network::ip {
     };
 
     template<typename T>
-    consteval socket::domain get_domain() noexcept {
+    consteval socket_config::domain get_domain() noexcept {
         return std::remove_cvref_t<T>::domain;
     }
 
