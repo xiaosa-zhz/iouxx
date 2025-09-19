@@ -1165,6 +1165,7 @@ namespace std {
 
 } // namespace std
 
+IOUXX_EXPORT
 namespace iouxx::inline iouops::network::ip {
     
     [[nodiscard]]

@@ -16,20 +16,20 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
-namespace iouxx::inline iouops::file {
+namespace iouxx::details {
 
     class file_read_write_operation_base
     {
     public:
         template<typename Self>
-        Self& file(this Self& self, file f) noexcept {
+        Self& file(this Self& self, iouops::file::file f) noexcept {
             self.fd = f.native_handle();
             self.is_fixed = false;
             return self;
         }
 
         template<typename Self>
-        Self& file(this Self& self, fixed_file f) noexcept {
+        Self& file(this Self& self, iouops::file::fixed_file f) noexcept {
             self.fd = f.index();
             self.is_fixed = true;
             return self;
@@ -57,13 +57,14 @@ namespace iouxx::inline iouops::file {
         std::size_t off = 0;
     };
 
-} // namespace iouxx::iouops::file
+} // namespace iouxx::details
 
 IOUXX_EXPORT
 namespace iouxx::inline iouops::file {
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_read_operation : public operation_base, public file_read_write_operation_base
+    class file_read_operation
+        : public operation_base, public details::file_read_write_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -113,7 +114,8 @@ namespace iouxx::inline iouops::file {
     file_read_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_read_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_read_fixed_operation : public operation_base, public file_read_write_operation_base
+    class file_read_fixed_operation
+        : public operation_base, public details::file_read_write_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -176,7 +178,8 @@ namespace iouxx::inline iouops::file {
         -> file_read_fixed_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_write_operation : public operation_base, public file_read_write_operation_base
+    class file_write_operation
+        : public operation_base, public details::file_read_write_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -223,7 +226,8 @@ namespace iouxx::inline iouops::file {
     file_write_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_write_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_write_fixed_operation : public operation_base, public file_read_write_operation_base
+    class file_write_fixed_operation
+        : public operation_base, public details::file_read_write_operation_base
     {
     public:
         template<utility::not_tag F>

@@ -21,7 +21,7 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
-namespace iouxx::inline iouops::network {
+namespace iouxx::details {
 
     struct accept_addrinfo {
         ::sockaddr* addr = nullptr;
@@ -31,9 +31,9 @@ namespace iouxx::inline iouops::network {
     class peer_socket_info_base
     {
     protected:
-        void set_socket_info_type(socket_config::domain domain) noexcept {
+        void set_socket_info_type(iouops::network::socket_config::domain domain) noexcept {
             std::size_t idx = domain_to_index(domain);
-            domain_setters[idx](sock_info);
+            iouops::network::domain_setters[idx](sock_info);
         }
 
         utility::system_addrsock_info to_system_sockaddr() noexcept {
@@ -49,7 +49,7 @@ namespace iouxx::inline iouops::network {
         void from_system_sockaddr() {
             if (addrlen > sizeof(sockaddr_buf)) {
                 // Socket not supported yet
-                sock_info.emplace<unspecified_socket_info>();
+                sock_info.emplace<iouops::network::unspecified_socket_info>();
                 return;
             }
             // TODO: start_lifetime_as
@@ -68,12 +68,12 @@ namespace iouxx::inline iouops::network {
             };
         }
 
-        alignas(std::max_align_t) sockaddr_buffer_type sockaddr_buf{};
+        alignas(std::max_align_t) iouops::network::sockaddr_buffer_type sockaddr_buf{};
         ::socklen_t addrlen = 0;
-        supported_socket_type sock_info;
+        iouops::network::supported_socket_type sock_info;
     };
 
-} // namespace iouxx::inline iouops::network
+} // namespace iouxx::details
 
 IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
@@ -160,7 +160,8 @@ namespace iouxx::inline iouops::network {
         -> socket_listen_operation<F>;
 
     template<utility::eligible_callback<void> Callback>
-    class socket_connect_operation : public operation_base, protected peer_socket_info_base
+    class socket_connect_operation
+        : public operation_base, protected details::peer_socket_info_base
     {
     public:
         template<utility::not_tag F>
@@ -248,7 +249,8 @@ namespace iouxx::inline iouops::network {
     template<typename Callback>
         requires utility::eligible_callback<Callback, accept_result>
         || utility::eligible_callback<Callback, connection>
-    class socket_accept_operation : public operation_base, protected peer_socket_info_base
+    class socket_accept_operation
+        : public operation_base, protected details::peer_socket_info_base
     {
     public:
         template<utility::not_tag F>
@@ -332,7 +334,8 @@ namespace iouxx::inline iouops::network {
     template<typename Callback>
         requires utility::eligible_callback<Callback, fixed_accept_result>
         || utility::eligible_callback<Callback, fixed_connection>
-    class fixed_socket_accept_operation : public operation_base, protected peer_socket_info_base
+    class fixed_socket_accept_operation
+        : public operation_base, protected details::peer_socket_info_base
     {
     public:
         template<utility::not_tag F>
@@ -425,7 +428,7 @@ namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<multishot_accept_result> Callback>
     class socket_multishot_accept_operation
-        : public operation_base, protected peer_socket_info_base
+        : public operation_base, protected details::peer_socket_info_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");
@@ -508,7 +511,7 @@ namespace iouxx::inline iouops::network {
     //  so user cannot specify index here.
     template<utility::eligible_callback<multishot_fixed_accept_result> Callback>
     class fixed_socket_multishot_accept_operation
-        : public operation_base, protected peer_socket_info_base
+        : public operation_base, protected details::peer_socket_info_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");

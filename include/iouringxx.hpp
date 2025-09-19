@@ -34,27 +34,37 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
+namespace iouxx::details {
+
+    // Dummy callback type for type deduction only.
+    // Never actually used in operation.
+    struct dummy_callback {
+        constexpr void operator()(auto&&) const noexcept;
+    };
+
+    // Forward declaration
+    template<typename Operation>
+    consteval bool test_operation_methods() noexcept;
+
+    // Forward declaration
+    template<typename Operation>
+    consteval bool test_operation_members() noexcept;
+
+} // namespace iouxx::details
+
+IOUXX_EXPORT
 namespace iouxx {
 
-    IOUXX_EXPORT
     // Forward declaration
     class ring;
 
-    IOUXX_EXPORT
     // Forward declaration
     class operation_result;
 
     inline namespace iouops {
 
-        IOUXX_EXPORT
         // Forward declaration
         class operation_base;
-
-        // Dummy callback type for type deduction only.
-        // Never actually used in operation.
-        struct dummy_callback {
-            constexpr void operator()(auto&&) const noexcept;
-        };
 
         // Enable sync wait support for operations.
         // To use this, the operation type must have:
@@ -62,7 +72,6 @@ namespace iouxx {
         //   using callback_type = syncwait_callback<result_type>;
         //   callback_type callback; // accessible from operation_base
         // Recommended to use ring::make_sync to create such operations.
-        IOUXX_EXPORT
         template<typename Result>
         class syncwait_callback
         {
@@ -83,7 +92,6 @@ namespace iouxx {
         //   using callback_type = awaiter_callback<result_type>;
         //   callback_type callback; // accessible from operation_base
         // Recommended to use ring::make_await to create such operations.
-        IOUXX_EXPORT
         template<typename Result>
         class awaiter_callback
         {
@@ -101,17 +109,14 @@ namespace iouxx {
             std::coroutine_handle<> handle = nullptr;
         };
 
-        IOUXX_EXPORT
         template<template<typename...> class Operation>
         using syncwait_operation_t =
-            Operation<syncwait_callback<typename Operation<dummy_callback>::result_type>>;
+            Operation<syncwait_callback<typename Operation<details::dummy_callback>::result_type>>;
 
-        IOUXX_EXPORT
         template<template<typename...> class Operation>
         using awaiter_operation_t =
-            Operation<awaiter_callback<typename Operation<dummy_callback>::result_type>>;
+            Operation<awaiter_callback<typename Operation<details::dummy_callback>::result_type>>;
 
-        IOUXX_EXPORT
         class operation_identifier
         {
         public:
@@ -144,50 +149,36 @@ namespace iouxx {
             operation_base* raw = nullptr;
         };
 
-        IOUXX_EXPORT
         template<typename Operation>
         struct operation_t {
             using type = Operation;
         };
 
         // Tag for operation_base callback erasure
-        IOUXX_EXPORT
         template<typename Operation>
         inline constexpr operation_t<Operation> op_tag = {};
 
-        IOUXX_EXPORT
         template<typename Operation>
         struct operation_traits {};
 
-        // Forward declaration
-        template<typename Operation>
-        consteval bool test_operation_methods() noexcept;
-
-        // Forward declaration
-        template<typename Operation>
-        consteval bool test_operation_members() noexcept;
-
-        IOUXX_EXPORT
         template<typename Operation>
         concept operation = std::derived_from<Operation, operation_base>
             && requires {
                 typename Operation::callback_type;
                 typename Operation::result_type;
                 { Operation::opcode } -> std::convertible_to<std::uint8_t>;
-                requires (test_operation_methods<Operation>());
+                requires (details::test_operation_methods<Operation>());
             };
 
-        IOUXX_EXPORT
         template<typename Operation>
         concept syncwait_operation = operation<Operation>
             && utility::is_specialization_of_v<syncwait_callback, typename Operation::callback_type>
-            && (test_operation_members<Operation>());
-
-        IOUXX_EXPORT
+            && (details::test_operation_members<Operation>());
+        
         template<typename Operation>
         concept awaiter_operation = operation<Operation>
             && utility::is_specialization_of_v<awaiter_callback, typename Operation::callback_type>
-            && (test_operation_members<Operation>());
+            && (details::test_operation_members<Operation>());
 
         // Base class for operations.
         // Derived class must implement:
@@ -197,7 +188,6 @@ namespace iouxx {
         // User of operations should create and store operation objects
         // in their own context, make sure the operation object outlives
         // the whole execution of io_uring task.
-        IOUXX_EXPORT
         class operation_base
         {
         public:
@@ -359,16 +349,15 @@ namespace iouxx {
             };
 
             template<typename Operation>
-            friend consteval bool test_operation_methods() noexcept;
+            friend consteval bool details::test_operation_methods() noexcept;
 
             template<typename Operation>
-            friend consteval bool test_operation_members() noexcept;
+            friend consteval bool details::test_operation_members() noexcept;
 
             callback_wrapper_type do_callback_ptr = nullptr;
             ring* ring_ptr = nullptr;
         };
 
-        IOUXX_EXPORT
         template<template<typename...> class Operation, typename Callback, typename... Args>
             requires operation<Operation<Callback, Args...>>
         struct operation_traits<Operation<Callback, Args...>> {
@@ -380,17 +369,6 @@ namespace iouxx {
             using rebind = Operation<NewArgs...>;
         };
 
-        template<typename Operation>
-        consteval bool test_operation_methods() noexcept {
-            return operation_base::test_operation_methods_v<Operation>;
-        }
-
-        template<typename Operation>
-        consteval bool test_operation_members() noexcept {
-            return operation_base::test_operation_members_v<Operation>;
-        }
-
-        IOUXX_EXPORT
         struct management_info {
             std::int32_t ev;
             std::uint32_t cqe_flags;
@@ -399,7 +377,6 @@ namespace iouxx {
 
         // Operation for management purpose.
         // Callback will receive an pointer to ring object.
-        IOUXX_EXPORT
         template<std::invocable<management_info> Callback>
         class ring_management_operation : public operation_base
         {
@@ -439,19 +416,16 @@ namespace iouxx {
             [[no_unique_address]] callback_type callback;
         };
 
-        IOUXX_EXPORT
         template<utility::not_tag F>
         ring_management_operation(iouxx::ring&, F) 
             -> ring_management_operation<std::decay_t<F>>;
 
-        IOUXX_EXPORT
         template<typename F, typename... Args>
         ring_management_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
             -> ring_management_operation<F>;
 
     } // namespace iouxx::iouops
 
-    IOUXX_EXPORT
     class operation_result
     {
     public:
@@ -499,7 +473,6 @@ namespace iouxx {
         std::uint32_t cqe_flags;
     };
 
-    IOUXX_EXPORT
     class ring
     {
     public:
@@ -900,18 +873,31 @@ namespace iouxx {
 
 } // namespace iouxx
 
-// Hash support for iouxx::iouops::operation_identifier
-IOUXX_EXPORT
-template<>
-struct std::hash<iouxx::iouops::operation_identifier>
-{
-    std::size_t operator()(const iouxx::iouops::operation_identifier& id) const noexcept {
-        return std::hash<void*>{}(id.user_data());
+namespace iouxx::details {
+
+    template<typename Operation>
+    consteval bool test_operation_methods() noexcept {
+        return operation_base::test_operation_methods_v<Operation>;
     }
-};
+
+    template<typename Operation>
+    consteval bool test_operation_members() noexcept {
+        return operation_base::test_operation_members_v<Operation>;
+    }
+
+} // namespace iouxx::details
 
 IOUXX_EXPORT
 namespace std {
+
+    // Hash support for iouxx::iouops::operation_identifier
+    template<>
+    struct hash<iouxx::iouops::operation_identifier>
+    {
+        std::size_t operator()(const iouxx::iouops::operation_identifier& id) const noexcept {
+            return std::hash<void*>{}(id.user_data());
+        }
+    };
 
     // Formatter for iouxx::iouops::operation_identifier
     template<typename CharT>
