@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #ifndef IOUXX_LIBURING_CXX_WRAPER_H
 #define IOUXX_LIBURING_CXX_WRAPER_H 1
 
@@ -704,6 +705,8 @@ namespace iouxx {
             return result;
         }
 
+        using reg_tags = std::span<unsigned long long>;
+
         std::error_code register_buffer_table(std::size_t size) noexcept {
             assert(valid());
             int ev = ::io_uring_register_buffers_sparse(&raw_ring, size);
@@ -712,7 +715,7 @@ namespace iouxx {
 
         template<utility::buffer_range Buffers>
         std::error_code update_buffer_table(
-            std::size_t offset, Buffers&& buffers) noexcept {
+            std::size_t offset, Buffers&& buffers, reg_tags tags = reg_tags()) noexcept {
             assert(valid());
             std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
                 | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
@@ -722,13 +725,15 @@ namespace iouxx {
                     );
                 })
                 | std::ranges::to<std::vector<::iovec>>();
+            assert(tags.empty() || tags.size() == iovecs.size());
+            const auto tag_ptr = tags.empty() ? nullptr : tags.data();
             int ev = ::io_uring_register_buffers_update_tag(
-                &raw_ring, offset, iovecs.data(), nullptr, iovecs.size());
+                &raw_ring, offset, iovecs.data(), tag_ptr, iovecs.size());
             return utility::make_system_error_code(-ev);
         }
 
         template<utility::buffer_range Buffers>
-        std::error_code register_buffers(Buffers&& buffers) noexcept {
+        std::error_code register_buffers(Buffers&& buffers, reg_tags tags = reg_tags()) noexcept {
             assert(valid());
             std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
                 | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
@@ -738,8 +743,12 @@ namespace iouxx {
                     );
                 })
                 | std::ranges::to<std::vector<::iovec>>();
-            int ev = ::io_uring_register_buffers(
-                &raw_ring, iovecs.data(), iovecs.size());
+            assert(tags.empty() || tags.size() == iovecs.size());
+            int ev = tags.empty()
+                ? ::io_uring_register_buffers(
+                    &raw_ring, iovecs.data(), iovecs.size())
+                : ::io_uring_register_buffers_tags(
+                    &raw_ring, iovecs.data(), tags.data(), iovecs.size());
             return utility::make_system_error_code(-ev);
         }
 
@@ -750,18 +759,26 @@ namespace iouxx {
         }
 
         std::error_code update_direct_descriptor_table(
-            std::size_t offset, std::span<const int>& fds) noexcept {
+            std::size_t offset, std::span<const int>& fds, reg_tags tags = reg_tags()) noexcept {
             assert(valid());
-            int ev = ::io_uring_register_files_update(
-                &raw_ring, offset, fds.data(), fds.size());
+            assert(tags.empty() || tags.size() == fds.size());
+            int ev = tags.empty()
+                ? ::io_uring_register_files_update(
+                    &raw_ring, offset, fds.data(), fds.size())
+                : ::io_uring_register_files_update_tag(
+                    &raw_ring, offset, fds.data(), tags.data(), fds.size());
             return utility::make_system_error_code(-ev);
         }
 
         std::error_code register_direct_descriptors(
-            std::span<const int>& fds) noexcept {
+            std::span<const int>& fds, reg_tags tags = reg_tags()) noexcept {
             assert(valid());
-            int ev = ::io_uring_register_files(
-                &raw_ring, fds.data(), fds.size());
+            assert(tags.empty() || tags.size() == fds.size());
+            int ev = tags.empty()
+                ? ::io_uring_register_files(
+                    &raw_ring, fds.data(), fds.size())
+                : ::io_uring_register_files_tags(
+                    &raw_ring, fds.data(), tags.data(), fds.size());
             return utility::make_system_error_code(-ev);
         }
 
