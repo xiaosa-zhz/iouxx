@@ -161,6 +161,14 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
+    template<utility::not_tag F>
+    fixed_socket_open_operation(iouxx::ring&, F)
+        -> fixed_socket_open_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    fixed_socket_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> fixed_socket_open_operation<F>;
+
     template<typename Callback>
     class socket_close_operation : public file::file_close_operation<Callback>
     {
@@ -274,6 +282,7 @@ namespace iouxx::inline iouops::network {
 
     template<utility::not_tag F>
     socket_bind_operation(iouxx::ring&, F) -> socket_bind_operation<std::decay_t<F>>;
+    
     template<typename F, typename... Args>
     socket_bind_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_bind_operation<F>;
