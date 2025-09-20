@@ -134,16 +134,7 @@ namespace iouxx::details {
         using ioprio = iouops::network::ioprio;
 
         template<typename Self, utility::readonly_buffer_like Buffer>
-        Self& buffer(this Self& self, Buffer&& buf) noexcept {
-            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
-            self.buf = span.data();
-            self.len = span.size();
-            self.buf_index = -1;
-            return self;
-        }
-
-        template<typename Self, utility::readonly_buffer_like Buffer>
-        Self& buffer(this Self& self, Buffer&& buf, int buf_index) noexcept {
+        Self& buffer(this Self& self, Buffer&& buf, int buf_index = -1) noexcept {
             auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
             self.buf = span.data();
             self.len = span.size();
