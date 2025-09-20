@@ -4,8 +4,6 @@
 
 #ifndef IOUXX_USE_CXX_MODULE
 
-#include <liburing.h>
-
 #include <cstddef>
 #include <utility>
 #include <algorithm>
