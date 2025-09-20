@@ -1,6 +1,4 @@
 add_rules("mode.debug", "mode.release")
-add_files("src/*.cpp")
--- add_files("test/test_network.cpp")
 add_includedirs("include")
 add_defines("IOUXX_CONFIG_ENABLE_FEATURE_TESTS")
 add_requires("liburing")
@@ -11,7 +9,7 @@ local function scan_and_add_tests(testdir)
     for _, testfile in ipairs(os.files(testdir .. "/test_*.cpp")) do
         add_tests(path.basename(testfile), {
             files = testfile,
-            remove_files = "src/main.cpp",
+            kind = "binary",
         })
     end
 end
@@ -37,13 +35,13 @@ local function configure_toochains(name)
 end
 
 target("llvm")
-    set_kind("binary")
+    set_kind("headeronly")
     configure_toochains("clang")
     add_packages("liburing")
     scan_and_add_tests("test")
 
 target("gnu")
-    set_kind("binary")
+    set_kind("headeronly")
     configure_toochains("gcc")
     add_packages("liburing")
     scan_and_add_tests("test")
