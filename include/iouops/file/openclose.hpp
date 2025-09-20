@@ -1,5 +1,4 @@
 #pragma once
-#include <liburing.h>
 #ifndef IOUXX_OPERATION_FILE_CLOSE_H
 #define IOUXX_OPERATION_FILE_CLOSE_H 1
 
@@ -38,6 +37,11 @@ namespace iouxx::inline iouops::file {
         );
     }
 
+    constexpr open_flag& operator|=(open_flag& lhs, open_flag rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
     enum class open_mode {
         uread = S_IRUSR,
         uwrite = S_IWUSR,
@@ -54,6 +58,11 @@ namespace iouxx::inline iouops::file {
         return static_cast<open_mode>(
             std::to_underlying(lhs) | std::to_underlying(rhs)
         );
+    }
+
+    constexpr open_mode& operator|=(open_mode& lhs, open_mode rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
     }
 
     inline constexpr directory current_directory{ AT_FDCWD };
