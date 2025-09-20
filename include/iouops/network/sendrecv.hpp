@@ -9,6 +9,7 @@
 #include <functional>
 #include <utility>
 #include <type_traits>
+#include <variant>
 
 #include "iouringxx.hpp"
 #include "util/utility.hpp"
@@ -225,7 +226,20 @@ namespace iouxx::inline iouops::network {
     socket_send_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_send_operation<F>;
 
-    template<utility::eligible_callback<std::size_t> Callback>
+    struct buffer_free_notification {};
+
+    struct send_result_more {
+        std::size_t bytes_sent;
+    };
+
+    struct send_result_nomore {
+        std::size_t bytes_sent;
+    };
+    
+    using send_zc_result =
+        std::variant<buffer_free_notification, send_result_more, send_result_nomore>;
+
+    template<utility::eligible_callback<send_zc_result> Callback>
     class socket_send_zc_operation :
         public operation_base,
         public details::send_recv_socket_base,
@@ -247,7 +261,7 @@ namespace iouxx::inline iouops::network {
         {}
 
         using callback_type = Callback;
-        using result_type = std::size_t;
+        using result_type = send_zc_result;
 
         static constexpr std::uint8_t opcode = IORING_OP_SEND_ZC;
 
@@ -266,10 +280,28 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::size_t>(ev));
+                // Send ZC may produce two CQEs, one for bytes sent,
+                // and one for notification of buffer is free to reuse.
+                const bool more = (cqe_flags & IORING_CQE_F_MORE) != 0;
+                if (more) {
+                    std::invoke(callback, send_zc_result(
+                        send_result_more{ .bytes_sent = static_cast<std::size_t>(ev) }
+                    ));
+                } else {
+                    const bool notify = (cqe_flags & IORING_CQE_F_NOTIF) != 0;
+                    if (notify) {
+                        std::invoke(callback, send_zc_result(
+                            buffer_free_notification{}
+                        ));
+                    } else {
+                        std::invoke(callback, send_zc_result(
+                            send_result_nomore{ .bytes_sent = static_cast<std::size_t>(ev) }
+                        ));
+                    }
+                }
             } else {
                 std::invoke(callback, utility::fail(-ev));
             }

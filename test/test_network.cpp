@@ -173,15 +173,54 @@ void echo_server() {
         }
 
         std::println("Echoing back...");
-        auto send = ring.make_sync<network::socket_send_operation>();
+        // auto send = ring.make_sync<network::socket_send_operation>();
+        // send.socket(connection)
+        //     .buffer(std::span(buffer.data(), received));
+        // if (auto res = send.submit_and_wait()) {
+        //     std::println("Echoed back {} bytes", *res);
+        // } else {
+        //     exit_if_function_not_supported(res.error());
+        //     std::println("Failed to send data: {}", res.error().message());
+        //     std::abort();
+        // }
+        bool is_more = true;
+        auto send = ring.make<network::socket_send_zc_operation>(
+            [&](std::expected<network::send_zc_result, std::error_code> res) {
+            if (res) {
+                std::visit(iouxx::utility::overloaded {
+                    [&](const network::buffer_free_notification&) {
+                        std::println("Buffer is free to reuse");
+                        is_more = false;
+                    },
+                    [&](const network::send_result_more& r) {
+                        std::println("Sent {} bytes, wait for buffer free", r.bytes_sent);
+                    },
+                    [&](const network::send_result_nomore& r) {
+                        std::println("Sent {} bytes and buffer is free", r.bytes_sent);
+                        is_more = false;
+                    }
+                }, *res);
+            } else {
+                std::println("Failed to send data: {}", res.error().message());
+                std::abort();
+            }
+        });
         send.socket(connection)
             .buffer(std::span(buffer.data(), received));
-        if (auto res = send.submit_and_wait()) {
-            std::println("Echoed back {} bytes", *res);
-        } else {
-            exit_if_function_not_supported(res.error());
-            std::println("Failed to send data: {}", res.error().message());
+        if (auto res = send.submit()) {
+            exit_if_function_not_supported(res);
+            std::println("Failed to submit send operation: {}", res.message());
             std::abort();
+        } else {
+            std::println("Send operation submitted");
+        }
+        while (is_more) {
+            if (auto res = ring.wait_for_result()) {
+                res->callback();
+            } else {
+                std::println("Failed to get send result: {}", res.error().message());
+                std::abort();
+            }
         }
     }
 
