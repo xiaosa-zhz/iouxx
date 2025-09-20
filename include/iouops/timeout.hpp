@@ -155,9 +155,9 @@ namespace iouxx::inline iouops {
     class multishot_timeout_operation : public operation_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
-            "multishot operation does not support syncronous wait.");
+            "Multishot operation does not support syncronous wait.");
         static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
-            "multishot operation does not support coroutine await.");
+            "Multishot operation does not support coroutine await.");
     public:
         template<utility::not_tag F>
         explicit multishot_timeout_operation(iouxx::ring& ring, F&& f)
