@@ -246,9 +246,9 @@ namespace iouxx::inline iouops::network {
         public details::send_op_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
-            "Send ZC is natural forked, does not support syncronous wait.");
+            "Send ZC is naturally forked, does not support syncronous wait.");
         static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
-            "Send ZC is natural forked, does not support coroutine await.");
+            "Send ZC is naturally forked, does not support coroutine await.");
     public:
         template<utility::not_tag F>
         explicit socket_send_zc_operation(iouxx::ring& ring, F&& f)
