@@ -1,4 +1,6 @@
 #pragma once
+#include "cxxmodule_helper.hpp"
+#include <liburing.h>
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H 1
 
@@ -38,8 +40,147 @@ namespace iouxx::inline iouops::network {
         );
     }
 
+    constexpr send_flag& operator|=(send_flag& lhs, send_flag rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    enum class recv_flag {
+        none         = 0,
+        cmsg_cloexec = MSG_CMSG_CLOEXEC,
+        dontwait     = MSG_DONTWAIT,
+        errqueue     = MSG_ERRQUEUE,
+        oob          = MSG_OOB,
+        peek         = MSG_PEEK,
+        trunc        = MSG_TRUNC,
+        waitall      = MSG_WAITALL,
+    };
+
+    constexpr recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
+        return static_cast<recv_flag>(
+            std::to_underlying(lhs) | std::to_underlying(rhs)
+        );
+    }
+
+    constexpr recv_flag& operator|=(recv_flag& lhs, recv_flag rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    enum class ioprio {
+        none = 0,
+        rs_poll_first = IORING_RECVSEND_POLL_FIRST,
+        r_multishot = IORING_RECV_MULTISHOT,
+        rs_fixed_buf = IORING_RECVSEND_FIXED_BUF,
+        s_zc_report_usage = IORING_SEND_ZC_REPORT_USAGE,
+        rs_bundle = IORING_RECVSEND_BUNDLE,
+    };
+
+    constexpr ioprio operator|(ioprio lhs, ioprio rhs) noexcept {
+        return static_cast<ioprio>(
+            std::to_underlying(lhs) | std::to_underlying(rhs)
+        );
+    }
+
+    constexpr ioprio& operator|=(ioprio& lhs, ioprio rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+} // namespace iouxx::iouops::network
+
+namespace iouxx::details {
+
+    class send_recv_socket_base
+    {
+    public:
+        template<typename Self>
+        Self& socket(this Self& self, const iouops::network::socket& s) noexcept {
+            self.fd = s.native_handle();
+            self.is_fixed = false;
+            return self;
+        }
+
+        template<typename Self>
+        Self& socket(this Self& self, const iouops::network::fixed_socket& s) noexcept {
+            self.fd = s.index();
+            self.is_fixed = true;
+            return self;
+        }
+
+        template<typename Self>
+        Self& socket(this Self& self, const iouops::network::connection& c) noexcept {
+            self.fd = c.native_handle();
+            self.is_fixed = false;
+            return self;
+        }
+
+        template<typename Self>
+        Self& socket(this Self& self, const iouops::network::fixed_connection& c) noexcept {
+            self.fd = c.index();
+            self.is_fixed = true;
+            return self;
+        }
+
+    protected:
+        int fd = -1;
+        bool is_fixed = false;
+    };
+
+    class send_op_base
+    {
+    public:
+        using send_flag = iouops::network::send_flag;
+        using ioprio = iouops::network::ioprio;
+
+        template<typename Self, utility::readonly_buffer_like Buffer>
+        Self& buffer(this Self& self, Buffer&& buf) noexcept {
+            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
+            self.buf = span.data();
+            self.len = span.size();
+            self.buf_index = -1;
+            return self;
+        }
+
+        template<typename Self, utility::readonly_buffer_like Buffer>
+        Self& buffer(this Self& self, Buffer&& buf, int buf_index) noexcept {
+            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
+            self.buf = span.data();
+            self.len = span.size();
+            self.buf_index = buf_index;
+            return self;
+        }
+
+        template<typename Self>
+        Self& options(this Self& self, send_flag flags) noexcept {
+            self.flags = flags;
+            return self;
+        }
+
+        template<typename Self>
+        Self& ring_options(this Self& self, ioprio ring_flags) noexcept {
+            self.ring_flags = ring_flags;
+            return self;
+        }
+
+    protected:
+        const void* buf = nullptr;
+        std::size_t len = 0;
+        send_flag flags = send_flag::none;
+        ioprio ring_flags = ioprio::none;
+        int buf_index = -1;
+    };
+
+} // namespace iouxx::details
+
+IOUXX_EXPORT
+namespace iouxx::inline iouops::network {
+
     template<utility::eligible_callback<std::size_t> Callback>
-    class socket_send_operation : public operation_base
+    class socket_send_operation :
+        public operation_base,
+        public details::send_recv_socket_base,
+        public details::send_op_base
     {
     public:
         template<utility::not_tag F>
@@ -61,50 +202,18 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_SEND;
 
-        socket_send_operation& socket(const socket& s) & noexcept {
-            this->fd = s.native_handle();
-            this->is_fixed = false;
-            return *this;
-        }
-
-        socket_send_operation& socket(const fixed_socket& s) & noexcept {
-            this->fd = s.index();
-            this->is_fixed = true;
-            return *this;
-        }
-
-        socket_send_operation& socket(const connection& c) & noexcept {
-            this->fd = c.native_handle();
-            this->is_fixed = false;
-            return *this;
-        }
-
-        socket_send_operation& socket(const fixed_connection& c) & noexcept {
-            this->fd = c.index();
-            this->is_fixed = true;
-            return *this;
-        }
-
-        socket_send_operation& options(send_flag flags) & noexcept {
-            this->flags = flags;
-            return *this;
-        }
-
-        template<utility::readonly_buffer_like Buffer>
-        socket_send_operation& buffer(Buffer&& buf) & noexcept {
-            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
-            this->buf = span.data();
-            this->len = span.size();
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_send(sqe, fd, buf, len,
                 std::to_underlying(flags));
+            sqe->ioprio = std::to_underlying(ring_flags);
             if (is_fixed) {
                 sqe->flags |= IOSQE_FIXED_FILE;
+            }
+            if (buf_index >= 0) {
+                sqe->buf_index = buf_index;
+                sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
             }
         }
 
@@ -117,11 +226,6 @@ namespace iouxx::inline iouops::network {
             } 
         }
 
-        const void* buf = nullptr;
-        std::size_t len = 0;
-        int fd = -1;
-        bool is_fixed = false;
-        send_flag flags = send_flag::none;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -132,25 +236,62 @@ namespace iouxx::inline iouops::network {
     socket_send_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_send_operation<F>;
 
-    enum class recv_flag {
-        none         = 0,
-        cmsg_cloexec = MSG_CMSG_CLOEXEC,
-        dontwait     = MSG_DONTWAIT,
-        errqueue     = MSG_ERRQUEUE,
-        oob          = MSG_OOB,
-        peek         = MSG_PEEK,
-        trunc        = MSG_TRUNC,
-        waitall      = MSG_WAITALL,
+    template<utility::eligible_callback<std::size_t> Callback>
+    class socket_send_zc_operation :
+        public operation_base,
+        public details::send_recv_socket_base,
+        public details::send_op_base
+    {
+    public:
+        template<utility::not_tag F>
+        explicit socket_send_zc_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<socket_send_zc_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_send_zc_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_send_zc_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = std::size_t;
+
+        static constexpr std::uint8_t opcode = IORING_OP_SEND_ZC;
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_send_zc(sqe, fd, buf, len,
+                std::to_underlying(flags),
+                std::to_underlying(ring_flags));
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
+            if (buf_index >= 0) {
+                sqe->buf_index = buf_index;
+                sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
+            }
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, static_cast<std::size_t>(ev));
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        [[no_unique_address]] callback_type callback;
     };
 
-    constexpr recv_flag operator|(recv_flag lhs, recv_flag rhs) noexcept {
-        return static_cast<recv_flag>(
-            std::to_underlying(lhs) | std::to_underlying(rhs)
-        );
-    }
-
     template<utility::eligible_callback<std::size_t> Callback>
-    class socket_recv_operation : public operation_base
+    class socket_recv_operation
+        : public operation_base, public details::send_recv_socket_base
     {
     public:
         template<utility::not_tag F>
@@ -171,30 +312,6 @@ namespace iouxx::inline iouops::network {
         using result_type = std::size_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_RECV;
-
-        socket_recv_operation& socket(const socket& s) & noexcept {
-            this->fd = s.native_handle();
-            this->is_fixed = false;
-            return *this;
-        }
-
-        socket_recv_operation& socket(const fixed_socket& s) & noexcept {
-            this->fd = s.index();
-            this->is_fixed = true;
-            return *this;
-        }
-
-        socket_recv_operation& socket(const connection& c) & noexcept {
-            this->fd = c.native_handle();
-            this->is_fixed = false;
-            return *this;
-        }
-
-        socket_recv_operation& socket(const fixed_connection& c) & noexcept {
-            this->fd = c.index();
-            this->is_fixed = true;
-            return *this;
-        }
 
         socket_recv_operation& options(recv_flag flags) & noexcept {
             this->flags = flags;
@@ -230,8 +347,6 @@ namespace iouxx::inline iouops::network {
 
         void* buf = nullptr;
         std::size_t len = 0;
-        int fd = -1;
-        bool is_fixed = false;
         recv_flag flags = recv_flag::none;
         [[no_unique_address]] callback_type callback;
     };
