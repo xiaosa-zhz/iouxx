@@ -1,5 +1,4 @@
 #pragma once
-#include <cassert>
 #ifndef IOUXX_LIBURING_CXX_WRAPER_H
 #define IOUXX_LIBURING_CXX_WRAPER_H 1
 
@@ -10,6 +9,7 @@
 #ifndef IOUXX_USE_CXX_MODULE
 
 #include <liburing.h>
+#include <sys/mman.h>
 
 #include <concepts>
 #include <type_traits>
