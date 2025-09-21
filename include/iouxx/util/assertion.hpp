@@ -1,7 +1,7 @@
 #ifndef IOUXX_ASSERTION_H
 #define IOUXX_ASSERTION_H 1
 
-#include "macro_config.hpp" // IWYU pragma: keep
+#include "iouxx/macro_config.hpp" // IWYU pragma: keep
 
 #ifndef IOUXX_CONFIG_DISABLE_ASSERTION
 

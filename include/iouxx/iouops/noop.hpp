@@ -9,10 +9,10 @@
 #include <type_traits>
 #include <system_error>
 
-#include "iouringxx.hpp"
-#include "macro_config.hpp" // IWYU pragma: keep
-#include "cxxmodule_helper.hpp" // IWYU pragma: keep
-#include "util/utility.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/macro_config.hpp" // IWYU pragma: keep
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: keep
+#include "iouxx/util/utility.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
 

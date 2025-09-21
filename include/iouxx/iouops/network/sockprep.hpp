@@ -11,11 +11,11 @@
 #include <utility>
 #include <type_traits>
 
-#include "iouringxx.hpp"
+#include "iouxx/iouringxx.hpp"
 #include "socket.hpp"
 #include "ip.hpp"
 #include "supported.hpp"
-#include "iouops/file/openclose.hpp"
+#include "iouxx/iouops/file/openclose.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
 

@@ -10,10 +10,10 @@
 #include <utility>
 #include <type_traits>
 
-#include "iouringxx.hpp"
-#include "clock.hpp"
-#include "util/utility.hpp"
-#include "macro_config.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/clock.hpp"
+#include "iouxx/util/utility.hpp"
+#include "iouxx/macro_config.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
 

@@ -22,9 +22,9 @@
 #include <charconv>
 #include <format>
 
-#include "util/utility.hpp"
+#include "iouxx/util/utility.hpp"
 #include "socket.hpp"
-#include "util/assertion.hpp"
+#include "iouxx/util/assertion.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
 

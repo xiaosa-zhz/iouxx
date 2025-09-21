@@ -10,8 +10,8 @@ import iouxx.ops.timeout;
 #include <cstdlib>
 #include <print>
 
-#include "iouringxx.hpp"
-#include "iouops/timeout.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/iouops/timeout.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 

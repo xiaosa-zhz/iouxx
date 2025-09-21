@@ -23,10 +23,10 @@ import iouxx.ops.network.socketio;
 #define IOUXX_CONFIG_ENABLE_FEATURE_TESTS
 #endif // IOUXX_CONFIG_ENABLE_FEATURE_TESTS
 
-#include "iouringxx.hpp"
-#include "iouops/network/ip.hpp"
-#include "iouops/network/socket.hpp"
-#include "iouops/network/socketio.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/iouops/network/ip.hpp"
+#include "iouxx/iouops/network/socket.hpp"
+#include "iouxx/iouops/network/socketio.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 

@@ -9,8 +9,8 @@ import iouxx.ops.noop;
 #include <system_error>
 #include <print>
 
-#include "iouringxx.hpp"
-#include "iouops/noop.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/iouops/noop.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 

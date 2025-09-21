@@ -9,9 +9,9 @@
 #include <utility>
 #include <type_traits>
 
-#include "macro_config.hpp"
-#include "util/utility.hpp"
-#include "iouringxx.hpp"
+#include "iouxx/macro_config.hpp"
+#include "iouxx/util/utility.hpp"
+#include "iouxx/iouringxx.hpp"
 #include "file.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE

@@ -6,9 +6,9 @@
     * This file is a convenience header to include all socket related operations.
 */
 
-#include "./sockprep.hpp" // IWYU pragma: export
-#include "./connection.hpp" // IWYU pragma: export
-#include "./sendrecv.hpp" // IWYU pragma: export
+#include "sockprep.hpp" // IWYU pragma: export
+#include "connection.hpp" // IWYU pragma: export
+#include "sendrecv.hpp" // IWYU pragma: export
 
 namespace iouxx::details {
 

@@ -12,9 +12,9 @@ import iouxx.ops.timeout;
 #include <system_error>
 #include <thread>
 
-#include "iouringxx.hpp"
-#include "iouops/timeout.hpp"
-#include "iouops/cancel.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/iouops/timeout.hpp"
+#include "iouxx/iouops/cancel.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 

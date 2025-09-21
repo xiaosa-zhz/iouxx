@@ -11,7 +11,7 @@ import iouxx.ops.network.ip;
 
 #include <arpa/inet.h>
 
-#include "iouops/network/ip.hpp"
+#include "iouxx/iouops/network/ip.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 

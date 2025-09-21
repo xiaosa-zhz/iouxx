@@ -17,9 +17,9 @@ import iouxx.ops;
 #include <chrono>
 #include <print>
 
-#include "iouringxx.hpp"
-#include "iouops/noop.hpp"
-#include "iouops/timeout.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/iouops/noop.hpp"
+#include "iouxx/iouops/timeout.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 

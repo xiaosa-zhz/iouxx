@@ -34,6 +34,15 @@ local function configure_toochains(name)
     end
 end
 
+target("iouxx")
+    set_kind("headeronly")
+    add_packages("liburing")
+    add_headerfiles("include/*.hpp", {prefixdir = "iouxx"})
+    add_headerfiles("include/util/*.hpp", {prefixdir = "iouxx/util"})
+    add_headerfiles("include/iouops/*.hpp", {prefixdir = "iouxx/iouops"})
+    add_headerfiles("include/iouops/file/*.hpp", {prefixdir = "iouxx/iouops/file"})
+    add_headerfiles("include/iouops/network/*.hpp", {prefixdir = "iouxx/iouops/network"})
+
 target("llvm")
     set_kind("headeronly")
     configure_toochains("clang")

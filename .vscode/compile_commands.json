@@ -1,38 +1,8 @@
 [
 {
   "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_timeout/linux/x86_64/release/test/test_timeout.cpp.o", "test/test_timeout.cpp"],
-  "file": "test/test_timeout.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_network/linux/x86_64/release/test/test_network.cpp.o", "test/test_network.cpp"],
-  "file": "test/test_network.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_network/linux/x86_64/release/test/test_network.cpp.o", "test/test_network.cpp"],
-  "file": "test/test_network.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
-  "file": "test/test_noop.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
-  "file": "test/test_noop.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
+  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
   "file": "test/test_ip_utils.cpp"
-},
-{
-  "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_cancel/linux/x86_64/release/test/test_cancel.cpp.o", "test/test_cancel.cpp"],
-  "file": "test/test_cancel.cpp"
 },
 {
   "directory": "/home/xiaosa/source/iouxx",
@@ -41,8 +11,13 @@
 },
 {
   "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_coro/linux/x86_64/release/test/test_coro.cpp.o", "test/test_coro.cpp"],
-  "file": "test/test_coro.cpp"
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
+  "file": "test/test_ip_utils.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouxx",
+  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_network/linux/x86_64/release/test/test_network.cpp.o", "test/test_network.cpp"],
+  "file": "test/test_network.cpp"
 },
 {
   "directory": "/home/xiaosa/source/iouxx",
@@ -51,11 +26,36 @@
 },
 {
   "directory": "/home/xiaosa/source/iouxx",
-  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_ip_utils/linux/x86_64/release/test/test_ip_utils.cpp.o", "test/test_ip_utils.cpp"],
-  "file": "test/test_ip_utils.cpp"
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
+  "file": "test/test_noop.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouxx",
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_coro/linux/x86_64/release/test/test_coro.cpp.o", "test/test_coro.cpp"],
+  "file": "test/test_coro.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouxx",
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_timeout/linux/x86_64/release/test/test_timeout.cpp.o", "test/test_timeout.cpp"],
+  "file": "test/test_timeout.cpp"
 },
 {
   "directory": "/home/xiaosa/source/iouxx",
   "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_coro/linux/x86_64/release/test/test_coro.cpp.o", "test/test_coro.cpp"],
   "file": "test/test_coro.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouxx",
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_cancel/linux/x86_64/release/test/test_cancel.cpp.o", "test/test_cancel.cpp"],
+  "file": "test/test_cancel.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouxx",
+  "arguments": ["/usr/local/bin/clang", "-c", "-Qunused-arguments", "-m64", "-stdlib=libc++", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-DNDEBUG", "-o", "build/.objs/llvm_test_network/linux/x86_64/release/test/test_network.cpp.o", "test/test_network.cpp"],
+  "file": "test/test_network.cpp"
+},
+{
+  "directory": "/home/xiaosa/source/iouxx",
+  "arguments": ["/usr/local/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-std=c++26", "-Iinclude", "-DIOUXX_CONFIG_ENABLE_FEATURE_TESTS", "-finput-charset=UTF-8", "-fexec-charset=UTF-8", "-isystem", "/home/xiaosa/.xmake/packages/l/liburing/2.9/17b466309e6c4f2990c02aa4d3f7ade0/include", "-Wno-interference-size", "-DNDEBUG", "-o", "build/.objs/gnu_test_noop/linux/x86_64/release/test/test_noop.cpp.o", "test/test_noop.cpp"],
+  "file": "test/test_noop.cpp"
 }]

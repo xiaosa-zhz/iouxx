@@ -17,8 +17,8 @@
 #include <expected>
 #include <span>
 
-#include "macro_config.hpp" // IWYU pragma: export
-#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include "iouxx/macro_config.hpp" // IWYU pragma: export
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
 
 #endif // IOUXX_USE_CXX_MODULE
 

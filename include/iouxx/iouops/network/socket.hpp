@@ -16,8 +16,8 @@
 #include <iterator>
 #include <ranges>
 
-#include "util/utility.hpp"
-#include "iouops/file/file.hpp"
+#include "iouxx/util/utility.hpp"
+#include "iouxx/iouops/file/file.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
 

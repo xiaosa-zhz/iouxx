@@ -6,11 +6,11 @@
     * This file is a convenience header that includes all headers of iouops.
 */
 
-#include "iouops/noop.hpp" // IWYU pragma: export
-#include "iouops/timeout.hpp" // IWYU pragma: export
-#include "iouops/cancel.hpp" // IWYU pragma: export
-#include "iouops/file/fileio.hpp" // IWYU pragma: export
-#include "iouops/network/socketio.hpp" // IWYU pragma: export
+#include "noop.hpp" // IWYU pragma: export
+#include "timeout.hpp" // IWYU pragma: export
+#include "cancel.hpp" // IWYU pragma: export
+#include "file/fileio.hpp" // IWYU pragma: export
+#include "network/socketio.hpp" // IWYU pragma: export
 
 namespace iouxx::details {
 

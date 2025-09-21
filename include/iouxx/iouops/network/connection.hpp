@@ -12,9 +12,9 @@
 #include <utility>
 #include <type_traits>
 
-#include "iouringxx.hpp"
-#include "util/utility.hpp"
-#include "macro_config.hpp"
+#include "iouxx/iouringxx.hpp"
+#include "iouxx/util/utility.hpp"
+#include "iouxx/macro_config.hpp"
 #include "ip.hpp"
 #include "supported.hpp"
 #include "socket.hpp"
