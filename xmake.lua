@@ -4,6 +4,7 @@ add_defines("IOUXX_CONFIG_ENABLE_FEATURE_TESTS")
 add_requires("liburing")
 set_languages("c++26")
 set_encodings("utf-8")
+add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
 
 local function scan_and_add_tests(testdir)
     for _, testfile in ipairs(os.files(testdir .. "/test_*.cpp")) do
@@ -37,11 +38,7 @@ end
 target("iouxx")
     set_kind("headeronly")
     add_packages("liburing")
-    add_headerfiles("include/*.hpp", {prefixdir = "iouxx"})
-    add_headerfiles("include/util/*.hpp", {prefixdir = "iouxx/util"})
-    add_headerfiles("include/iouops/*.hpp", {prefixdir = "iouxx/iouops"})
-    add_headerfiles("include/iouops/file/*.hpp", {prefixdir = "iouxx/iouops/file"})
-    add_headerfiles("include/iouops/network/*.hpp", {prefixdir = "iouxx/iouops/network"})
+    add_headerfiles("include/(**/*.hpp)")
 
 target("llvm")
     set_kind("headeronly")
