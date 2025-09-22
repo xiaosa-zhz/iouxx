@@ -640,6 +640,7 @@ namespace iouxx {
             return do_init(queue_depth, opt);
         }
 
+        // Note: user still needs to consume all CQEs of canceled operations.
         std::error_code stop(std::chrono::nanoseconds timeout = {}) noexcept {
             if (!valid()) {
                 return std::error_code();
