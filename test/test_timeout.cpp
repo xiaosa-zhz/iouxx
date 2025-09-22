@@ -17,7 +17,7 @@ import iouxx.ops.timeout;
 
 #define TEST_EXPECT(...) do { \
     if (!(__VA_ARGS__)) { \
-        std::println("Assertion failed: {}, {}:{}\n", #__VA_ARGS__, \
+        std::println("Assertion failed: {}, {}:{}.", #__VA_ARGS__, \
         __FILE__, __LINE__); \
         std::exit(-(__COUNTER__ + 1)); \
     } \
@@ -32,13 +32,13 @@ void test_timeout() {
     if (auto res = timer.submit_and_wait()) {
         std::println("Timer expired!");
     } else {
-        std::println("Failed to submit timer task: {}", res.error().message());
+        std::println("Failed to submit timer task: {}.", res.error().message());
         TEST_EXPECT(false);
     }
     auto end = std::chrono::steady_clock::now();
     auto duration = end - start;
     TEST_EXPECT(duration < 100ms);
-    std::println("Timer completed after {}",
+    std::println("Timer completed after {}.",
         std::chrono::duration_cast<std::chrono::milliseconds>(duration));
 }
 
@@ -75,12 +75,28 @@ void test_multishot_timeout() {
     auto end = std::chrono::steady_clock::now();
     auto duration = end - start;
     TEST_EXPECT(duration < 100ms);
-    std::println("Timer completed after {}",
+    std::println("Timer completed after {}.",
         std::chrono::duration_cast<std::chrono::milliseconds>(duration));
+}
+
+void test_ring_stop() {
+    using namespace std::literals;
+    iouxx::ring ring(64);
+    auto dummy_callback = [](std::error_code) static noexcept {};
+    auto timer1 = ring.make<iouxx::timeout_operation>(dummy_callback);
+    timer1.wait_for(1s);
+    TEST_EXPECT(!timer1.submit());
+    auto timer2 = ring.make<iouxx::timeout_operation>(dummy_callback);
+    timer2.wait_for(2s);
+    TEST_EXPECT(!timer2.submit());
+    auto res = ring.stop();
+    TEST_EXPECT(res != std::make_error_code(std::errc::invalid_argument));
+    std::println("Ring stopped");
 }
 
 int main() {
     TEST_EXPECT(true);
     test_timeout();
     test_multishot_timeout();
+    test_ring_stop();
 }

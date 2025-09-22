@@ -26,6 +26,7 @@
 #include <charconv>
 #include <limits>
 #include <format>
+#include <thread>
 #include <functional>
 
 #include "macro_config.hpp"
@@ -474,13 +475,58 @@ namespace iouxx {
         std::uint32_t cqe_flags;
     };
 
+    class ring_option
+    {
+    public:
+        ring_option() = default;
+        ring_option(ring_option&) = default;
+        ring_option& operator=(ring_option&) = default;
+
+        ring_option& single_issuer() noexcept {
+            flags |= IORING_SETUP_SINGLE_ISSUER;
+            return *this;
+        }
+
+        ring_option& iopoll() noexcept {
+            flags |= IORING_SETUP_IOPOLL;
+            return *this;
+        }
+
+        ring_option& sqpoll(std::uint32_t thread_cpu = std::thread::hardware_concurrency(),
+            std::chrono::milliseconds idle = std::chrono::milliseconds(100)) noexcept {
+            flags |= IORING_SETUP_SQPOLL;
+            sq_thread_idle = idle.count();
+            if (thread_cpu < std::thread::hardware_concurrency()) {
+                flags |= IORING_SETUP_SQ_AFF;
+                sq_thread_cpu = thread_cpu;
+            } else {
+                flags &= ~IORING_SETUP_SQ_AFF;
+            }
+            return *this;
+        }
+
+    private:
+        friend ring;
+        ::io_uring_params to_params() const noexcept {
+            ::io_uring_params params{};
+            params.flags = flags;
+            params.sq_thread_cpu = sq_thread_cpu;
+            params.sq_thread_idle = sq_thread_idle;
+            return params;
+        }
+
+        std::uint32_t flags = 0;
+        std::uint32_t sq_thread_cpu = 0;
+        std::uint32_t sq_thread_idle = 0;
+    };
+
     class ring
     {
     public:
         explicit ring() = default;
 
-        explicit ring(std::size_t queue_depth) {
-            std::error_code ec = do_init(queue_depth);
+        explicit ring(std::size_t queue_depth, const ring_option& opt = ring_option()) {
+            std::error_code ec = do_init(queue_depth, opt);
             if (ec) {
                 throw std::system_error(ec, "Failed to initialize io_uring");
             }
@@ -588,13 +634,31 @@ namespace iouxx {
 
         bool valid() const noexcept { return raw_ring.ring_fd >= 0; }
 
-        std::error_code reinit(std::size_t queue_depth) noexcept {
+        std::error_code reinit(std::size_t queue_depth,
+            const ring_option& opt = ring_option()) noexcept {
             exit();
-            return do_init(queue_depth);
+            return do_init(queue_depth, opt);
+        }
+
+        std::error_code stop(std::chrono::nanoseconds timeout = {}) noexcept {
+            if (!valid()) {
+                return std::error_code();
+            }
+            ::io_uring_sync_cancel_reg reg = {};
+            if (timeout.count() != 0) {
+                reg.timeout = utility::to_kernel_timespec(timeout);
+            } else {
+                reg.timeout = { -1, -1 };
+            }
+            reg.flags |= IORING_ASYNC_CANCEL_ANY | IORING_ASYNC_CANCEL_ALL;
+            int ev = ::io_uring_register_sync_cancel(&raw_ring, &reg);
+            return utility::make_system_error_code(-ev);
         }
 
         void exit() noexcept {
             if (valid()) {
+                [[maybe_unused]] std::error_code res = stop();
+                assert(res != utility::fail_invalid_argument());
                 probe.reset();
                 ::io_uring_queue_exit(&raw_ring);
                 raw_ring = invalid_ring();
@@ -829,9 +893,11 @@ namespace iouxx {
             return { .ring_fd = -1, .enter_ring_fd = -1 };
         }
 
-        std::error_code do_init(std::size_t queue_depth) noexcept {
+        std::error_code do_init(std::size_t queue_depth, const ring_option& opt) noexcept {
             assert(!valid());
-            int ev = ::io_uring_queue_init(queue_depth, &raw_ring, 0);
+            ::io_uring_params params = opt.to_params();
+            int ev = ::io_uring_queue_init_params(
+                queue_depth, &raw_ring, &params);
             if (ev < 0) {
                 raw_ring = invalid_ring();
                 return utility::make_system_error_code(-ev);
@@ -846,7 +912,7 @@ namespace iouxx {
         }
 
         operation_result to_result(::io_uring_cqe* cqe) noexcept {
-            if (cqe->user_data == 0) {
+            if (cqe->user_data == 0) [[unlikely]] {
                 cqe->user_data = static_cast<std::uint64_t>(
                     reinterpret_cast<std::uintptr_t>(unregistration_callback.get())
                 );
