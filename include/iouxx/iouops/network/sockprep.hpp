@@ -250,7 +250,7 @@ namespace iouxx::inline iouops::network {
                 [&, this](const network::socket& s) {
                     ::io_uring_prep_bind(sqe, s.native_handle(), addr, addrlen);
                 },
-                [&, this](const network::fixed_socket& s){
+                [&, this](const network::fixed_socket& s) {
                     ::io_uring_prep_bind(sqe, s.index(), addr, addrlen);
                     sqe->flags |= IOSQE_FIXED_FILE;
                 }

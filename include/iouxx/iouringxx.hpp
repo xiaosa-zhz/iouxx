@@ -551,7 +551,7 @@ namespace iouxx {
             // Note: this is compile-time constant if used in consteval context,
             //  fetch version info from header file;
             //  Otherwise, fetch version info from loaded liburing.so at runtime.
-            constexpr static version_info current() noexcept {
+            static constexpr version_info current() noexcept {
                 if consteval {
                     return { IO_URING_VERSION_MAJOR, IO_URING_VERSION_MINOR };
                 } else {
@@ -564,7 +564,7 @@ namespace iouxx {
 
             consteval static version_info invalid() noexcept { return {}; }
 
-            constexpr static version_info from_string(std::string_view version) noexcept {
+            static constexpr version_info from_string(std::string_view version) noexcept {
                 // Simple parser for "major.minor" format
                 namespace stdv = std::views;
                 int major = -1, minor = -1;
@@ -611,13 +611,13 @@ namespace iouxx {
         };
 
         // Get current liburing version, see version_info::current()
-        constexpr static version_info version() noexcept {
+        static constexpr version_info version() noexcept {
             return version_info::current();
         }
 
         // Input minimum required version.
         // Returns TRUE if requirement > current version (i.e. NOT supported).
-        constexpr static bool check_version(version_info requirement) noexcept {
+        static constexpr bool check_version(version_info requirement) noexcept {
             auto&& [major, minor] = requirement;
             if consteval {
                 return IO_URING_CHECK_VERSION(major, minor);
@@ -628,7 +628,7 @@ namespace iouxx {
 
         // See above, input string in "major.minor" format.
         // Returns TRUE if NOT supported.
-        constexpr static bool check_version(std::string_view requirement) noexcept {
+        static constexpr bool check_version(std::string_view requirement) noexcept {
             return check_version(version_info::from_string(requirement));
         }
 
@@ -930,7 +930,7 @@ namespace iouxx {
         using probe_handle = std::unique_ptr<::io_uring_probe, probe_deleter>;
 
         struct noop_callback {
-            constexpr static void operator()(iouops::management_info) noexcept {}
+            static constexpr void operator()(iouops::management_info) noexcept {}
         };
 
         using noop_callback_operation = iouops::ring_management_operation<noop_callback>;

@@ -33,9 +33,9 @@ namespace mylib {
 
         struct symmetric_task_storage_base
         {
-            constexpr static std::size_t empty = 0;
-            constexpr static std::size_t value = 1;
-            constexpr static std::size_t exception = 2;
+            static constexpr std::size_t empty = 0;
+            static constexpr std::size_t value = 1;
+            static constexpr std::size_t exception = 2;
             using empty_type = std::monostate;
             using exception_type = std::exception_ptr;
             template<typename DataType>
@@ -63,7 +63,7 @@ namespace mylib {
     private:
         using base = details::symmetric_task_storage_base;
         friend base;
-        constexpr static bool return_reference = std::is_reference_v<return_type>;
+        static constexpr bool return_reference = std::is_reference_v<return_type>;
     public:
         using data_type = std::conditional_t<return_reference, std::add_pointer_t<return_type>, return_type>;
         using storage_type = base::storage_type<data_type>;
@@ -180,7 +180,7 @@ namespace mylib {
             const char* what() const noexcept override { return message; }
 
         private:
-            constexpr static auto message = "Detached task exits with unhandled exception.";
+            static constexpr auto message = "Detached task exits with unhandled exception.";
 
             static void handle_destroyer(void* p) noexcept { handle_type::from_address(p).destroy(); }
 
