@@ -733,6 +733,9 @@ void ip_parse_test() {
     roundtripsoc6("[2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE]:80");
     roundtripsoc6("[::192.168.0.1]:443");
     roundtripsoc6("[::ffff:192.168.0.1]:443");
+    roundtripsoc6("2001::/8080");
+    roundtripsoc6("2001:DB8:85A3:FFFF:8A2E:370:7334:EEEE/80");
+    roundtripsoc6("::192.168.0.1#443");
     // invalid ipv6 socket
     auto invalidsoc6 = [](std::string_view s,
         std::source_location loc = std::source_location::current()) {
@@ -748,7 +751,9 @@ void ip_parse_test() {
     invalidsoc6("[::1] :80");
     invalidsoc6("[::1]:80 ");
     invalidsoc6("[::1/80");
+    invalidsoc6("[::1#80");
     invalidsoc6("[::1/:80");
+    invalidsoc6("::1# 80");
     invalidsoc6("::1]:80");
     invalidsoc6("[::1]80");
     invalidsoc6("[::1] : 80");
@@ -781,6 +786,16 @@ void ip_parse_test() {
         TEST_EXPECT(soc4.has_value());
         std::string back4 = std::format("{}", *soc4);
         TEST_EXPECT(back4 == test4);
+        constexpr std::string_view test5 = "::ffff:192.168.0.1#80";
+        auto soc5 = socket_v6_info::from_string(test5);
+        TEST_EXPECT(soc5.has_value());
+        std::string back5 = std::format("{:#}", *soc5);
+        TEST_EXPECT(back5 == test5);
+        constexpr std::string_view test6 = "2001:db8:85a3:ffff:8a2e:370:192.168.0.1/443";
+        auto soc6 = socket_v6_info::from_string(test6);
+        TEST_EXPECT(soc6.has_value());
+        std::string back6 = std::format("{:/:fm}", *soc6);
+        TEST_EXPECT(back6 == test6);
     }
     // literal test
     {

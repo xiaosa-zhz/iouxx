@@ -653,7 +653,17 @@ namespace iouxx::inline iouops::network::ip {
             namespace stdr = std::ranges;
             namespace stdv = std::views;
             using namespace std::literals;
-            auto parts = str | stdv::split("]:"sv);
+            std::string_view sep;
+            if (str.contains("]:"sv)) {
+                sep = "]:"sv;
+            } else if (str.contains('/')) {
+                sep = "/"sv;
+            } else if (str.contains('#')) {
+                sep = "#"sv;
+            } else {
+                std::unreachable();
+            }
+            auto parts = str | stdv::split(sep);
             std::size_t part_count = 0;
             address_v6 addr;
             ip::port p;
@@ -661,7 +671,9 @@ namespace iouxx::inline iouops::network::ip {
                 ++part_count;
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (part_count == 1) {
-                    sub.remove_prefix(1); // remove leading '['
+                    if (sub.front() == '[') {
+                        sub.remove_prefix(1); // remove leading '['
+                    }
                     addr = address_v6::from_string_uncheck(sub);
                 } else {
                     p = ip::port::from_string_uncheck(sub);
@@ -672,15 +684,26 @@ namespace iouxx::inline iouops::network::ip {
 
         static constexpr auto from_string(const std::string_view str)
             noexcept -> std::expected<socket_v6_info, std::error_code> {
-            // Only recognize RFC 5952 recommended form
-            // [ipv6]:port
+            // [ipv6]:port (RFC 5952 recommended form)
+            // ipv6/port
+            // ipv6#port
             namespace stdr = std::ranges;
             namespace stdv = std::views;
             using namespace std::literals;
-            if (!str.contains("]:"sv) || str.front() != '[') {
+            std::string_view sep;
+            if (str.contains("]:"sv)) {
+                if (str.front() != '[') {
+                    return utility::fail_invalid_argument();
+                }
+                sep = "]:"sv;
+            } else if (str.contains('/')) {
+                sep = "/"sv;
+            } else if (str.contains('#')) {
+                sep = "#"sv;
+            } else {
                 return utility::fail_invalid_argument();
             }
-            auto parts = str | stdv::split("]:"sv);
+            auto parts = str | stdv::split(sep);
             std::size_t part_count = 0;
             address_v6 addr;
             ip::port p;
@@ -691,7 +714,9 @@ namespace iouxx::inline iouops::network::ip {
                 }
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (part_count == 1) {
-                    sub.remove_prefix(1); // remove leading '['
+                    if (sep == "]:"sv) {
+                        sub.remove_prefix(1); // remove leading '['
+                    }
                     auto addr_res = address_v6::from_string(sub);
                     if (!addr_res) {
                         return std::unexpected(addr_res.error());
@@ -1146,10 +1171,27 @@ namespace std {
     struct formatter<iouxx::network::ip::socket_v6_info, char> {
         using socketv6 = iouxx::network::ip::socket_v6_info;
 
-        // No format spec supported; ensure it's either empty or '}' reached
+        char seperator = '\0';
+        std::formatter<iouxx::network::ip::address_v6, char> addr_formatter;
+
+        // Format spec:
+        // - empty spec: use RFC 5952 recommended form with "[]:port"
+        // - single '/' or '#' : use "ipv6/port" or "ipv6#port"
+        // - nested spec with additional ':' will be applied to ipv6 part
         constexpr auto parse(format_parse_context& ctx) -> format_parse_context::iterator {
             auto it = ctx.begin();
             auto end = ctx.end();
+            if (*it == '/' || *it == '#') {
+                seperator = *it;
+                ++it;
+            }
+            if (*it == ':') {
+                // Nested spec for ipv6 part
+                ctx.advance_to(++it);
+                it = addr_formatter.parse(ctx);
+            } else {
+                addr_formatter.seen_r = true; // default recommended form
+            }
             if (it != end && *it != '}') {
                 throw format_error("invalid format spec for socketv6");
             }
@@ -1158,8 +1200,23 @@ namespace std {
 
         template<class FormatContext>
         constexpr auto format(const socketv6& s, FormatContext& ctx) const {
-            // Always use RFC 5952 recommended form
-            return std::format_to(ctx.out(), "[{}]:{}", s.address(), s.port());
+            auto out = ctx.out();
+            if (seperator == '\0') {
+                // Recommended form with "[]:port"
+                *out++ = '[';
+                ctx.advance_to(out);
+                out = addr_formatter.format(s.address(), ctx);
+                *out++ = ']';
+                *out++ = ':';
+                ctx.advance_to(out);
+                return std::format_to(out, "{}", s.port());
+            } else {
+                // Custom form with "ipv6/port" or "ipv6#port"
+                out = addr_formatter.format(s.address(), ctx);
+                *out++ = seperator;
+                ctx.advance_to(out);
+                return std::format_to(out, "{}", s.port());
+            }
         }
     };
 
