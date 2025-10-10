@@ -7,6 +7,7 @@
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
+- [ ] Add io_uring_prep_cmd_sock operations
 
 ## Medium Priority
 - [ ] Add registration of resources (files, buffers, etc.)
