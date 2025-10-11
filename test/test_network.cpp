@@ -48,9 +48,12 @@ static std::atomic<bool> server_started = false; // publish after listen is read
 
 // If encountered unsupported operation, skip this test
 inline void exit_if_function_not_supported(const std::error_code& ec) noexcept {
-    if (ec && ec == std::errc::function_not_supported) {
-        std::println("Encountered unsupported io_uring opcode, treat as success");
-        std::exit(0);
+    if (ec) {
+        if (ec == std::errc::function_not_supported   // ENOSYS
+            || ec == std::errc::operation_not_supported) { // ENOTSUP/EOPNOTSUPP
+            std::println("Encountered unsupported io_uring opcode, treat as success");
+            std::exit(0);
+        }
     }
 }
 
@@ -77,13 +80,35 @@ void echo_server() {
             std::abort();
         }
     }();
-    int optval = 1;
-    int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
-        &optval, sizeof(optval));
-    if (resopt < 0) {
-        std::println("Failed to set socket options: {}", std::strerror(errno));
-        ::close(sock.native_handle());
-        std::abort();
+
+    bool sockcmd_exists = true;
+    [&ring, &sock, &sockcmd_exists] {
+        using op = network::socket_setoption<network::sockopts::general::reuseaddr>;
+        auto setsockopt = ring.make_sync<op::operation>();
+        setsockopt.socket(sock)
+            .option(true);
+        if (auto res = setsockopt.submit_and_wait()) {
+            std::println("Socket option SO_REUSEADDR set");
+        } else {
+            if (res.error() == std::errc::function_not_supported
+                || res.error() == std::errc::operation_not_supported) {
+                sockcmd_exists = false;
+                return;
+            }
+            std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
+            std::abort();
+        }
+    }();
+
+    if (!sockcmd_exists) {
+        int optval = 1;
+        int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
+            &optval, sizeof(optval));
+        if (resopt < 0) {
+            std::println("Failed to set socket options: {}", std::strerror(errno));
+            ::close(sock.native_handle());
+            std::abort();
+        }
     }
 
     // Not until kernel 6.11 do io_uring have op bind and op listen
@@ -96,7 +121,8 @@ void echo_server() {
         if (auto res = bind.submit_and_wait()) {
             std::println("Socket bound successfully");
         } else {
-            if (res.error() == std::errc::function_not_supported) {
+            if (res.error() == std::errc::function_not_supported
+                || res.error() == std::errc::operation_not_supported) {
                 bind_op_exists = false;
                 return;
             }
@@ -272,13 +298,36 @@ void echo_client() {
             std::abort();
         }
     }();
-    int optval = 1;
-    int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
-        &optval, sizeof(optval));
-    if (resopt < 0) {
-        std::println("Failed to set socket options: {}", std::strerror(errno));
-        ::close(sock.native_handle());
-        return;
+
+    bool sockcmd_exists = true;
+
+    [&ring, &sock, &sockcmd_exists] {
+        using op = network::socket_setoption<network::sockopts::general::reuseaddr>;
+        auto setsockopt = ring.make_sync<op::operation>();
+        setsockopt.socket(sock)
+            .option(true);
+        if (auto res = setsockopt.submit_and_wait()) {
+            std::println("Socket option SO_REUSEADDR set");
+        } else {
+            if (res.error() == std::errc::function_not_supported
+                || res.error() == std::errc::operation_not_supported) {
+                sockcmd_exists = false;
+                return;
+            }
+            std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
+            std::abort();
+        }
+    }();
+
+    if (!sockcmd_exists) {
+        int optval = 1;
+        int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
+            &optval, sizeof(optval));
+        if (resopt < 0) {
+            std::println("Failed to set socket options: {}", std::strerror(errno));
+            ::close(sock.native_handle());
+            return;
+        }
     }
     
     // Not until kernel 6.11 do io_uring have op bind and op listen
@@ -292,7 +341,8 @@ void echo_client() {
         if (auto res = bind.submit_and_wait()) {
             std::println("Client socket bound successfully");
         } else {
-            if (res.error() == std::errc::function_not_supported) {
+            if (res.error() == std::errc::function_not_supported
+                || res.error() == std::errc::operation_not_supported) {
                 bind_op_exists = false;
                 return;
             }

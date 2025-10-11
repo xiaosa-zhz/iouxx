@@ -55,8 +55,8 @@ namespace iouxx::details {
             // TODO: start_lifetime_as
             ::sockaddr* addr = std::launder(reinterpret_cast<::sockaddr*>(sockaddr_buf.data()));
             ::socklen_t* addrlen = &this->addrlen;
-            sock_info.visit([addr, addrlen](auto&& sock) {
-                sock.from_system_sockaddr(addr, addrlen);
+            sock_info.visit([addr, addrlen]<typename Sock>(Sock& sock) {
+                sock = Sock::from_system_sockaddr(addr, addrlen);
             });
         }
 

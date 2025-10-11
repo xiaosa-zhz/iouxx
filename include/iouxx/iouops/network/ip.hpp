@@ -106,6 +106,14 @@ namespace iouxx::inline iouops::network::ip {
 
         constexpr v4raw raw() const noexcept { return addr; }
 
+        constexpr ::in_addr to_system_addr() const noexcept {
+            return std::bit_cast<::in_addr>(raw());
+        }
+
+        constexpr static address_v4 from_system_addr(const ::in_addr& inaddr) noexcept {
+            return address_v4(std::bit_cast<v4raw>(inaddr));
+        }
+
         // Warning: invalid input results in UNDEFINED BEHAVIOR
         static constexpr address_v4 from_string_uncheck(const std::string_view ipv4_str) noexcept {
             namespace stdr = std::ranges;
@@ -211,6 +219,14 @@ namespace iouxx::inline iouops::network::ip {
         {}
 
         constexpr const v6raw& raw() const noexcept { return addr; }
+
+        constexpr ::in6_addr to_system_addr() const noexcept {
+            return std::bit_cast<::in6_addr>(raw());
+        }
+
+        constexpr static address_v6 from_system_addr(const ::in6_addr& inaddr) noexcept {
+            return address_v6(std::bit_cast<v6raw>(inaddr));
+        }
 
         // Warning: invalid input results in UNDEFINED BEHAVIOR
         static constexpr address_v6 from_string_uncheck(const std::string_view ipv6_str) noexcept {
@@ -515,17 +531,17 @@ namespace iouxx::inline iouops::network::ip {
             return {
                 .sin_family = AF_INET,
                 .sin_port = p.raw(),
-                .sin_addr = std::bit_cast<::in_addr>(addr.raw()),
+                .sin_addr = addr.to_system_addr(),
                 .sin_zero = {}
             };
         }
 
-        constexpr void from_system_sockaddr(
+        constexpr static socket_v4_info from_system_sockaddr(
             const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
             assert(*addrlen == sizeof(::sockaddr_in));
             ::sockaddr_in addr4;
             std::memcpy(&addr4, addr, sizeof(::sockaddr_in));
-            *this = socket_v4_info(
+            return socket_v4_info(
                 address_v4(std::bit_cast<v4raw>(addr4.sin_addr)),
                 ip::port(addr4.sin_port)
             );
@@ -630,17 +646,17 @@ namespace iouxx::inline iouops::network::ip {
                 .sin6_family = AF_INET6,
                 .sin6_port = p.raw(),
                 .sin6_flowinfo = 0,
-                .sin6_addr = std::bit_cast<in6_addr>(addr.raw()),
+                .sin6_addr = addr.to_system_addr(),
                 .sin6_scope_id = 0
             };
         }
 
-        constexpr void from_system_sockaddr(
+        constexpr static socket_v6_info from_system_sockaddr(
             const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
             assert(*addrlen == sizeof(::sockaddr_in6));
             ::sockaddr_in6 addr6;
             std::memcpy(&addr6, addr, sizeof(::sockaddr_in6));
-            *this = socket_v6_info(
+            return socket_v6_info(
                 address_v6(std::bit_cast<v6raw>(addr6.sin6_addr)),
                 ip::port(addr6.sin6_port)
             );

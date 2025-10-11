@@ -147,8 +147,10 @@ namespace iouxx::inline iouops::network {
             return ::sockaddr{};
         }
 
-        constexpr void from_system_sockaddr(
-            const ::sockaddr*, const ::socklen_t*) const noexcept {}
+        constexpr static unspecified_socket_info from_system_sockaddr(
+            const ::sockaddr*, const ::socklen_t*) noexcept {
+            return {};
+        }
     };
 
     // Warning:

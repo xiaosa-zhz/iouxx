@@ -2,6 +2,12 @@ module;
 #ifndef IOUXX_CONFIG_USE_CXX_MODULE
 #define IOUXX_CONFIG_USE_CXX_MODULE
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
 #include "macro_config.hpp" // IWYU pragma: export
 #include "cxxmodule_helper.hpp" // IWYU pragma: export
 #include <liburing.h> // IWYU pragma: export
@@ -16,3 +22,4 @@ export import iouxx.ops.network.ip;
 #include "iouops/network/sockprep.hpp" // IWYU pragma: keep
 #include "iouops/network/connection.hpp" // IWYU pragma: keep
 #include "iouops/network/sendrecv.hpp" // IWYU pragma: keep
+#include "iouops/network/sockcmd.hpp" // IWYU pragma: keep
