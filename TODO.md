@@ -4,10 +4,10 @@
 - [ ] Implement socket IO operations in `include/iouops/socketio.hpp`
 - [ ] Implement file IO operations in `include/iouops/fileio.hpp`
 - [ ] Add module build for gcc when liburing upstream fixed
+- [ ] Add event related operations
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
-- [ ] Add io_uring_prep_cmd_sock operations
 
 ## Medium Priority
 - [ ] Add registration of resources (files, buffers, etc.)
@@ -24,7 +24,7 @@
 - [x] ~~Add readme file~~
 - [x] ~~Add test for cancel operation~~
 - [x] ~~Add C++ module support~~
-
+- [x] ~~Add io_uring_prep_cmd_sock operations~~
 ## Postponed
 - [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)
 
