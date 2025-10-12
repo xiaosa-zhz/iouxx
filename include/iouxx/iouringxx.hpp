@@ -569,6 +569,22 @@ namespace iouxx {
             return lhs;
         }
 
+        friend constexpr flag operator&(flag lhs, flag rhs) noexcept {
+            lhs = static_cast<flag>(
+                std::to_underlying(lhs) & std::to_underlying(rhs)
+            );
+            return lhs;
+        }
+
+        friend constexpr flag& operator&=(flag& lhs, flag rhs) noexcept {
+            lhs = lhs & rhs;
+            return lhs;
+        }
+
+        friend constexpr flag operator~(flag f) noexcept {
+            return static_cast<flag>(~std::to_underlying(f));
+        }
+
         std::uint32_t ring_flags = 0;
         std::uint32_t wq_fd = 0;
         std::uint32_t cq_entries = 0;
@@ -977,6 +993,55 @@ namespace iouxx {
         bool test_feature(feature f) const noexcept {
             assert(valid());
             return (supported_features() & f) == f;
+        }
+
+        ring_option::flag setup_flags() const noexcept {
+            assert(valid());
+            return static_cast<ring_option::flag>(raw_ring.flags);
+        }
+
+        bool test_flag(ring_option::flag f) const noexcept {
+            assert(valid());
+            return (setup_flags() & f) == f;
+        }
+
+        struct napi_config {
+            bool prefer_busy_poll = false;
+            std::chrono::microseconds busy_poll_to = std::chrono::microseconds(0);
+        };
+
+        // Only available if ring is set up with IOPOLL.
+        auto register_napi(std::chrono::microseconds timeout) & noexcept
+            -> std::expected<napi_config, std::error_code> {
+            assert(valid());
+            assert(test_flag(ring_option::flag::iopoll));
+            ::io_uring_napi napi = {};
+            napi.prefer_busy_poll = 1;
+            napi.busy_poll_to = static_cast<std::uint32_t>(timeout.count());
+            int ev = ::io_uring_register_napi(&raw_ring, &napi);
+            if (ev == 0) {
+                return napi_config{
+                    napi.prefer_busy_poll != 0,
+                    std::chrono::microseconds(napi.busy_poll_to)
+                };
+            } else {
+                return utility::fail(-ev);
+            }
+        }
+
+        auto unregister_napi() & noexcept
+            -> std::expected<napi_config, std::error_code> {
+            assert(valid());
+            ::io_uring_napi napi = {};
+            int ev = ::io_uring_unregister_napi(&raw_ring, &napi);
+            if (ev == 0) {
+                return napi_config{
+                    napi.prefer_busy_poll != 0,
+                    std::chrono::microseconds(napi.busy_poll_to)
+                };
+            } else {
+                return utility::fail(-ev);
+            }
         }
 
     private:
