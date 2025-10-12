@@ -731,7 +731,7 @@ namespace iouxx {
         void exit() noexcept {
             if (valid()) {
                 [[maybe_unused]] std::error_code res = stop();
-                assert(res != utility::fail_invalid_argument());
+                IOUXX_ASSERT(res != utility::fail_invalid_argument().error());
                 probe.reset();
                 ::io_uring_queue_exit(&raw_ring);
                 raw_ring = invalid_ring();
@@ -742,7 +742,7 @@ namespace iouxx {
         template<template<typename...> class Operation, utility::not_tag Callback>
         Operation<std::decay_t<Callback>> make(Callback&& callback) &
             noexcept(utility::nothrow_constructible_callback<Callback>) {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using operation_type = Operation<std::decay_t<Callback>>;
             return operation_type(*this, std::forward<Callback>(callback));
         }
@@ -751,7 +751,7 @@ namespace iouxx {
         // Explicitly specify operation template to create.
         template<template<typename...> class Operation>
         Operation<void> make() & noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using operation_type = Operation<void>;
             return operation_type(*this);
         }
@@ -761,7 +761,7 @@ namespace iouxx {
         template<template<typename...> class Operation, typename F, typename... Args>
         Operation<F> make(std::in_place_type_t<F> tag, Args&&... args) &
             noexcept(std::is_nothrow_constructible_v<F, Args...>) {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using operation_type = Operation<F>;
             return operation_type(*this, tag, std::forward<Args>(args)...);
         }
@@ -772,7 +772,7 @@ namespace iouxx {
         Operation make_in_place(Args&&... args) &
             noexcept(std::is_nothrow_constructible_v<
                 typename Operation::callback_type, Args...>) {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using operation_type = Operation;
             using callback_type = operation_type::callback_type;
             return operation_type(*this, std::in_place_type<callback_type>,
@@ -783,7 +783,7 @@ namespace iouxx {
         // Explicitly specify operation template to create.
         template<template<typename...> class Operation>
         syncwait_operation_t<Operation> make_sync() & noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using operation_type = syncwait_operation_t<Operation>;
             using callback_type = operation_type::callback_type;
             return operation_type(*this, std::in_place_type<callback_type>);
@@ -793,14 +793,14 @@ namespace iouxx {
         // Explicitly specify operation template to create.
         template<template<typename...> class Operation>
         awaiter_operation_t<Operation> make_await() & noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using operation_type = awaiter_operation_t<Operation>;
             using callback_type = operation_type::callback_type;
             return operation_type(*this, std::in_place_type<callback_type>);
         }
 
         std::error_code submit(::io_uring_sqe* sqe) noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             if (!sqe) {
                 return std::make_error_code(std::errc::resource_unavailable_try_again);
             }
@@ -812,7 +812,7 @@ namespace iouxx {
         }
 
         std::expected<operation_result, std::error_code> fetch_result() noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             ::io_uring_cqe* cqe = nullptr;
             int ev = ::io_uring_peek_cqe(&raw_ring, &cqe);
             if (ev < 0) {
@@ -825,7 +825,7 @@ namespace iouxx {
 
         auto wait_for_result(std::chrono::nanoseconds timeout = {})
             noexcept -> std::expected<operation_result, std::error_code> {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             ::io_uring_cqe* cqe = nullptr;
             int ev = 0;
             if (timeout.count() != 0) {
@@ -845,7 +845,7 @@ namespace iouxx {
         using reg_tags = std::span<unsigned long long>;
 
         std::error_code register_buffer_table(std::size_t size) noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             int ev = ::io_uring_register_buffers_sparse(&raw_ring, size);
             return utility::make_system_error_code(-ev);
         }
@@ -853,7 +853,7 @@ namespace iouxx {
         template<utility::buffer_range Buffers>
         std::error_code update_buffer_table(
             std::size_t offset, Buffers&& buffers, reg_tags tags = reg_tags()) noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
                 | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
                     using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
@@ -862,7 +862,7 @@ namespace iouxx {
                     );
                 })
                 | std::ranges::to<std::vector<::iovec>>();
-            assert(tags.empty() || tags.size() == iovecs.size());
+            IOUXX_ASSERT(tags.empty() || tags.size() == iovecs.size());
             const auto tag_ptr = tags.empty() ? nullptr : tags.data();
             int ev = ::io_uring_register_buffers_update_tag(
                 &raw_ring, offset, iovecs.data(), tag_ptr, iovecs.size());
@@ -871,7 +871,7 @@ namespace iouxx {
 
         template<utility::buffer_range Buffers>
         std::error_code register_buffers(Buffers&& buffers, reg_tags tags = reg_tags()) noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
                 | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
                     using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
@@ -880,7 +880,7 @@ namespace iouxx {
                     );
                 })
                 | std::ranges::to<std::vector<::iovec>>();
-            assert(tags.empty() || tags.size() == iovecs.size());
+            IOUXX_ASSERT(tags.empty() || tags.size() == iovecs.size());
             int ev = tags.empty()
                 ? ::io_uring_register_buffers(
                     &raw_ring, iovecs.data(), iovecs.size())
@@ -890,15 +890,15 @@ namespace iouxx {
         }
 
         std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             int ev = ::io_uring_register_files_sparse(&raw_ring, size);
             return utility::make_system_error_code(-ev);
         }
 
         std::error_code update_direct_descriptor_table(
             std::size_t offset, std::span<const int>& fds, reg_tags tags = reg_tags()) noexcept {
-            assert(valid());
-            assert(tags.empty() || tags.size() == fds.size());
+            IOUXX_ASSERT(valid());
+            IOUXX_ASSERT(tags.empty() || tags.size() == fds.size());
             int ev = tags.empty()
                 ? ::io_uring_register_files_update(
                     &raw_ring, offset, fds.data(), fds.size())
@@ -909,8 +909,8 @@ namespace iouxx {
 
         std::error_code register_direct_descriptors(
             std::span<const int>& fds, reg_tags tags = reg_tags()) noexcept {
-            assert(valid());
-            assert(tags.empty() || tags.size() == fds.size());
+            IOUXX_ASSERT(valid());
+            IOUXX_ASSERT(tags.empty() || tags.size() == fds.size());
             int ev = tags.empty()
                 ? ::io_uring_register_files(
                     &raw_ring, fds.data(), fds.size())
@@ -923,7 +923,7 @@ namespace iouxx {
             requires std::invocable<std::decay_t<Callback>&, iouops::management_info>
         std::error_code set_unregistration_callback(Callback&& callback)
             noexcept(utility::nothrow_constructible_callback<Callback>) {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using callback_type = std::decay_t<Callback>;
             using operation_type = iouops::ring_management_operation<callback_type>;
             operation_type* cb = new (std::nothrow)
@@ -939,7 +939,7 @@ namespace iouxx {
         template<std::invocable<iouops::management_info> F, typename... Args>
         std::error_code set_unregistration_callback(std::in_place_type_t<F> tag, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, decltype(args)...>) {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             using callback_type = F;
             using operation_type = iouops::ring_management_operation<callback_type>;
             operation_type* cb = new (std::nothrow)
@@ -953,12 +953,12 @@ namespace iouxx {
         }
 
         ::io_uring* native() & noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             return &raw_ring;
         }
 
         int native_handle() const noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             return raw_ring.ring_fd;
         }
 
@@ -986,22 +986,22 @@ namespace iouxx {
         };
 
         feature supported_features() const noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             return static_cast<feature>(raw_ring.features);
         }
 
         bool test_feature(feature f) const noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             return (supported_features() & f) == f;
         }
 
         ring_option::flag setup_flags() const noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             return static_cast<ring_option::flag>(raw_ring.flags);
         }
 
         bool test_flag(ring_option::flag f) const noexcept {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             return (setup_flags() & f) == f;
         }
 
@@ -1013,8 +1013,8 @@ namespace iouxx {
         // Only available if ring is set up with IOPOLL.
         auto register_napi(std::chrono::microseconds timeout) & noexcept
             -> std::expected<napi_config, std::error_code> {
-            assert(valid());
-            assert(test_flag(ring_option::flag::iopoll));
+            IOUXX_ASSERT(valid());
+            IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
             ::io_uring_napi napi = {};
             napi.prefer_busy_poll = 1;
             napi.busy_poll_to = static_cast<std::uint32_t>(timeout.count());
@@ -1031,7 +1031,7 @@ namespace iouxx {
 
         auto unregister_napi() & noexcept
             -> std::expected<napi_config, std::error_code> {
-            assert(valid());
+            IOUXX_ASSERT(valid());
             ::io_uring_napi napi = {};
             int ev = ::io_uring_unregister_napi(&raw_ring, &napi);
             if (ev == 0) {
@@ -1050,7 +1050,7 @@ namespace iouxx {
         }
 
         std::error_code do_init(std::size_t queue_depth, const ring_option& opt) noexcept {
-            assert(!valid());
+            IOUXX_ASSERT(!valid());
             ::io_uring_params params = opt.to_params();
             int ev = ::io_uring_queue_init_params(
                 queue_depth, &raw_ring, &params);

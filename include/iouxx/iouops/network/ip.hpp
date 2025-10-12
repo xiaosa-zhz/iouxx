@@ -538,7 +538,7 @@ namespace iouxx::inline iouops::network::ip {
 
         constexpr static socket_v4_info from_system_sockaddr(
             const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
-            assert(*addrlen == sizeof(::sockaddr_in));
+            IOUXX_ASSERT(*addrlen == sizeof(::sockaddr_in));
             ::sockaddr_in addr4;
             std::memcpy(&addr4, addr, sizeof(::sockaddr_in));
             return socket_v4_info(
@@ -653,7 +653,7 @@ namespace iouxx::inline iouops::network::ip {
 
         constexpr static socket_v6_info from_system_sockaddr(
             const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
-            assert(*addrlen == sizeof(::sockaddr_in6));
+            IOUXX_ASSERT(*addrlen == sizeof(::sockaddr_in6));
             ::sockaddr_in6 addr6;
             std::memcpy(&addr6, addr, sizeof(::sockaddr_in6));
             return socket_v6_info(

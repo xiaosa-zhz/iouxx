@@ -3,16 +3,18 @@
 
 #include "iouxx/macro_config.hpp" // IWYU pragma: keep
 
-#ifndef IOUXX_CONFIG_DISABLE_ASSERTION
+#ifdef IOUXX_ENABLE_INTERNAL_ASSERTION
 
-#if defined(__cpp_contracts) && __cpp_contracts >= 202502L
-#define assert(...) contract_assert(__VA_ARGS__)
-#else // ! __cpp_contracts
-#include <cassert> // IWYU pragma: export
-#endif
+#ifdef IOUXX_USE_CXX_CONTRACTS
+#define IOUXX_ASSERT(...) contract_assert(__VA_ARGS__)
+#else // !IOUXX_USE_CXX_CONTRACTS
+#define IOUXX_ASSERT(...) ((__VA_ARGS__) ? \
+    static_cast<void>(0) : \
+    iouxx::utility::assertion_failed(#__VA_ARGS__, __FILE__, __LINE__))
+#endif // IOUXX_USE_CXX_CONTRACTS
 
-#else // !IOUXX_CONFIG_DISABLE_ASSERTION
-#define assert(...) ((void)0)
-#endif // IOUXX_CONFIG_DISABLE_ASSERTION
+#else // !IOUXX_ENABLE_INTERNAL_ASSERTION
+#define IOUXX_ASSERT(...) static_cast<void>(0)
+#endif // IOUXX_ENABLE_INTERNAL_ASSERTION
 
 #endif // IOUXX_ASSERTION_H

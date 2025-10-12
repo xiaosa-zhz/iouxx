@@ -12,6 +12,8 @@
 #include <type_traits>
 
 #include "iouxx/iouringxx.hpp"
+#include "iouxx/util/utility.hpp"
+#include "iouxx/util/assertion.hpp"
 #include "socket.hpp"
 #include "ip.hpp"
 #include "supported.hpp"
@@ -238,7 +240,7 @@ namespace iouxx::inline iouops::network {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            assert(check());
+            IOUXX_ASSERT(check());
             auto [addr, addrlen] = sock_info.visit(
                 [this](auto& si) -> utility::system_addrsock_info {
                     return { .addr = reinterpret_cast<::sockaddr*>(

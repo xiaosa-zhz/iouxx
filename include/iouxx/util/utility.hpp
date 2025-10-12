@@ -16,6 +16,7 @@
 #include <system_error>
 #include <expected>
 #include <span>
+#include <print>
 
 #include "iouxx/macro_config.hpp" // IWYU pragma: export
 #include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
@@ -209,6 +210,12 @@ namespace iouxx::utility {
 
     template<typename T>
     concept not_tag = !is_specialization_of_v<std::in_place_type_t, std::remove_cvref_t<T>>;
+
+    [[noreturn]]
+    constexpr void assertion_failed(const char* expr, const char* file, unsigned int line) noexcept {
+        std::println(stderr, "Assertion failed: ({}) at {}:{}", expr, file, line);
+        std::abort();
+    }
 
 } // namespace iouxx::utility
 
