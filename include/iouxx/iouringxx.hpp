@@ -391,15 +391,14 @@ namespace iouxx {
         {
         public:
             template<utility::not_tag F>
-            explicit ring_management_operation(iouxx::ring& ring, F&& f)
+            ring_management_operation(iouxx::ring& ring, F&& f)
                 noexcept(utility::nothrow_constructible_callback<F>) :
                 operation_base(iouxx::op_tag<ring_management_operation>, ring),
                 callback(std::forward<F>(f))
             {}
 
             template<typename F, typename... Args>
-            explicit ring_management_operation(iouxx::ring& ring,
-                std::in_place_type_t<F>, Args&&... args)
+            ring_management_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
                 noexcept(std::is_nothrow_constructible_v<F, Args...>) :
                 operation_base(iouxx::op_tag<ring_management_operation>, ring),
                 callback(std::forward<Args>(args)...)
@@ -1006,23 +1005,24 @@ namespace iouxx {
         }
 
         struct napi_config {
-            bool prefer_busy_poll = false;
             std::chrono::microseconds busy_poll_to = std::chrono::microseconds(0);
+            bool prefer_busy_poll = false;
         };
 
         // Only available if ring is set up with IOPOLL.
-        auto register_napi(std::chrono::microseconds timeout) & noexcept
+        auto register_napi(std::chrono::microseconds timeout,
+            bool prefer_busy_poll = true) & noexcept
             -> std::expected<napi_config, std::error_code> {
             IOUXX_ASSERT(valid());
             IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
             ::io_uring_napi napi = {};
-            napi.prefer_busy_poll = 1;
+            napi.prefer_busy_poll = prefer_busy_poll ? 1 : 0;
             napi.busy_poll_to = static_cast<std::uint32_t>(timeout.count());
             int ev = ::io_uring_register_napi(&raw_ring, &napi);
             if (ev == 0) {
                 return napi_config{
+                    std::chrono::microseconds(napi.busy_poll_to),
                     napi.prefer_busy_poll != 0,
-                    std::chrono::microseconds(napi.busy_poll_to)
                 };
             } else {
                 return utility::fail(-ev);
@@ -1036,8 +1036,8 @@ namespace iouxx {
             int ev = ::io_uring_unregister_napi(&raw_ring, &napi);
             if (ev == 0) {
                 return napi_config{
+                    std::chrono::microseconds(napi.busy_poll_to),
                     napi.prefer_busy_poll != 0,
-                    std::chrono::microseconds(napi.busy_poll_to)
                 };
             } else {
                 return utility::fail(-ev);
