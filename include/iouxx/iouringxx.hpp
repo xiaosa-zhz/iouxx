@@ -26,7 +26,6 @@
 #include <charconv>
 #include <limits>
 #include <format>
-#include <thread>
 #include <functional>
 
 #include "macro_config.hpp"
@@ -35,6 +34,17 @@
 #include "util/assertion.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
+
+IOUXX_EXPORT
+namespace iouxx {
+
+    // Forward declaration
+    class ring;
+
+    // Forward declaration
+    class operation_result;
+
+} // namespace iouxx
 
 namespace iouxx::details {
 
@@ -52,16 +62,13 @@ namespace iouxx::details {
     template<typename Operation>
     consteval bool test_operation_members() noexcept;
 
+    // Forward declaration
+    inline std::uint32_t get_native_handle(const ring& r) noexcept;
+
 } // namespace iouxx::details
 
 IOUXX_EXPORT
 namespace iouxx {
-
-    // Forward declaration
-    class ring;
-
-    // Forward declaration
-    class operation_result;
 
     inline namespace iouops {
 
@@ -482,26 +489,60 @@ namespace iouxx {
         ring_option(ring_option&) = default;
         ring_option& operator=(ring_option&) = default;
 
-        ring_option& single_issuer() noexcept {
-            flags |= IORING_SETUP_SINGLE_ISSUER;
+        // Note:
+        //  Use setup_sqpoll() instead if you want to enable SQPOLL.
+        //  Use setup_cqsize() instead if you want to specify CQ size seperately.
+        //  Use setup_attach() instead if you want to attach to an existing ring.
+        enum class flag : std::uint32_t {
+            iopoll = IORING_SETUP_IOPOLL,
+            clamp = IORING_SETUP_CLAMP,
+            r_disabled = IORING_SETUP_R_DISABLED,
+            submit_all = IORING_SETUP_SUBMIT_ALL,
+            coop_taskrun = IORING_SETUP_COOP_TASKRUN,
+            taskrun_flag = IORING_SETUP_TASKRUN_FLAG,
+            sqe128 = IORING_SETUP_SQE128,
+            cqe32 = IORING_SETUP_CQE32,
+            single_issuer = IORING_SETUP_SINGLE_ISSUER,
+            defer_taskrun = IORING_SETUP_DEFER_TASKRUN,
+            no_mmap = IORING_SETUP_NO_MMAP,
+            registered_fd_only = IORING_SETUP_REGISTERED_FD_ONLY,
+            no_sqarray = IORING_SETUP_NO_SQARRAY,
+            hybrid_iopoll = IORING_SETUP_HYBRID_IOPOLL,
+
+            // sqpoll = IORING_SETUP_SQPOLL,
+            // sq_aff = IORING_SETUP_SQ_AFF,
+            // cqsize = IORING_SETUP_CQSIZE,
+            // attach_wq = IORING_SETUP_ATTACH_WQ,
+        };
+
+        ring_option& flags(flag f) noexcept {
+            ring_flags |= std::to_underlying(f);
             return *this;
         }
 
-        ring_option& iopoll() noexcept {
-            flags |= IORING_SETUP_IOPOLL;
-            return *this;
-        }
-
-        ring_option& sqpoll(std::uint32_t thread_cpu = std::thread::hardware_concurrency(),
+        ring_option& setup_sqpoll(
+            std::uint32_t thread_cpu = std::numeric_limits<std::uint32_t>::max(),
             std::chrono::milliseconds idle = std::chrono::milliseconds(100)) noexcept {
-            flags |= IORING_SETUP_SQPOLL;
+            ring_flags |= IORING_SETUP_SQPOLL;
             sq_thread_idle = idle.count();
-            if (thread_cpu < std::thread::hardware_concurrency()) {
-                flags |= IORING_SETUP_SQ_AFF;
+            if (thread_cpu < std::numeric_limits<std::uint32_t>::max()) {
+                ring_flags |= IORING_SETUP_SQ_AFF;
                 sq_thread_cpu = thread_cpu;
             } else {
-                flags &= ~IORING_SETUP_SQ_AFF;
+                ring_flags &= ~IORING_SETUP_SQ_AFF;
             }
+            return *this;
+        }
+
+        ring_option& setup_cqsize(std::uint32_t cq_size) noexcept {
+            ring_flags |= IORING_SETUP_CQSIZE;
+            this->cq_entries = cq_size;
+            return *this;
+        }
+
+        ring_option& setup_attach(const ring& wq) noexcept {
+            ring_flags |= IORING_SETUP_ATTACH_WQ;
+            this->wq_fd = details::get_native_handle(wq);
             return *this;
         }
 
@@ -509,13 +550,28 @@ namespace iouxx {
         friend ring;
         ::io_uring_params to_params() const noexcept {
             ::io_uring_params params{};
-            params.flags = flags;
+            params.flags = ring_flags;
+            params.wq_fd = wq_fd;
+            params.cq_entries = cq_entries;
             params.sq_thread_cpu = sq_thread_cpu;
             params.sq_thread_idle = sq_thread_idle;
             return params;
         }
 
-        std::uint32_t flags = 0;
+        friend constexpr flag operator|(flag lhs, flag rhs) noexcept {
+            return static_cast<flag>(
+                std::to_underlying(lhs) | std::to_underlying(rhs)
+            );
+        }
+
+        friend constexpr flag& operator|=(flag& lhs, flag rhs) noexcept {
+            lhs = lhs | rhs;
+            return lhs;
+        }
+
+        std::uint32_t ring_flags = 0;
+        std::uint32_t wq_fd = 0;
+        std::uint32_t cq_entries = 0;
         std::uint32_t sq_thread_cpu = 0;
         std::uint32_t sq_thread_idle = 0;
     };
@@ -885,8 +941,42 @@ namespace iouxx {
             return &raw_ring;
         }
 
+        int native_handle() const noexcept {
+            assert(valid());
+            return raw_ring.ring_fd;
+        }
+
         ::io_uring_probe* ring_probe() const noexcept {
             return probe.get();
+        }
+
+        enum class feature : std::uint32_t {
+            single_mmap = IORING_FEAT_SINGLE_MMAP,
+            nodrop = IORING_FEAT_NODROP,
+            submit_stable = IORING_FEAT_SUBMIT_STABLE,
+            rw_cur_pos = IORING_FEAT_RW_CUR_POS,
+            cur_personality = IORING_FEAT_CUR_PERSONALITY,
+            fast_poll = IORING_FEAT_FAST_POLL,
+            poll_32bits = IORING_FEAT_POLL_32BITS,
+            sqpoll_nofixed = IORING_FEAT_SQPOLL_NONFIXED,
+            ext_arg = IORING_FEAT_EXT_ARG,
+            native_workers = IORING_FEAT_NATIVE_WORKERS,
+            rsrc_tags = IORING_FEAT_RSRC_TAGS,
+            cqe_skip = IORING_FEAT_CQE_SKIP,
+            linked_file = IORING_FEAT_LINKED_FILE,
+            reg_reg_ring = IORING_FEAT_REG_REG_RING,
+            recvsend_bundle = IORING_FEAT_RECVSEND_BUNDLE,
+            min_timeout = IORING_FEAT_MIN_TIMEOUT,
+        };
+
+        feature supported_features() const noexcept {
+            assert(valid());
+            return static_cast<feature>(raw_ring.features);
+        }
+
+        bool test_feature(feature f) const noexcept {
+            assert(valid());
+            return (supported_features() & f) == f;
         }
 
     private:
@@ -950,6 +1040,32 @@ namespace iouxx {
                 cb.release(), &do_delete<noop_callback_operation>);
         }
 
+        friend constexpr feature operator|(feature lhs, feature rhs) noexcept {
+            return static_cast<feature>(
+                std::to_underlying(lhs) | std::to_underlying(rhs)
+            );
+        }
+
+        friend constexpr feature& operator|=(feature& lhs, feature rhs) noexcept {
+            lhs = lhs | rhs;
+            return lhs;
+        }
+
+        friend constexpr feature operator&(feature lhs, feature rhs) noexcept {
+            return static_cast<feature>(
+                std::to_underlying(lhs) & std::to_underlying(rhs)
+            );
+        }
+
+        friend constexpr feature& operator&=(feature& lhs, feature rhs) noexcept {
+            lhs = lhs & rhs;
+            return lhs;
+        }
+
+        friend constexpr feature operator~(feature f) noexcept {
+            return static_cast<feature>(~std::to_underlying(f));
+        }
+
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
         unregistration_callback_handle unregistration_callback = noop_callback_handle();
@@ -967,6 +1083,10 @@ namespace iouxx::details {
     template<typename Operation>
     consteval bool test_operation_members() noexcept {
         return operation_base::test_operation_members_v<Operation>;
+    }
+
+    inline std::uint32_t get_native_handle(const ring& r) noexcept {
+        return static_cast<std::uint32_t>(r.native_handle());
     }
 
 } // namespace iouxx::details
