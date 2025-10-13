@@ -68,371 +68,504 @@ namespace iouxx::details {
 } // namespace iouxx::details
 
 IOUXX_EXPORT
-namespace iouxx {
+namespace iouxx::inline iouops {
 
-    inline namespace iouops {
+    // Forward declaration
+    class operation_base;
 
-        // Forward declaration
-        class operation_base;
+    // Enable sync wait support for operations.
+    // To use this, the operation type must have:
+    //   using result_type = ...;
+    //   using callback_type = syncwait_callback<result_type>;
+    //   callback_type callback; // accessible from operation_base
+    // Recommended to use ring::make_sync to create such operations.
+    template<typename Result>
+    class syncwait_callback
+    {
+        using expected_type = std::expected<Result, std::error_code>;
+    public:
+        void operator()(expected_type res) noexcept {
+            result = std::move(res);
+        }
 
-        // Enable sync wait support for operations.
-        // To use this, the operation type must have:
-        //   using result_type = ...;
-        //   using callback_type = syncwait_callback<result_type>;
-        //   callback_type callback; // accessible from operation_base
-        // Recommended to use ring::make_sync to create such operations.
-        template<typename Result>
-        class syncwait_callback
+    private:
+        friend operation_base;
+        expected_type result = std::unexpected(std::error_code());
+    };
+
+    // Enable coroutine support for operations.
+    // To use this, the operation type must have:
+    //   using result_type = ...;
+    //   using callback_type = awaiter_callback<result_type>;
+    //   callback_type callback; // accessible from operation_base
+    // Recommended to use ring::make_await to create such operations.
+    template<typename Result>
+    class awaiter_callback
+    {
+        using result_type = Result;
+        using expected_type = std::expected<result_type, std::error_code>;
+    public:
+        void operator()(expected_type res) noexcept {
+            *result = std::move(res);
+            handle.resume();
+        }
+
+    private:
+        friend operation_base;
+        expected_type* result = nullptr;
+        std::coroutine_handle<> handle = nullptr;
+    };
+
+    template<template<typename...> class Operation>
+    using syncwait_operation_t =
+        Operation<syncwait_callback<typename Operation<details::dummy_callback>::result_type>>;
+
+    template<template<typename...> class Operation>
+    using awaiter_operation_t =
+        Operation<awaiter_callback<typename Operation<details::dummy_callback>::result_type>>;
+
+    class operation_identifier
+    {
+    public:
+        operation_identifier() = default;
+        operation_identifier(const operation_identifier&) = default;
+        operation_identifier& operator=(const operation_identifier&) = default;
+
+        friend constexpr bool operator==(
+            const operation_identifier&, const operation_identifier&) = default;
+        friend constexpr auto operator<=>(
+            const operation_identifier&, const operation_identifier&) = default;
+
+        void* user_data() const noexcept {
+            return static_cast<void*>(raw);
+        }
+
+        std::uint64_t user_data64() const noexcept {
+            return static_cast<std::uint64_t>(
+                reinterpret_cast<std::uintptr_t>(raw)
+            );
+        }
+
+    private:
+        friend operation_base;
+        friend operation_result;
+        explicit operation_identifier(operation_base* raw) noexcept
+            : raw(raw)
+        {}
+
+        operation_base* raw = nullptr;
+    };
+
+    template<typename Operation>
+    struct operation_t {
+        using type = Operation;
+    };
+
+    // Tag for operation_base callback erasure
+    template<typename Operation>
+    inline constexpr operation_t<Operation> op_tag = {};
+
+    template<typename Operation>
+    struct operation_traits {};
+
+    template<typename Operation>
+    concept operation = std::derived_from<Operation, operation_base>
+        && requires {
+            typename Operation::callback_type;
+            typename Operation::result_type;
+            { Operation::opcode } -> std::convertible_to<std::uint8_t>;
+            requires (details::test_operation_methods<Operation>());
+        };
+
+    template<typename Operation>
+    concept syncwait_operation = operation<Operation>
+        && utility::is_specialization_of_v<syncwait_callback, typename Operation::callback_type>
+        && (details::test_operation_members<Operation>());
+    
+    template<typename Operation>
+    concept awaiter_operation = operation<Operation>
+        && utility::is_specialization_of_v<awaiter_callback, typename Operation::callback_type>
+        && (details::test_operation_members<Operation>());
+
+    // Base class for operations.
+    // Derived class must implement:
+    //   void build() & noexcept;
+    //   void do_callback(int ev, std::uint32_t cqe_flags);
+    // Warning:
+    // User of operations should create and store operation objects
+    // in their own context, make sure the operation object outlives
+    // the whole execution of io_uring task.
+    class operation_base
+    {
+    public:
+        operation_base() = delete;
+        operation_base(const operation_base&) = delete;
+        operation_base& operator=(const operation_base&) = delete;
+        operation_base(operation_base&&) = delete;
+        operation_base& operator=(operation_base&&) = delete;
+
+        template<operation Self>
+        ::io_uring_sqe* to_sqe(this Self& self) noexcept {
+            ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring_ptr->native());
+            if (!sqe) return nullptr;
+            self.build(sqe); // Provided by derived class
+            ::io_uring_sqe_set_data(sqe, static_cast<operation_base*>(&self));
+            return sqe;
+        }
+
+        template<operation Self>
+            requires (!syncwait_operation<Self>) && (!awaiter_operation<Self>) 
+        std::error_code submit(this Self& self) noexcept {
+            return self.do_submit();
+        }
+
+        template<syncwait_operation Self>
+        auto submit_and_wait(this Self& self)
+            noexcept -> typename Self::callback_type::expected_type {
+            if (std::error_code res = self.do_submit()) {
+                return std::unexpected(res);
+            }
+            // Submit success, wait
+            if (auto cqe_result = self.ring_ptr->wait_for_result()) {
+                cqe_result->callback();
+                return std::move(self.callback.result);
+            } else {
+                return std::unexpected(cqe_result.error());
+            }
+        }
+
+        template<awaiter_operation Self>
+        class operation_awaiter
         {
-            using expected_type = std::expected<Result, std::error_code>;
+            using operation_type = Self;
+            using callback_type = operation_type::callback_type;
+            using result_type = operation_type::result_type;
+            using expected_type = std::expected<result_type, std::error_code>;
         public:
-            void operator()(expected_type res) noexcept {
-                result = std::move(res);
+            operation_awaiter() = delete;
+            operation_awaiter(const operation_awaiter&) = delete;
+            operation_awaiter& operator=(const operation_awaiter&) = delete;
+
+            constexpr bool await_ready() const noexcept { return false; }
+
+            bool await_suspend(std::coroutine_handle<> handle) noexcept {
+                self.setup_awaiter_callback(handle, this->result);
+                if (std::error_code res = self.do_submit()) {
+                    // fail to submit, resume immediately
+                    result = std::unexpected(res);
+                    return false;
+                } else {
+                    return true; // suspend
+                }
+            }
+
+            expected_type await_resume() noexcept {
+                return std::move(result);
             }
 
         private:
             friend operation_base;
+            explicit operation_awaiter(Self& self) noexcept
+                : self(self)
+            {}
+
+            Self& self;
             expected_type result = std::unexpected(std::error_code());
         };
 
-        // Enable coroutine support for operations.
-        // To use this, the operation type must have:
-        //   using result_type = ...;
-        //   using callback_type = awaiter_callback<result_type>;
-        //   callback_type callback; // accessible from operation_base
-        // Recommended to use ring::make_await to create such operations.
-        template<typename Result>
-        class awaiter_callback
-        {
-            using result_type = Result;
-            using expected_type = std::expected<result_type, std::error_code>;
-        public:
-            void operator()(expected_type res) noexcept {
-                *result = std::move(res);
-                handle.resume();
-            }
+        template<awaiter_operation Self>
+        operation_awaiter<Self> operator co_await(this Self& self) noexcept {
+            return operation_awaiter<Self>(self);
+        }
 
-        private:
-            friend operation_base;
-            expected_type* result = nullptr;
-            std::coroutine_handle<> handle = nullptr;
-        };
+        void callback(int ev, std::int32_t cqe_flags) & IOUXX_CALLBACK_NOEXCEPT {
+            do_callback_ptr(this, ev, cqe_flags);
+        }
 
-        template<template<typename...> class Operation>
-        using syncwait_operation_t =
-            Operation<syncwait_callback<typename Operation<details::dummy_callback>::result_type>>;
+        operation_identifier identifier() & noexcept {
+            return operation_identifier(this);
+        }
 
-        template<template<typename...> class Operation>
-        using awaiter_operation_t =
-            Operation<awaiter_callback<typename Operation<details::dummy_callback>::result_type>>;
+    protected:
+        // Note:
+        // Override method will receive raw error code from kernel, because:
+        // 1. The positive value may be meaningful result,
+        //    and it is operation rather than user-defined callback
+        //    that knows what result means.
+        // 2. Some error codes are not real error depends on context,
+        //    e.g., -ETIME for pure timeout operation.
+        //    The operation itself should decide how to handle it.
+        using callback_wrapper_type =
+            void (*)(operation_base*, int, std::int32_t) IOUXX_CALLBACK_NOEXCEPT;
 
-        class operation_identifier
-        {
-        public:
-            operation_identifier() = default;
-            operation_identifier(const operation_identifier&) = default;
-            operation_identifier& operator=(const operation_identifier&) = default;
+        template<operation Derived>
+        static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
+            IOUXX_CALLBACK_NOEXCEPT_IF(utility::eligible_nothrow_callback<
+                typename Derived::callback_type, typename Derived::result_type>) {
+            // Provided by derived class
+            static_cast<Derived*>(base)->do_callback(ev, cqe_flags);
+        }
 
-            friend constexpr bool operator==(
-                const operation_identifier&, const operation_identifier&) = default;
-            friend constexpr auto operator<=>(
-                const operation_identifier&, const operation_identifier&) = default;
+        // Type erasure here
+        template<operation Derived>
+        explicit operation_base(operation_t<Derived>, ring& ring) noexcept
+            : do_callback_ptr(&callback_wrapper<Derived>), ring_ptr(&ring)
+        {}
 
-            void* user_data() const noexcept {
-                return static_cast<void*>(raw);
-            }
-
-            std::uint64_t user_data64() const noexcept {
-                return static_cast<std::uint64_t>(
-                    reinterpret_cast<std::uintptr_t>(raw)
-                );
-            }
-
-        private:
-            friend operation_base;
-            friend operation_result;
-            explicit operation_identifier(operation_base* raw) noexcept
-                : raw(raw)
-            {}
-
-            operation_base* raw = nullptr;
-        };
-
-        template<typename Operation>
-        struct operation_t {
-            using type = Operation;
-        };
-
-        // Tag for operation_base callback erasure
-        template<typename Operation>
-        inline constexpr operation_t<Operation> op_tag = {};
-
-        template<typename Operation>
-        struct operation_traits {};
-
-        template<typename Operation>
-        concept operation = std::derived_from<Operation, operation_base>
-            && requires {
-                typename Operation::callback_type;
-                typename Operation::result_type;
-                { Operation::opcode } -> std::convertible_to<std::uint8_t>;
-                requires (details::test_operation_methods<Operation>());
-            };
-
-        template<typename Operation>
-        concept syncwait_operation = operation<Operation>
-            && utility::is_specialization_of_v<syncwait_callback, typename Operation::callback_type>
-            && (details::test_operation_members<Operation>());
-        
-        template<typename Operation>
-        concept awaiter_operation = operation<Operation>
-            && utility::is_specialization_of_v<awaiter_callback, typename Operation::callback_type>
-            && (details::test_operation_members<Operation>());
-
-        // Base class for operations.
-        // Derived class must implement:
-        //   void build() & noexcept;
-        //   void do_callback(int ev, std::uint32_t cqe_flags);
-        // Warning:
-        // User of operations should create and store operation objects
-        // in their own context, make sure the operation object outlives
-        // the whole execution of io_uring task.
-        class operation_base
-        {
-        public:
-            operation_base() = delete;
-            operation_base(const operation_base&) = delete;
-            operation_base& operator=(const operation_base&) = delete;
-            operation_base(operation_base&&) = delete;
-            operation_base& operator=(operation_base&&) = delete;
-
-            template<operation Self>
-            ::io_uring_sqe* to_sqe(this Self& self) noexcept {
-                ::io_uring_sqe* sqe = ::io_uring_get_sqe(self.ring_ptr->native());
-                if (!sqe) return nullptr;
-                self.build(sqe); // Provided by derived class
-                ::io_uring_sqe_set_data(sqe, static_cast<operation_base*>(&self));
-                return sqe;
-            }
-
-            template<operation Self>
-                requires (!syncwait_operation<Self>) && (!awaiter_operation<Self>) 
-            std::error_code submit(this Self& self) noexcept {
-                return self.do_submit();
-            }
-
-            template<syncwait_operation Self>
-            auto submit_and_wait(this Self& self)
-                noexcept -> typename Self::callback_type::expected_type {
-                if (std::error_code res = self.do_submit()) {
-                    return std::unexpected(res);
-                }
-                // Submit success, wait
-                if (auto cqe_result = self.ring_ptr->wait_for_result()) {
-                    cqe_result->callback();
-                    return std::move(self.callback.result);
-                } else {
-                    return std::unexpected(cqe_result.error());
-                }
-            }
-
-            template<awaiter_operation Self>
-            class operation_awaiter
-            {
-                using operation_type = Self;
-                using callback_type = operation_type::callback_type;
-                using result_type = operation_type::result_type;
-                using expected_type = std::expected<result_type, std::error_code>;
-            public:
-                operation_awaiter() = delete;
-                operation_awaiter(const operation_awaiter&) = delete;
-                operation_awaiter& operator=(const operation_awaiter&) = delete;
-
-                constexpr bool await_ready() const noexcept { return false; }
-
-                bool await_suspend(std::coroutine_handle<> handle) noexcept {
-                    self.setup_awaiter_callback(handle, this->result);
-                    if (std::error_code res = self.do_submit()) {
-                        // fail to submit, resume immediately
-                        result = std::unexpected(res);
-                        return false;
-                    } else {
-                        return true; // suspend
-                    }
-                }
-
-                expected_type await_resume() noexcept {
-                    return std::move(result);
-                }
-
-            private:
-                friend operation_base;
-                explicit operation_awaiter(Self& self) noexcept
-                    : self(self)
-                {}
-
-                Self& self;
-                expected_type result = std::unexpected(std::error_code());
-            };
-
-            template<awaiter_operation Self>
-            operation_awaiter<Self> operator co_await(this Self& self) noexcept {
-                return operation_awaiter<Self>(self);
-            }
-
-            void callback(int ev, std::int32_t cqe_flags) & IOUXX_CALLBACK_NOEXCEPT {
-                do_callback_ptr(this, ev, cqe_flags);
-            }
-
-            operation_identifier identifier() & noexcept {
-                return operation_identifier(this);
-            }
-
-        protected:
-            // Note:
-            // Override method will receive raw error code from kernel, because:
-            // 1. The positive value may be meaningful result,
-            //    and it is operation rather than user-defined callback
-            //    that knows what result means.
-            // 2. Some error codes are not real error depends on context,
-            //    e.g., -ETIME for pure timeout operation.
-            //    The operation itself should decide how to handle it.
-            using callback_wrapper_type =
-                void (*)(operation_base*, int, std::int32_t) IOUXX_CALLBACK_NOEXCEPT;
-
-            template<operation Derived>
-            static void callback_wrapper(operation_base* base, int ev, std::int32_t cqe_flags)
-                IOUXX_CALLBACK_NOEXCEPT_IF(utility::eligible_nothrow_callback<
-                    typename Derived::callback_type, typename Derived::result_type>) {
-                // Provided by derived class
-                static_cast<Derived*>(base)->do_callback(ev, cqe_flags);
-            }
-
-            // Type erasure here
-            template<operation Derived>
-            explicit operation_base(operation_t<Derived>, ring& ring) noexcept
-                : do_callback_ptr(&callback_wrapper<Derived>), ring_ptr(&ring)
-            {}
-
-            // Enable feature test by define IOUXX_CONFIG_ENABLE_FEATURE_TESTS.
-            // Always returns success if feature test is disabled.
-            template<operation Self>
-            std::error_code feature_test(this Self& self) noexcept {
+        // Enable feature test by define IOUXX_CONFIG_ENABLE_FEATURE_TESTS.
+        // Always returns success if feature test is disabled.
+        template<operation Self>
+        std::error_code feature_test(this Self& self) noexcept {
 #if IOUXX_IORING_FEATURE_TESTS_ENABLED == 1
-                if (!::io_uring_opcode_supported(self.ring_ptr->ring_probe(),
-                    Self::opcode)) {
-                    return std::make_error_code(std::errc::function_not_supported);
-                }
+            if (!::io_uring_opcode_supported(self.ring_ptr->ring_probe(),
+                Self::opcode)) {
+                return std::make_error_code(std::errc::function_not_supported);
+            }
 #endif // IOUXX_IORING_FEATURE_TESTS_ENABLED
-                return std::error_code();
+            return std::error_code();
+        }
+
+        template<operation Self>
+        std::error_code do_submit(this Self& self) noexcept {
+            if (std::error_code test = self.feature_test()) {
+                return test;
             }
+            // Feature test passed
+            return self.ring_ptr->submit(self.to_sqe());
+        }
 
-            template<operation Self>
-            std::error_code do_submit(this Self& self) noexcept {
-                if (std::error_code test = self.feature_test()) {
-                    return test;
-                }
-                // Feature test passed
-                return self.ring_ptr->submit(self.to_sqe());
-            }
+        template<awaiter_operation Self, typename Result>
+        void setup_awaiter_callback(this Self& self,
+            std::coroutine_handle<> handle,
+            std::expected<Result, std::error_code>& result) noexcept {
+            self.callback.handle = handle;
+            self.callback.result = &result;
+        }
 
-            template<awaiter_operation Self, typename Result>
-            void setup_awaiter_callback(this Self& self,
-                std::coroutine_handle<> handle,
-                std::expected<Result, std::error_code>& result) noexcept {
-                self.callback.handle = handle;
-                self.callback.result = &result;
-            }
-
-            template<typename Operation>
-            static constexpr bool test_operation_methods_v = requires (
-                Operation op, ::io_uring_sqe* sqe, int ev, std::int32_t cqe_flags) {
-                { op.build(sqe) } noexcept;
-                op.do_callback(ev, cqe_flags);
-            };
-
-            template<typename Operation>
-            static constexpr bool test_operation_members_v = requires {
-                requires std::same_as<typename Operation::callback_type,
-                    decltype(std::declval<Operation&>().callback)>;
-            };
-
-            template<typename Operation>
-            friend consteval bool details::test_operation_methods() noexcept;
-
-            template<typename Operation>
-            friend consteval bool details::test_operation_members() noexcept;
-
-            callback_wrapper_type do_callback_ptr = nullptr;
-            ring* ring_ptr = nullptr;
+        template<typename Operation>
+        static constexpr bool test_operation_methods_v = requires (
+            Operation op, ::io_uring_sqe* sqe, int ev, std::int32_t cqe_flags) {
+            { op.build(sqe) } noexcept;
+            op.do_callback(ev, cqe_flags);
         };
 
-        template<template<typename...> class Operation, typename Callback, typename... Args>
-            requires operation<Operation<Callback, Args...>>
-        struct operation_traits<Operation<Callback, Args...>> {
-            using operation_type = Operation<Callback, Args...>;
-            using callback_type = typename operation_type::callback_type;
-            using result_type = typename operation_type::result_type;
-            static constexpr std::uint8_t opcode = operation_type::opcode;
-            template<typename... NewArgs>
-            using rebind = Operation<NewArgs...>;
+        template<typename Operation>
+        static constexpr bool test_operation_members_v = requires {
+            requires std::same_as<typename Operation::callback_type,
+                decltype(std::declval<Operation&>().callback)>;
         };
 
-        struct management_info {
-            std::int32_t ev;
-            std::uint32_t cqe_flags;
-            iouxx::ring* ring;
-        };
+        template<typename Operation>
+        friend consteval bool details::test_operation_methods() noexcept;
 
-        // Operation for management purpose.
-        // Callback will receive an pointer to ring object.
-        template<std::invocable<management_info> Callback>
-        class ring_management_operation : public operation_base
-        {
-        public:
-            template<utility::not_tag F>
-            ring_management_operation(iouxx::ring& ring, F&& f)
-                noexcept(utility::nothrow_constructible_callback<F>) :
-                operation_base(iouxx::op_tag<ring_management_operation>, ring),
-                callback(std::forward<F>(f))
-            {}
+        template<typename Operation>
+        friend consteval bool details::test_operation_members() noexcept;
 
-            template<typename F, typename... Args>
-            ring_management_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
-                noexcept(std::is_nothrow_constructible_v<F, Args...>) :
-                operation_base(iouxx::op_tag<ring_management_operation>, ring),
-                callback(std::forward<Args>(args)...)
-            {}
+        callback_wrapper_type do_callback_ptr = nullptr;
+        ring* ring_ptr = nullptr;
+    };
 
-            using callback_type = Callback;
-            using result_type = management_info;
+    template<template<typename...> class Operation, typename Callback, typename... Args>
+        requires operation<Operation<Callback, Args...>>
+    struct operation_traits<Operation<Callback, Args...>> {
+        using operation_type = Operation<Callback, Args...>;
+        using callback_type = typename operation_type::callback_type;
+        using result_type = typename operation_type::result_type;
+        static constexpr std::uint8_t opcode = operation_type::opcode;
+        template<typename... NewArgs>
+        using rebind = Operation<NewArgs...>;
+    };
 
-            static constexpr std::uint8_t opcode = IORING_OP_NOP;
+    struct management_info {
+        std::int32_t ev;
+        std::uint32_t cqe_flags;
+        iouxx::ring* ring;
+    };
 
-        private:
-            friend operation_base;
-            void build(::io_uring_sqe* sqe) & noexcept {
-                ::io_uring_prep_nop(sqe);
-            }
-
-            void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT {
-                std::invoke(callback, management_info{
-                    ev, cqe_flags, this->ring_ptr
-                });
-            }
-
-            [[no_unique_address]] callback_type callback;
-        };
-
+    // Operation for management purpose.
+    // Callback will receive an pointer to ring object.
+    template<std::invocable<management_info> Callback>
+    class ring_management_operation : public operation_base
+    {
+    public:
         template<utility::not_tag F>
-        ring_management_operation(iouxx::ring&, F) 
-            -> ring_management_operation<std::decay_t<F>>;
+        ring_management_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<ring_management_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
 
         template<typename F, typename... Args>
-        ring_management_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
-            -> ring_management_operation<F>;
+        ring_management_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<ring_management_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
 
-    } // namespace iouxx::iouops
+        using callback_type = Callback;
+        using result_type = management_info;
+
+        static constexpr std::uint8_t opcode = IORING_OP_NOP;
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_nop(sqe);
+        }
+
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            std::is_nothrow_invocable_v<callback_type, result_type>) {
+            std::invoke(callback, management_info{
+                ev, cqe_flags, this->ring_ptr
+            });
+        }
+
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::not_tag F>
+    ring_management_operation(iouxx::ring&, F) 
+        -> ring_management_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    ring_management_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> ring_management_operation<F>;
+
+    struct fd_unregistration_info {
+        management_info info;
+        int fd;
+    };
+
+    template<std::invocable<fd_unregistration_info> Callback>
+    class fd_unregister_operation : public operation_base
+    {
+    public:
+        template<utility::not_tag F>
+        fd_unregister_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<fd_unregister_operation>, ring),
+            fd(fd), callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        fd_unregister_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<fd_unregister_operation>, ring),
+            fd(fd), callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = fd_unregistration_info;
+
+        static constexpr std::uint8_t opcode = IORING_OP_NOP;
+
+        fd_unregister_operation& file(int fd) & noexcept {
+            this->fd = fd;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            // This operation should not be submitted by user.
+            // Only generated from unreigistration of registered fd.
+            IOUXX_ASSERT(false);
+            std::unreachable();
+        }
+
+        // Operation state (include callback object) will be destroyed
+        // after callback is invoked.
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            std::is_nothrow_invocable_v<callback_type, result_type>) {
+            std::unique_ptr<fd_unregister_operation> self_guard(this);
+            std::invoke(callback, fd_unregistration_info{
+                { ev, cqe_flags, this->ring_ptr }, fd
+            });
+        }
+
+        int fd = -1;
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::byte_unit Byte>
+    struct buffer_unregister_info {
+        management_info info;
+        std::span<Byte> buffer;
+    };
+
+    template<typename Callback>
+        requires std::invocable<buffer_unregister_info<std::byte>>
+        || std::invocable<buffer_unregister_info<unsigned char>>
+    class buffer_unregister_operation : public operation_base
+    {
+    public:
+        template<utility::not_tag F>
+        buffer_unregister_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<buffer_unregister_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        buffer_unregister_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<buffer_unregister_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = std::conditional_t<
+            std::invocable<Callback, buffer_unregister_info<std::byte>>,
+            buffer_unregister_info<std::byte>,
+            buffer_unregister_info<unsigned char>
+        >;
+
+        static constexpr std::uint8_t opcode = IORING_OP_NOP;
+
+        template<utility::buffer_like Buffer>
+        buffer_unregister_operation& buffer(Buffer&& buf) & noexcept {
+            auto buffer = utility::to_buffer(std::forward<Buffer>(buf));
+            data = buffer.data();
+            length = buffer.size_bytes();
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            // This operation should not be submitted by user.
+            // Only generated from unreigistration of registered buffer.
+            IOUXX_ASSERT(false);
+            std::unreachable();
+        }
+
+        // Operation state (include callback object) will be destroyed
+        // after callback is invoked.
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            std::is_nothrow_invocable_v<callback_type, result_type>) {
+            std::unique_ptr<buffer_unregister_operation> self_guard(this);
+            if constexpr (std::same_as<result_type, buffer_unregister_info<std::byte>>) {
+                std::invoke(callback, buffer_unregister_info<std::byte>{
+                    { ev, cqe_flags, this->ring_ptr },
+                    std::span(static_cast<std::byte*>(data), length)
+                });
+            } else {
+                std::invoke(callback, buffer_unregister_info<unsigned char>{
+                    { ev, cqe_flags, this->ring_ptr },
+                    std::span(static_cast<unsigned char*>(data), length)
+                });
+            }
+        }
+
+        void* data;
+        std::size_t length;
+        [[no_unique_address]] callback_type callback;
+    };
+
+} // namespace iouxx::iouops
+
+IOUXX_EXPORT
+namespace iouxx {
 
     class operation_result
     {
@@ -817,7 +950,7 @@ namespace iouxx {
             if (ev < 0) {
                 return utility::fail(-ev);
             }
-            operation_result result = to_result(cqe);
+            operation_result result(cqe);
             ::io_uring_cqe_seen(&raw_ring, cqe);
             return result;
         }
@@ -836,12 +969,10 @@ namespace iouxx {
             if (ev < 0) {
                 return utility::fail(-ev);
             }
-            operation_result result = to_result(cqe);
+            operation_result result(cqe);
             ::io_uring_cqe_seen(&raw_ring, cqe);
             return result;
         }
-
-        using reg_tags = std::span<unsigned long long>;
 
         std::error_code register_buffer_table(std::size_t size) noexcept {
             IOUXX_ASSERT(valid());
@@ -849,43 +980,94 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        template<utility::buffer_range Buffers>
-        std::error_code update_buffer_table(
-            std::size_t offset, Buffers&& buffers, reg_tags tags = reg_tags()) noexcept {
+        template<utility::buffer_range Buffers, typename Callback = std::monostate>
+            requires (std::is_nothrow_copy_constructible_v<std::decay_t<Callback>>)
+        std::error_code update_buffer_table(std::size_t offset,
+            Buffers&& buffers, const Callback& callback = {}) noexcept {
             IOUXX_ASSERT(valid());
-            std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
-                | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
-                    using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
-                    return utility::to_iovec(
-                        std::span<byte_type>(std::forward<Buffer>(buffer))
-                    );
-                })
-                | std::ranges::to<std::vector<::iovec>>();
-            IOUXX_ASSERT(tags.empty() || tags.size() == iovecs.size());
-            const auto tag_ptr = tags.empty() ? nullptr : tags.data();
-            int ev = ::io_uring_register_buffers_update_tag(
-                &raw_ring, offset, iovecs.data(), tag_ptr, iovecs.size());
-            return utility::make_system_error_code(-ev);
+            try {
+                auto spans = std::forward<Buffers>(buffers)
+                    | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
+                        using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
+                        return std::span<byte_type>(std::forward<Buffer>(buffer));
+                    })
+                    | std::ranges::to<std::vector>();
+                std::vector<::iovec> iovecs = spans
+                    | std::views::transform([](const auto& span) {
+                        return utility::to_iovec(span);
+                    })
+                    | std::ranges::to<std::vector<::iovec>>();
+                int ev = 0;
+                if constexpr (std::same_as<Callback, std::monostate>) {
+                    ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
+                        iovecs.data(), nullptr, iovecs.size());
+                } else {
+                    using operation_type = iouops::buffer_unregister_operation<std::decay_t<Callback>>;
+                    std::vector<unsigned long long> tags(iovecs.size());
+                    for (std::size_t i = 0; i < iovecs.size(); ++i) {
+                        try {
+                            auto* const cb = new operation_type(callback);
+                            cb->buffer(spans[i]);
+                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
+                        } catch (...) {
+                            for (std::size_t j = 0; j < i; ++j) {
+                                delete reinterpret_cast<operation_type*>(tags[j]);
+                            }
+                            throw;
+                        }
+                    }
+                    ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
+                        iovecs.data(), tags.data(), iovecs.size());
+                }
+                return utility::make_system_error_code(-ev);
+            } catch (...) {
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
         }
 
-        template<utility::buffer_range Buffers>
-        std::error_code register_buffers(Buffers&& buffers, reg_tags tags = reg_tags()) noexcept {
+        template<utility::buffer_range Buffers, typename Callback = std::monostate>
+            requires (std::is_nothrow_copy_constructible_v<std::decay_t<Callback>>)
+        std::error_code register_buffers(
+            Buffers&& buffers, const Callback& callback = {}) noexcept {
             IOUXX_ASSERT(valid());
-            std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
-                | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
-                    using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
-                    return utility::to_iovec(
-                        std::span<byte_type>(std::forward<Buffer>(buffer))
-                    );
-                })
-                | std::ranges::to<std::vector<::iovec>>();
-            IOUXX_ASSERT(tags.empty() || tags.size() == iovecs.size());
-            int ev = tags.empty()
-                ? ::io_uring_register_buffers(
-                    &raw_ring, iovecs.data(), iovecs.size())
-                : ::io_uring_register_buffers_tags(
-                    &raw_ring, iovecs.data(), tags.data(), iovecs.size());
-            return utility::make_system_error_code(-ev);
+            try {
+                auto spans = std::forward<Buffers>(buffers)
+                    | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
+                        using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
+                        return std::span<byte_type>(std::forward<Buffer>(buffer));
+                    })
+                    | std::ranges::to<std::vector>();
+                std::vector<::iovec> iovecs = spans
+                    | std::views::transform([](const auto& span) {
+                        return utility::to_iovec(span);
+                    })
+                    | std::ranges::to<std::vector>();
+                int ev = 0;
+                if constexpr (std::same_as<Callback, std::monostate>) {
+                    ev = ::io_uring_register_buffers(
+                        &raw_ring, iovecs.data(), iovecs.size());
+                } else {
+                    using operation_type = iouops::buffer_unregister_operation<std::decay_t<Callback>>;
+                    std::vector<unsigned long long> tags(iovecs.size());
+                    for (std::size_t i = 0; i < iovecs.size(); ++i) {
+                        try {
+                            auto* const cb = new operation_type(callback);
+                            cb->buffer(spans[i]);
+                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
+                        } catch (...) {
+                            for (std::size_t j = 0; j < i; ++j) {
+                                delete reinterpret_cast<operation_type*>(tags[j]);
+                            }
+                            throw;
+                        }
+                    }
+                    ev = ::io_uring_register_buffers_tags(
+                        &raw_ring, iovecs.data(), tags.data(), iovecs.size());
+                }
+                return utility::make_system_error_code(-ev);
+            } catch (...) {
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
         }
 
         std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
@@ -894,61 +1076,72 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        std::error_code update_direct_descriptor_table(
-            std::size_t offset, std::span<const int>& fds, reg_tags tags = reg_tags()) noexcept {
+        template<typename Callback = std::monostate>
+            requires (std::is_nothrow_copy_constructible_v<std::decay_t<Callback>>)
+        std::error_code update_direct_descriptor_table(std::size_t offset,
+            std::span<const int>& fds, const Callback& callback = {}) noexcept {
             IOUXX_ASSERT(valid());
-            IOUXX_ASSERT(tags.empty() || tags.size() == fds.size());
-            int ev = tags.empty()
-                ? ::io_uring_register_files_update(
-                    &raw_ring, offset, fds.data(), fds.size())
-                : ::io_uring_register_files_update_tag(
-                    &raw_ring, offset, fds.data(), tags.data(), fds.size());
+            int ev = 0;
+            if constexpr (std::same_as<Callback, std::monostate>) {
+                ev = ::io_uring_register_files_update(&raw_ring, offset,
+                    fds.data(), fds.size());
+            } else {
+                using operation_type = iouops::fd_unregister_operation<std::decay_t<Callback>>;
+                try {
+                    std::vector<unsigned long long> tags(fds.size());
+                    for (std::size_t i = 0; i < fds.size(); ++i) {
+                        try {
+                            auto* const cb = new operation_type(callback);
+                            cb->file(fds[i]);
+                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
+                        } catch (...) {
+                            for (std::size_t j = 0; j < i; ++j) {
+                                delete reinterpret_cast<operation_type*>(tags[j]);
+                            }
+                            throw;
+                        }
+                    }
+                    ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
+                        fds.data(), tags.data(), fds.size());
+                } catch (...) {
+                    return std::make_error_code(std::errc::not_enough_memory);
+                }
+            }
             return utility::make_system_error_code(-ev);
         }
 
+        template<typename Callback = std::monostate>
+            requires (std::is_nothrow_copy_constructible_v<std::decay_t<Callback>>)
         std::error_code register_direct_descriptors(
-            std::span<const int>& fds, reg_tags tags = reg_tags()) noexcept {
+            std::span<const int>& fds, const Callback& callback = {}) noexcept {
             IOUXX_ASSERT(valid());
-            IOUXX_ASSERT(tags.empty() || tags.size() == fds.size());
-            int ev = tags.empty()
-                ? ::io_uring_register_files(
-                    &raw_ring, fds.data(), fds.size())
-                : ::io_uring_register_files_tags(
-                    &raw_ring, fds.data(), tags.data(), fds.size());
+            int ev = 0;
+            if constexpr (std::same_as<Callback, std::monostate>) {
+                ev = ::io_uring_register_files(
+                    &raw_ring, fds.data(), fds.size());
+            } else {
+                using operation_type = iouops::fd_unregister_operation<std::decay_t<Callback>>;
+                try {
+                    std::vector<unsigned long long> tags(fds.size());
+                    for (std::size_t i = 0; i < fds.size(); ++i) {
+                        try {
+                            auto* const cb = new operation_type(callback);
+                            cb->file(fds[i]);
+                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
+                        } catch (...) {
+                            for (std::size_t j = 0; j < i; ++j) {
+                                delete reinterpret_cast<operation_type*>(tags[j]);
+                            }
+                            throw;
+                        }
+                    }
+                    ev = ::io_uring_register_files_tags(
+                        &raw_ring, fds.data(), tags.data(), fds.size());
+                } catch (...) {
+                    return std::make_error_code(std::errc::not_enough_memory);
+                }
+            }
             return utility::make_system_error_code(-ev);
-        }
-
-        template<utility::not_tag Callback>
-            requires std::invocable<std::decay_t<Callback>&, iouops::management_info>
-        std::error_code set_unregistration_callback(Callback&& callback)
-            noexcept(utility::nothrow_constructible_callback<Callback>) {
-            IOUXX_ASSERT(valid());
-            using callback_type = std::decay_t<Callback>;
-            using operation_type = iouops::ring_management_operation<callback_type>;
-            operation_type* cb = new (std::nothrow)
-                operation_type(*this, std::forward<Callback>(callback));
-            if (!cb) {
-                return std::make_error_code(std::errc::not_enough_memory);
-            }
-            unregistration_callback =
-                unregistration_callback_handle(cb, &do_delete<operation_type>);
-            return std::error_code();
-        }
-
-        template<std::invocable<iouops::management_info> F, typename... Args>
-        std::error_code set_unregistration_callback(std::in_place_type_t<F> tag, Args&&... args)
-            noexcept(std::is_nothrow_constructible_v<F, decltype(args)...>) {
-            IOUXX_ASSERT(valid());
-            using callback_type = F;
-            using operation_type = iouops::ring_management_operation<callback_type>;
-            operation_type* cb = new (std::nothrow)
-                operation_type(*this, tag, std::forward<Args>(args)...);
-            if (!cb) {
-                return std::make_error_code(std::errc::not_enough_memory);
-            }
-            unregistration_callback =
-                unregistration_callback_handle(cb, &do_delete<operation_type>);
-            return std::error_code();
         }
 
         ::io_uring* native() & noexcept {
@@ -1010,8 +1203,7 @@ namespace iouxx {
         };
 
         // Only available if ring is set up with IOPOLL.
-        auto register_napi(std::chrono::microseconds timeout,
-            bool prefer_busy_poll = true) & noexcept
+        auto register_napi(std::chrono::microseconds timeout, bool prefer_busy_poll = true) & noexcept
             -> std::expected<napi_config, std::error_code> {
             IOUXX_ASSERT(valid());
             IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
@@ -1029,9 +1221,9 @@ namespace iouxx {
             }
         }
 
-        auto unregister_napi() & noexcept
-            -> std::expected<napi_config, std::error_code> {
+        auto unregister_napi() & noexcept -> std::expected<napi_config, std::error_code> {
             IOUXX_ASSERT(valid());
+            IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
             ::io_uring_napi napi = {};
             int ev = ::io_uring_unregister_napi(&raw_ring, &napi);
             if (ev == 0) {
@@ -1065,15 +1257,6 @@ namespace iouxx {
                 return std::make_error_code(std::errc::not_enough_memory);
             }
             return std::error_code();
-        }
-
-        operation_result to_result(::io_uring_cqe* cqe) noexcept {
-            if (cqe->user_data == 0) [[unlikely]] {
-                cqe->user_data = static_cast<std::uint64_t>(
-                    reinterpret_cast<std::uintptr_t>(unregistration_callback.get())
-                );
-            }
-            return operation_result(cqe);
         }
 
         struct probe_deleter {
@@ -1133,7 +1316,6 @@ namespace iouxx {
 
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
-        unregistration_callback_handle unregistration_callback = noop_callback_handle();
     };
 
 } // namespace iouxx
