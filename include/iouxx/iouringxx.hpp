@@ -986,7 +986,7 @@ namespace iouxx {
             Buffers&& buffers, const Callback& callback = {}) noexcept {
             IOUXX_ASSERT(valid());
             try {
-                auto spans = std::forward<Buffers>(buffers)
+                std::vector spans = std::forward<Buffers>(buffers)
                     | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
                         using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
                         return std::span<byte_type>(std::forward<Buffer>(buffer));
@@ -1004,18 +1004,23 @@ namespace iouxx {
                 } else {
                     using operation_type = iouops::buffer_unregister_operation<std::decay_t<Callback>>;
                     std::vector<std::unique_ptr<operation_type>> callbacks;
+                    std::vector<unsigned long long> tags;
                     callbacks.reserve(iovecs.size());
+                    tags.reserve(iovecs.size());
                     for (std::span buf : spans) {
                         auto cb = std::make_unique<operation_type>(callback);
                         cb->buffer(buf);
+                        tags.push_back(reinterpret_cast<std::uintptr_t>(cb.get()));
                         callbacks.push_back(std::move(cb));
-                    }
-                    std::vector<unsigned long long> tags(iovecs.size());
-                    for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
-                        tag = reinterpret_cast<std::uintptr_t>(cb.release());
                     }
                     ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
                         iovecs.data(), tags.data(), iovecs.size());
+                    if (!ev) {
+                        // Release ownership, callbacks will be owned by kernel now.
+                        for (auto& cb : callbacks) {
+                            auto _ = cb.release();
+                        }
+                    }
                 }
                 return utility::make_system_error_code(-ev);
             } catch (...) {
@@ -1029,7 +1034,7 @@ namespace iouxx {
             Buffers&& buffers, const Callback& callback = {}) noexcept {
             IOUXX_ASSERT(valid());
             try {
-                auto spans = std::forward<Buffers>(buffers)
+                std::vector spans = std::forward<Buffers>(buffers)
                     | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
                         using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
                         return std::span<byte_type>(std::forward<Buffer>(buffer));
@@ -1047,18 +1052,23 @@ namespace iouxx {
                 } else {
                     using operation_type = iouops::buffer_unregister_operation<std::decay_t<Callback>>;
                     std::vector<std::unique_ptr<operation_type>> callbacks;
+                    std::vector<unsigned long long> tags;
                     callbacks.reserve(iovecs.size());
+                    tags.reserve(iovecs.size());
                     for (std::span buf : spans) {
                         auto cb = std::make_unique<operation_type>(callback);
                         cb->buffer(buf);
+                        tags.push_back(reinterpret_cast<std::uintptr_t>(cb.get()));
                         callbacks.push_back(std::move(cb));
-                    }
-                    std::vector<unsigned long long> tags(iovecs.size());
-                    for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
-                        tag = reinterpret_cast<std::uintptr_t>(cb.release());
                     }
                     ev = ::io_uring_register_buffers_tags(
                         &raw_ring, iovecs.data(), tags.data(), iovecs.size());
+                    if (!ev) {
+                        // Release ownership, callbacks will be owned by kernel now.
+                        for (auto& cb : callbacks) {
+                            auto _ = cb.release();
+                        }
+                    }
                 }
                 return utility::make_system_error_code(-ev);
             } catch (...) {
@@ -1083,19 +1093,28 @@ namespace iouxx {
                     fds.data(), fds.size());
             } else {
                 using operation_type = iouops::fd_unregister_operation<std::decay_t<Callback>>;
-                std::vector<std::unique_ptr<operation_type>> callbacks;
-                callbacks.reserve(fds.size());
-                for (int fd : fds) {
-                    auto cb = std::make_unique<operation_type>(callback);
-                    cb->file(fd);
-                    callbacks.push_back(std::move(cb));
+                try {
+                    std::vector<std::unique_ptr<operation_type>> callbacks;
+                    std::vector<unsigned long long> tags;
+                    callbacks.reserve(fds.size());
+                    tags.reserve(fds.size());
+                    for (int fd : fds) {
+                        auto cb = std::make_unique<operation_type>(callback);
+                        cb->file(fd);
+                        tags.push_back(reinterpret_cast<std::uintptr_t>(cb.get()));
+                        callbacks.push_back(std::move(cb));
+                    }
+                    ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
+                        fds.data(), tags.data(), fds.size());
+                    if (!ev) {
+                        // Release ownership, callbacks will be owned by kernel now.
+                        for (auto& cb : callbacks) {
+                            auto _ = cb.release();
+                        }
+                    }
+                } catch (...) {
+                    return std::make_error_code(std::errc::not_enough_memory);
                 }
-                std::vector<unsigned long long> tags(fds.size());
-                for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
-                    tag = reinterpret_cast<std::uintptr_t>(cb.release());
-                }
-                ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
-                    fds.data(), tags.data(), fds.size());
             }
             return utility::make_system_error_code(-ev);
         }
@@ -1113,18 +1132,23 @@ namespace iouxx {
                 using operation_type = iouops::fd_unregister_operation<std::decay_t<Callback>>;
                 try {
                     std::vector<std::unique_ptr<operation_type>> callbacks;
+                    std::vector<unsigned long long> tags;
                     callbacks.reserve(fds.size());
+                    tags.reserve(fds.size());
                     for (int fd : fds) {
                         auto cb = std::make_unique<operation_type>(callback);
                         cb->file(fd);
+                        tags.push_back(reinterpret_cast<std::uintptr_t>(cb.get()));
                         callbacks.push_back(std::move(cb));
-                    }
-                    std::vector<unsigned long long> tags(fds.size());
-                    for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
-                        tag = reinterpret_cast<std::uintptr_t>(cb.release());
                     }
                     ev = ::io_uring_register_files_tags(
                         &raw_ring, fds.data(), tags.data(), fds.size());
+                    if (!ev) {
+                        // Release ownership, callbacks will be owned by kernel now.
+                        for (auto& cb : callbacks) {
+                            auto _ = cb.release();
+                        }
+                    }
                 } catch (...) {
                     return std::make_error_code(std::errc::not_enough_memory);
                 }
