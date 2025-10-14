@@ -299,6 +299,7 @@ void echo_client() {
         }
     }();
 
+    // For some reason setsockopt op may not work
     bool sockcmd_exists = true;
 
     [&ring, &sock, &sockcmd_exists] {
