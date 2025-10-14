@@ -1003,18 +1003,16 @@ namespace iouxx {
                         iovecs.data(), nullptr, iovecs.size());
                 } else {
                     using operation_type = iouops::buffer_unregister_operation<std::decay_t<Callback>>;
+                    std::vector<std::unique_ptr<operation_type>> callbacks;
+                    callbacks.reserve(iovecs.size());
+                    for (std::span buf : spans) {
+                        auto cb = std::make_unique<operation_type>(callback);
+                        cb->buffer(buf);
+                        callbacks.push_back(std::move(cb));
+                    }
                     std::vector<unsigned long long> tags(iovecs.size());
-                    for (std::size_t i = 0; i < iovecs.size(); ++i) {
-                        try {
-                            auto* const cb = new operation_type(callback);
-                            cb->buffer(spans[i]);
-                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
-                        } catch (...) {
-                            for (std::size_t j = 0; j < i; ++j) {
-                                delete reinterpret_cast<operation_type*>(tags[j]);
-                            }
-                            throw;
-                        }
+                    for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
+                        tag = reinterpret_cast<std::uintptr_t>(cb.release());
                     }
                     ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
                         iovecs.data(), tags.data(), iovecs.size());
@@ -1048,18 +1046,16 @@ namespace iouxx {
                         &raw_ring, iovecs.data(), iovecs.size());
                 } else {
                     using operation_type = iouops::buffer_unregister_operation<std::decay_t<Callback>>;
+                    std::vector<std::unique_ptr<operation_type>> callbacks;
+                    callbacks.reserve(iovecs.size());
+                    for (std::span buf : spans) {
+                        auto cb = std::make_unique<operation_type>(callback);
+                        cb->buffer(buf);
+                        callbacks.push_back(std::move(cb));
+                    }
                     std::vector<unsigned long long> tags(iovecs.size());
-                    for (std::size_t i = 0; i < iovecs.size(); ++i) {
-                        try {
-                            auto* const cb = new operation_type(callback);
-                            cb->buffer(spans[i]);
-                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
-                        } catch (...) {
-                            for (std::size_t j = 0; j < i; ++j) {
-                                delete reinterpret_cast<operation_type*>(tags[j]);
-                            }
-                            throw;
-                        }
+                    for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
+                        tag = reinterpret_cast<std::uintptr_t>(cb.release());
                     }
                     ev = ::io_uring_register_buffers_tags(
                         &raw_ring, iovecs.data(), tags.data(), iovecs.size());
@@ -1087,25 +1083,19 @@ namespace iouxx {
                     fds.data(), fds.size());
             } else {
                 using operation_type = iouops::fd_unregister_operation<std::decay_t<Callback>>;
-                try {
-                    std::vector<unsigned long long> tags(fds.size());
-                    for (std::size_t i = 0; i < fds.size(); ++i) {
-                        try {
-                            auto* const cb = new operation_type(callback);
-                            cb->file(fds[i]);
-                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
-                        } catch (...) {
-                            for (std::size_t j = 0; j < i; ++j) {
-                                delete reinterpret_cast<operation_type*>(tags[j]);
-                            }
-                            throw;
-                        }
-                    }
-                    ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
-                        fds.data(), tags.data(), fds.size());
-                } catch (...) {
-                    return std::make_error_code(std::errc::not_enough_memory);
+                std::vector<std::unique_ptr<operation_type>> callbacks;
+                callbacks.reserve(fds.size());
+                for (int fd : fds) {
+                    auto cb = std::make_unique<operation_type>(callback);
+                    cb->file(fd);
+                    callbacks.push_back(std::move(cb));
                 }
+                std::vector<unsigned long long> tags(fds.size());
+                for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
+                    tag = reinterpret_cast<std::uintptr_t>(cb.release());
+                }
+                ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
+                    fds.data(), tags.data(), fds.size());
             }
             return utility::make_system_error_code(-ev);
         }
@@ -1122,18 +1112,16 @@ namespace iouxx {
             } else {
                 using operation_type = iouops::fd_unregister_operation<std::decay_t<Callback>>;
                 try {
+                    std::vector<std::unique_ptr<operation_type>> callbacks;
+                    callbacks.reserve(fds.size());
+                    for (int fd : fds) {
+                        auto cb = std::make_unique<operation_type>(callback);
+                        cb->file(fd);
+                        callbacks.push_back(std::move(cb));
+                    }
                     std::vector<unsigned long long> tags(fds.size());
-                    for (std::size_t i = 0; i < fds.size(); ++i) {
-                        try {
-                            auto* const cb = new operation_type(callback);
-                            cb->file(fds[i]);
-                            tags[i] = reinterpret_cast<std::uintptr_t>(cb);
-                        } catch (...) {
-                            for (std::size_t j = 0; j < i; ++j) {
-                                delete reinterpret_cast<operation_type*>(tags[j]);
-                            }
-                            throw;
-                        }
+                    for (auto&& [tag, cb] : std::views::zip(tags, callbacks)) {
+                        tag = reinterpret_cast<std::uintptr_t>(cb.release());
                     }
                     ev = ::io_uring_register_files_tags(
                         &raw_ring, fds.data(), tags.data(), fds.size());
