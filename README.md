@@ -1,6 +1,8 @@
 # [iouxx](https://github.com/xiaosa-zhz/iouxx)
 
 A C++26 style thin wrapper around [liburing](https://github.com/axboe/liburing).
+(Disclaimer: still in early stage, API may change)
+(Also disclaimer: part of this document is written by AI)
 
 ## ✨ Features
 
