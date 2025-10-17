@@ -24,10 +24,10 @@ A C++26 style thin wrapper around [liburing](https://github.com/axboe/liburing).
 ## 🧱 Design Note
 
 - Restrict the use of `user_data` in `io_uring_sqe` to callback object pointer only. All these callback objects are managed by user, and need to outlive the submission and completion of io_uring.
-- The callback object (those defined in folder `iouops`) is a 'One to rule them all' object, contains all arguments needed by io_uring and user-provided callback.
+- The callback object (`*_operation` types defined in `iouxx::iouops`) is a 'One to rule them all' object, contains all arguments needed by io_uring and user-provided callback.
   - It provides a thin type-safe wrapper over `io_uring_sqe` and `io_uring_cqe`.
   - As long as its lifetime is guarenteed, all things need to be keeped alive is safe to use by io_uring and in the callback (except fd and buffer, which are specially treated by io_uring, and need a overall management mechanism anyway).
-  - It is pinned and non-allocating. User is recommended to embed it in the context of a larger asyncronous operation to combine allocation (e.g. on the 'stack' of coroutine).
+  - It is pinned and non-allocating. It is recommended to be embedded in the context of a larger asyncronous operation to combine allocation (e.g. on the 'stack' of coroutine).
 - Provide convenience facilities:
   - `syncwait_callback` for simple synchronous wait use case (e.g. in tests).
   - `awaiter_callback` to transform most of io_uring operations into coroutine awaitable (naturally forked operations need to be treated seperately).
