@@ -44,7 +44,7 @@ namespace iouxx {
         static constexpr bool is_steady = true; // monotonic + never goes backwards
 
         static time_point now() noexcept {
-            struct timespec ts;
+            ::timespec ts;
             ::clock_gettime(CLOCK_BOOTTIME, &ts);
             // Prevent overflow: tv_nsec < 1e9 always; tv_sec fits in 64 bits for practical uptimes.
             auto ns = static_cast<rep>(ts.tv_sec) * 1'000'000'000 + static_cast<rep>(ts.tv_nsec);
