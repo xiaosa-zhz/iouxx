@@ -1,6 +1,7 @@
 # Xmake cache
 .xmake/
 .vscode/.cache/
+.vscode/compile_commands.json
 build/
 
 # MacOS Cache
