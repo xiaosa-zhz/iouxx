@@ -65,6 +65,23 @@ namespace iouxx::details {
     // Forward declaration
     inline std::uint32_t get_native_handle(const ring& r) noexcept;
 
+    template<typename Promise>
+    concept has_unhandled_stopped = requires (Promise& p) {
+        { p.unhandled_stopped() } noexcept -> std::convertible_to<std::coroutine_handle<>>;
+    };
+
+    template<typename Promise>
+    constexpr std::coroutine_handle<Promise> handle_cast(std::coroutine_handle<> h) noexcept {
+        return std::coroutine_handle<Promise>::from_address(h.address());
+    }
+
+    using cancel_handler_type = std::coroutine_handle<>(*)(std::coroutine_handle<>) noexcept;
+
+    template<has_unhandled_stopped Promise>
+    inline std::coroutine_handle<> cancel_handler(std::coroutine_handle<> h) noexcept {
+        return handle_cast<Promise>(h).promise().unhandled_stopped();
+    }
+
 } // namespace iouxx::details
 
 IOUXX_EXPORT
@@ -105,14 +122,21 @@ namespace iouxx::inline iouops {
         using result_type = Result;
         using expected_type = std::expected<result_type, std::error_code>;
     public:
-        void operator()(expected_type res) noexcept {
-            *result = std::move(res);
-            handle.resume();
+        void operator()(expected_type res) IOUXX_CALLBACK_NOEXCEPT {
+            if (cancel_handler && !res && res.error() == std::errc::operation_canceled) {
+                cancel_handler(handle).resume(); // should not throw
+            } else {
+                *result = std::move(res);
+                // if the outest coroutine of current coroutine stack is a
+                // 'propagate to scheduler' coroutine, this may eventually throw
+                handle.resume();
+            }
         }
 
     private:
         friend operation_base;
         expected_type* result = nullptr;
+        details::cancel_handler_type cancel_handler = nullptr;
         std::coroutine_handle<> handle = nullptr;
     };
 
@@ -248,7 +272,8 @@ namespace iouxx::inline iouops {
 
             constexpr bool await_ready() const noexcept { return false; }
 
-            bool await_suspend(std::coroutine_handle<> handle) noexcept {
+            template<typename CallerPromise>
+            bool await_suspend(std::coroutine_handle<CallerPromise> handle) noexcept {
                 self.setup_awaiter_callback(handle, this->result);
                 if (std::error_code res = self.do_submit()) {
                     // fail to submit, resume immediately
@@ -259,15 +284,11 @@ namespace iouxx::inline iouops {
                 }
             }
 
-            expected_type await_resume() noexcept {
-                return std::move(result);
-            }
+            expected_type await_resume() noexcept { return std::move(result); }
 
         private:
             friend operation_base;
-            explicit operation_awaiter(Self& self) noexcept
-                : self(self)
-            {}
+            explicit operation_awaiter(Self& self) noexcept : self(self) {}
 
             Self& self;
             expected_type result = std::unexpected(std::error_code());
@@ -334,12 +355,16 @@ namespace iouxx::inline iouops {
             return self.ring_ptr->submit(self.to_sqe());
         }
 
-        template<awaiter_operation Self, typename Result>
+        template<awaiter_operation Self, typename CallerPromise, typename Result>
         void setup_awaiter_callback(this Self& self,
-            std::coroutine_handle<> handle,
+            std::coroutine_handle<CallerPromise> handle,
             std::expected<Result, std::error_code>& result) noexcept {
-            self.callback.handle = handle;
-            self.callback.result = &result;
+            auto& cb = self.callback;
+            cb.handle = handle;
+            cb.result = &result;
+            if constexpr (details::has_unhandled_stopped<CallerPromise>) {
+                cb.cancel_handler = &details::cancel_handler<CallerPromise>;
+            }
         }
 
         template<typename Operation>
