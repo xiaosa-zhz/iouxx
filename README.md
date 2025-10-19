@@ -65,7 +65,7 @@ No examples yet, but test cases can be referenced for usage, see below.
 - `test_ip_utils.cpp`: `iouops/network/ip.hpp`
 - `test_coro.cpp`: `awaiter_callback` in `iouringxx.hpp`
 - `test_cancel.cpp`: `iouops/cancel.hpp`
-- `test_network.cpp`: `iouops/network/socket.hpp`, some features are not working on older kernels thus may not be covered.
+- `test_network.cpp`: `iouops/network/socketio.hpp`, some features are not working on older kernels thus may not be covered.
 
 ## 🛣️ Roadmap / TODO
 
