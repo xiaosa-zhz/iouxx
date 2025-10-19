@@ -44,6 +44,8 @@ namespace iouxx {
     // Forward declaration
     class operation_result;
 
+    using io_uring_resource_tag_type = ::__u64;
+
 } // namespace iouxx
 
 namespace iouxx::details {
@@ -456,38 +458,33 @@ namespace iouxx::inline iouops {
     ring_management_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> ring_management_operation<F>;
 
-    struct fd_unregistration_info {
-        management_info info;
-        int fd;
+    struct unregistration_info {
+        io_uring_resource_tag_type cqe_flags;
+        iouxx::ring* ring;
     };
 
-    template<std::invocable<fd_unregistration_info> Callback>
-    class fd_unregister_operation : public operation_base
+    template<std::invocable<unregistration_info> Callback>
+    class unregister_operation : public operation_base
     {
     public:
         template<utility::not_tag F>
-        fd_unregister_operation(iouxx::ring& ring, F&& f)
+        unregister_operation(iouxx::ring& ring, F&& f)
             noexcept(utility::nothrow_constructible_callback<F>) :
-            operation_base(iouxx::op_tag<fd_unregister_operation>, ring),
-            fd(fd), callback(std::forward<F>(f))
+            operation_base(iouxx::op_tag<unregister_operation>, ring),
+            callback(std::forward<F>(f))
         {}
 
         template<typename F, typename... Args>
-        fd_unregister_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+        unregister_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
             noexcept(std::is_nothrow_constructible_v<F, Args...>) :
-            operation_base(iouxx::op_tag<fd_unregister_operation>, ring),
-            fd(fd), callback(std::forward<Args>(args)...)
+            operation_base(iouxx::op_tag<unregister_operation>, ring),
+            callback(std::forward<Args>(args)...)
         {}
 
         using callback_type = Callback;
-        using result_type = fd_unregistration_info;
+        using result_type = io_uring_resource_tag_type;
 
         static constexpr std::uint8_t opcode = IORING_OP_NOP;
-
-        fd_unregister_operation& file(int fd) & noexcept {
-            this->fd = fd;
-            return *this;
-        }
 
     private:
         friend operation_base;
@@ -498,92 +495,15 @@ namespace iouxx::inline iouops {
             std::unreachable();
         }
 
-        // Operation state (include callback object) will be destroyed
-        // after callback is invoked.
-        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             std::is_nothrow_invocable_v<callback_type, result_type>) {
-            std::unique_ptr<fd_unregister_operation> self_guard(this);
-            std::invoke(callback, fd_unregistration_info{
-                { ev, cqe_flags, this->ring_ptr }, fd
+            std::unique_ptr<unregister_operation> self_guard(this);
+            std::invoke(callback, unregistration_info{
+                static_cast<io_uring_resource_tag_type>(cqe_flags),
+                this->ring_ptr
             });
         }
 
-        int fd = -1;
-        [[no_unique_address]] callback_type callback;
-    };
-
-    template<utility::byte_unit Byte>
-    struct buffer_unregister_info {
-        management_info info;
-        std::span<Byte> buffer;
-    };
-
-    template<typename Callback>
-        requires std::invocable<buffer_unregister_info<std::byte>>
-        || std::invocable<buffer_unregister_info<unsigned char>>
-    class buffer_unregister_operation : public operation_base
-    {
-    public:
-        template<utility::not_tag F>
-        buffer_unregister_operation(iouxx::ring& ring, F&& f)
-            noexcept(utility::nothrow_constructible_callback<F>) :
-            operation_base(iouxx::op_tag<buffer_unregister_operation>, ring),
-            callback(std::forward<F>(f))
-        {}
-
-        template<typename F, typename... Args>
-        buffer_unregister_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
-            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
-            operation_base(iouxx::op_tag<buffer_unregister_operation>, ring),
-            callback(std::forward<Args>(args)...)
-        {}
-
-        using callback_type = Callback;
-        using result_type = std::conditional_t<
-            std::invocable<Callback, buffer_unregister_info<std::byte>>,
-            buffer_unregister_info<std::byte>,
-            buffer_unregister_info<unsigned char>
-        >;
-
-        static constexpr std::uint8_t opcode = IORING_OP_NOP;
-
-        template<utility::buffer_like Buffer>
-        buffer_unregister_operation& buffer(Buffer&& buf) & noexcept {
-            auto buffer = utility::to_buffer(std::forward<Buffer>(buf));
-            data = buffer.data();
-            length = buffer.size_bytes();
-            return *this;
-        }
-
-    private:
-        friend operation_base;
-        void build(::io_uring_sqe* sqe) & noexcept {
-            // This operation should not be submitted by user.
-            // Only generated from unreigistration of registered buffer.
-            IOUXX_ASSERT(false);
-            std::unreachable();
-        }
-
-        // Operation state (include callback object) will be destroyed
-        // after callback is invoked.
-        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
-            std::is_nothrow_invocable_v<callback_type, result_type>) {
-            std::unique_ptr<buffer_unregister_operation> self_guard(this);
-            if constexpr (std::same_as<result_type, buffer_unregister_info<std::byte>>) {
-                std::invoke(callback, buffer_unregister_info<std::byte>{
-                    { ev, cqe_flags, this->ring_ptr },
-                    std::span(static_cast<std::byte*>(data), length)
-                });
-            } else {
-                std::invoke(callback, buffer_unregister_info<unsigned char>{
-                    { ev, cqe_flags, this->ring_ptr },
-                    std::span(static_cast<unsigned char*>(data), length)
-                });
-            }
-        }
-
-        void* data;
-        std::size_t length;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -999,19 +919,21 @@ namespace iouxx {
         }
 
         // Maximum size of resource tag used by fd and buffer registration.
-        using resource_tag_type = ::__u64;
+        using resource_tag_type = io_uring_resource_tag_type;
         static constexpr std::size_t max_resource_tag_size = std::numeric_limits<std::uint32_t>::max();
 
         template<std::invocable<resource_tag_type> Callback>
         void register_buffer_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
-            buffer_unregister_callback = make_callback_handle(std::forward<Callback>(callback));
+            this->buffer_unregister_callback
+                = make_unregistration_callback_handle(std::forward<Callback>(callback));
         }
 
         template<std::invocable<resource_tag_type> Callback>
         void register_direct_descriper_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
-            fd_unregister_callback = make_callback_handle(std::forward<Callback>(callback));
+            this->fd_unregister_callback
+                = make_unregistration_callback_handle(std::forward<Callback>(callback));
         }
 
         std::error_code register_buffer_table(std::size_t size) noexcept {
@@ -1246,13 +1168,13 @@ namespace iouxx {
 
         using unregistration_callback_handle = std::unique_ptr<operation_base, deleter_type>;
 
-        static unregistration_callback_handle empty_callback_handle() noexcept {
+        static unregistration_callback_handle empty_unregistration_callback_handle() noexcept {
             return unregistration_callback_handle(nullptr, nullptr);
         }
 
         template<typename Callback>
-        unregistration_callback_handle make_callback_handle(Callback&& callback) {
-            using operation_type = iouops::ring_management_operation<std::decay_t<Callback>>;
+        unregistration_callback_handle make_unregistration_callback_handle(Callback&& callback) {
+            using operation_type = iouops::unregister_operation<std::decay_t<Callback>>;
             auto op = std::make_unique<operation_type>(*this, std::forward<Callback>(callback));
             return unregistration_callback_handle(op.release(), &do_delete<operation_type>);
         }
@@ -1312,8 +1234,8 @@ namespace iouxx {
 
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
-        unregistration_callback_handle fd_unregister_callback = empty_callback_handle();
-        unregistration_callback_handle buffer_unregister_callback = empty_callback_handle();
+        unregistration_callback_handle fd_unregister_callback = empty_unregistration_callback_handle();
+        unregistration_callback_handle buffer_unregister_callback = empty_unregistration_callback_handle();
     };
 
 } // namespace iouxx
