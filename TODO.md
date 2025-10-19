@@ -6,11 +6,6 @@
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
-- [ ] Rewrite registration mechanism by:
-  - [ ] Add alignment requirement to operation_base to allow pointer tagging
-  - [ ] Using tagged pointer in `user_data`, apply different tags for normal callbacks and registration related callbacks
-  - [ ] Using only one and universal registration callback to handle all registration related events of one type
-  - [ ] Since there are two types of resource registration (fd and buffer), use two callbacks
 
 ## Medium Priority
 - [ ] Add version check in both compile time and runtime (when liburing has it)
@@ -22,6 +17,7 @@
 - [ ] Use more start_lifetime_as in buffer related operations when supported
 
 ## Completed
+- [x] ~~Rewrite registration mechanism~~
 - [x] ~~Implement socket IO operations in `include/iouops/socketio.hpp`~~
 - [x] ~~Implement file IO operations in `include/iouops/fileio.hpp`~~
 - [x] ~~Add registration of resources (files, buffers, etc.)~~
