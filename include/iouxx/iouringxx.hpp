@@ -83,7 +83,7 @@ namespace iouxx::details {
     }
 
     template<utility::buffer_range Buffers>
-    std::vector<::iovec> to_iovecs(Buffers&& buffers) {
+    inline std::vector<::iovec> to_iovecs(Buffers&& buffers) {
         return std::forward<Buffers>(buffers)
             | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
                 using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
@@ -95,7 +95,7 @@ namespace iouxx::details {
     using real_resource_tag_type = __u64;
 
     template<utility::resource_tag_range Tags>
-    std::vector<real_resource_tag_type> to_tags(Tags&& tags, std::uint64_t bit_tag) {
+    inline std::vector<real_resource_tag_type> to_tags(Tags&& tags, std::uint64_t bit_tag) {
         return std::forward<Tags>(tags)
             | std::views::transform([bit_tag]<typename Tag>(Tag&& tag) {
                 const std::uint64_t raw = std::forward<Tag>(tag);
@@ -1204,9 +1204,8 @@ namespace iouxx {
             IOUXX_ASSERT(cqe != nullptr);
             const std::uint64_t user_data = ::io_uring_cqe_get_data64(cqe);
             const std::uint64_t tag = user_data & pointer_tag_mask;
-            iouops::operation_base* cb = nullptr;
             if (tag == tag_normal_callback) [[likely]] {
-                cb = static_cast<iouops::operation_base*>(::io_uring_cqe_get_data(cqe));
+                iouops::operation_base* cb = static_cast<iouops::operation_base*>(::io_uring_cqe_get_data(cqe));
                 return operation_result(cb, cqe->res, cqe->flags);
             } else {
                 // For fd and buffer unregister, higher bits are resource tag that set during registration.
@@ -1214,6 +1213,7 @@ namespace iouxx {
                 // Split resource tag to two parts into res and cqe_flags, reassemble later.
                 const std::int32_t res = std::bit_cast<std::int32_t>(std::uint32_t(resource_tag));
                 const std::uint32_t cqe_flags = std::uint32_t(resource_tag >> 32);
+                iouops::operation_base* cb = nullptr;
                 if (tag == tag_fd_unregister) {
                     cb = fd_unregister_callback.get();
                 } else if (tag == tag_buffer_unregister) {
