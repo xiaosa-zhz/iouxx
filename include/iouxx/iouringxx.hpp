@@ -44,8 +44,6 @@ namespace iouxx {
     // Forward declaration
     class operation_result;
 
-    using io_uring_resource_tag_type = ::__u64;
-
 } // namespace iouxx
 
 namespace iouxx::details {
@@ -82,6 +80,26 @@ namespace iouxx::details {
     template<has_unhandled_stopped Promise>
     inline std::coroutine_handle<> cancel_handler(std::coroutine_handle<> h) noexcept {
         return handle_cast<Promise>(h).promise().unhandled_stopped();
+    }
+
+    template<utility::buffer_range Buffers>
+    std::vector<::iovec> to_iovecs(Buffers&& buffers) {
+        return std::forward<Buffers>(buffers)
+            | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
+                using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
+                return utility::to_iovec(std::span<byte_type>(std::forward<Buffer>(buffer)));
+            })
+            | std::ranges::to<std::vector<::iovec>>();
+    }
+
+    template<utility::resource_tag_range Tags>
+    std::vector<utility::resource_tag_type> to_tags(Tags&& tags, utility::resource_tag_type bit_tag) {
+        return std::forward<Tags>(tags)
+            | std::views::transform([bit_tag]<typename Tag>(Tag&& tag) {
+                const utility::resource_tag_type raw = std::forward<Tag>(tag);
+                return static_cast<utility::resource_tag_type>((raw << 3) | bit_tag);
+            })
+            | std::ranges::to<std::vector<utility::resource_tag_type>>();
     }
 
 } // namespace iouxx::details
@@ -459,7 +477,7 @@ namespace iouxx::inline iouops {
         -> ring_management_operation<F>;
 
     struct unregistration_info {
-        io_uring_resource_tag_type cqe_flags;
+        utility::resource_tag_type cqe_flags;
         iouxx::ring* ring;
     };
 
@@ -482,7 +500,7 @@ namespace iouxx::inline iouops {
         {}
 
         using callback_type = Callback;
-        using result_type = io_uring_resource_tag_type;
+        using result_type = utility::resource_tag_type;
 
         static constexpr std::uint8_t opcode = IORING_OP_NOP;
 
@@ -499,7 +517,7 @@ namespace iouxx::inline iouops {
             std::is_nothrow_invocable_v<callback_type, result_type>) {
             std::unique_ptr<unregister_operation> self_guard(this);
             std::invoke(callback, unregistration_info{
-                static_cast<io_uring_resource_tag_type>(cqe_flags),
+                static_cast<utility::resource_tag_type>(cqe_flags),
                 this->ring_ptr
             });
         }
@@ -919,17 +937,17 @@ namespace iouxx {
         }
 
         // Maximum size of resource tag used by fd and buffer registration.
-        using resource_tag_type = io_uring_resource_tag_type;
+        using resource_tag_type = utility::resource_tag_type;
         static constexpr std::size_t max_resource_tag_size = std::numeric_limits<std::uint32_t>::max();
 
-        template<std::invocable<resource_tag_type> Callback>
+        template<std::invocable<iouops::unregistration_info> Callback>
         void register_buffer_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
             this->buffer_unregister_callback
                 = make_unregistration_callback_handle(std::forward<Callback>(callback));
         }
 
-        template<std::invocable<resource_tag_type> Callback>
+        template<std::invocable<iouops::unregistration_info> Callback>
         void register_direct_descriper_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
             this->fd_unregister_callback
@@ -942,17 +960,13 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        template<utility::buffer_range Buffers>
-        std::error_code update_buffer_table(std::size_t offset, Buffers&& buffers,
-            const std::span<const resource_tag_type> tags) noexcept {
+        template<utility::buffer_range Buffers, utility::resource_tag_range Tags>
+        std::error_code update_buffer_table(std::size_t offset, Buffers&& buffers, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             try {
-                std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
-                    | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
-                        using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
-                        return utility::to_iovec(std::span<byte_type>(std::forward<Buffer>(buffer)));
-                    })
-                    | std::ranges::to<std::vector<::iovec>>();
+                std::vector<::iovec> iovecs = details::to_iovecs(std::forward<Buffers>(buffers));
+                std::vector<resource_tag_type> tags
+                    = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
                 int ev = 0;
                 if (tags.empty()) {
                     ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
@@ -968,17 +982,13 @@ namespace iouxx {
             }
         }
 
-        template<utility::buffer_range Buffers>
-        std::error_code register_buffers(Buffers&& buffers,
-            const std::span<const resource_tag_type> tags) noexcept {
+        template<utility::buffer_range Buffers, utility::resource_tag_range Tags>
+        std::error_code register_buffers(Buffers&& buffers, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             try {
-                std::vector<::iovec> iovecs = std::forward<Buffers>(buffers)
-                    | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
-                        using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
-                        return utility::to_iovec(std::span<byte_type>(std::forward<Buffer>(buffer)));
-                    })
-                    | std::ranges::to<std::vector<::iovec>>();
+                std::vector<::iovec> iovecs = details::to_iovecs(std::forward<Buffers>(buffers));
+                std::vector<resource_tag_type> tags
+                    = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
                 int ev = 0;
                 if (tags.empty()) {
                     ev = ::io_uring_register_buffers(&raw_ring,
@@ -1000,32 +1010,46 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        std::error_code update_direct_descriptor_table(std::size_t offset, const std::span<const int> fds,
-            const std::span<const resource_tag_type> tags) noexcept {
+        template<utility::resource_tag_range Tags>
+        std::error_code update_direct_descriptor_table(std::size_t offset,
+            const std::span<const int> fds, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             int ev = 0;
-            if (tags.empty()) {
-                ev = ::io_uring_register_files_update(&raw_ring, offset,
-                    fds.data(), fds.size());
-            } else {
-                IOUXX_ASSERT(tags.size() == fds.size());
-                ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
-                    fds.data(), tags.data(), fds.size());
+            try {
+                std::vector<resource_tag_type> tags
+                    = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
+                if (tags.empty()) {
+                    ev = ::io_uring_register_files_update(&raw_ring, offset,
+                        fds.data(), fds.size());
+                } else {
+                    IOUXX_ASSERT(tags.size() == fds.size());
+                    ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
+                        fds.data(), tags.data(), fds.size());
+                }
+            } catch (...) {
+                return std::make_error_code(std::errc::not_enough_memory);
             }
             return utility::make_system_error_code(-ev);
         }
 
-        std::error_code register_direct_descriptors(const std::span<const int> fds,
-            const std::span<const resource_tag_type> tags) noexcept {
+        template<utility::resource_tag_range Tags>
+        std::error_code register_direct_descriptors(
+            const std::span<const int> fds, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             int ev = 0;
-            if (tags.empty()) {
-                ev = ::io_uring_register_files(&raw_ring,
-                    fds.data(), fds.size());
-            } else {
-                IOUXX_ASSERT(tags.size() == fds.size());
-                ev = ::io_uring_register_files_tags(&raw_ring,
-                    fds.data(), tags.data(), fds.size());
+            try {
+                std::vector<resource_tag_type> tags
+                    = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
+                if (tags.empty()) {
+                    ev = ::io_uring_register_files(&raw_ring,
+                        fds.data(), fds.size());
+                } else {
+                    IOUXX_ASSERT(tags.size() == fds.size());
+                    ev = ::io_uring_register_files_tags(&raw_ring,
+                        fds.data(), tags.data(), fds.size());
+                }
+            } catch (...) {
+                return std::make_error_code(std::errc::not_enough_memory);
             }
             return utility::make_system_error_code(-ev);
         }
@@ -1152,12 +1176,6 @@ namespace iouxx {
         };
 
         using probe_handle = std::unique_ptr<::io_uring_probe, probe_deleter>;
-
-        struct noop_callback {
-            static constexpr void operator()(iouops::management_info) noexcept {}
-        };
-
-        using noop_callback_operation = iouops::ring_management_operation<noop_callback>;
 
         using deleter_type = void (*)(iouops::operation_base*) noexcept;
 

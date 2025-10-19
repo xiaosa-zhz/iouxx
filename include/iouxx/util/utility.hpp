@@ -116,6 +116,13 @@ namespace iouxx::utility {
     concept buffer_range = std::ranges::input_range<std::remove_cvref_t<R>>
         && buffer_like<std::ranges::range_value_t<std::remove_cvref_t<R>>>;
 
+    using resource_tag_type = ::__u64;
+
+    template<typename R>
+    concept resource_tag_range = std::ranges::input_range<std::remove_cvref_t<R>>
+        && std::convertible_to<std::ranges::range_reference_t<std::remove_cvref_t<R>>,
+            resource_tag_type>;
+
     template<byte_unit ByteType, std::size_t N>
     inline ::iovec to_iovec(std::span<ByteType, N> buffer) noexcept {
         return ::iovec{
