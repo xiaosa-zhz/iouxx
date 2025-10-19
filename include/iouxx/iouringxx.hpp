@@ -1312,7 +1312,7 @@ namespace iouxx::details {
                         static_cast<void*>(std::forward<Tag>(tag))
                     ));
                 } else {
-                    static_assert(utility::always_false<Tag>, "Unreachable");
+                    static_assert(false, "Unreachable");
                 }
                 constexpr std::uint64_t mask = ~(std::uint64_t(-1) << ring::reserved_tag_bits);
                 raw = (raw & ~mask) | (bit_tag & mask);

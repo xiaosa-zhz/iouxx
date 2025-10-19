@@ -32,9 +32,6 @@ namespace iouxx::utility {
         Defer f;
     };
 
-    template<typename>
-    inline constexpr bool always_false = false;
-
     struct system_addrsock_info {
         ::sockaddr* addr;
         std::size_t addrlen;
@@ -97,7 +94,7 @@ namespace iouxx::utility {
         } else if constexpr (char_span_like<R>) {
             return std::span<unsigned char>(std::forward<R>(r));
         } else {
-            static_assert(always_false<R>, "Unreachable");
+            static_assert(false, "Unreachable");
         }
     }
 
@@ -108,7 +105,7 @@ namespace iouxx::utility {
         } else if constexpr (readonly_char_span_like<R>) {
             return std::span<const unsigned char>(std::forward<R>(r));
         } else {
-            static_assert(always_false<R>, "Unreachable");
+            static_assert(false, "Unreachable");
         }
     }
 

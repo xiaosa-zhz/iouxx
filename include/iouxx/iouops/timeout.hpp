@@ -132,7 +132,7 @@ namespace iouxx::inline iouops {
             } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
-                static_assert(utility::always_false<Callback>, "Unreachable");
+                static_assert(false, "Unreachable");
             }
         }
 
@@ -276,7 +276,7 @@ namespace iouxx::inline iouops {
             } else if constexpr (utility::errorcode_callback<callback_type>) {
                 std::invoke(callback, utility::make_system_error_code(-ev));
             } else {
-                static_assert(utility::always_false<Callback>, "Unreachable");
+                static_assert(false, "Unreachable");
             }
         }
 
