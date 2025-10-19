@@ -1339,7 +1339,7 @@ namespace std {
     template<typename CharT>
     struct formatter<iouxx::iouops::operation_identifier, CharT> : formatter<void*, CharT>
     {
-        using base = formatter<void*, char>;
+        using base = formatter<void*, CharT>;
         using base::parse;
 
         template<class FormatContext>
