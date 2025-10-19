@@ -105,6 +105,13 @@ namespace iouxx::details {
             | std::ranges::to<std::vector<real_resource_tag_type>>();
     }
 
+    struct resource_tag_helper {
+        std::int32_t res;
+        std::uint32_t cqe_flags;
+    };
+
+    static_assert(sizeof(resource_tag_helper) == sizeof(std::uint64_t));
+
 } // namespace iouxx::details
 
 IOUXX_EXPORT
@@ -519,8 +526,9 @@ namespace iouxx::inline iouops {
         void do_callback(int res, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             std::is_nothrow_invocable_v<callback_type, result_type>) {
             // Reassemble resource tag from res and cqe_flags
-            const std::uint64_t resource_tag = (std::uint64_t(cqe_flags) << 32)
-                | std::uint64_t(std::bit_cast<std::uint32_t>(std::int32_t(res)));
+            const std::uint64_t resource_tag = std::bit_cast<std::uint64_t>(
+                details::resource_tag_helper{ std::int32_t(res), cqe_flags }
+            );
             std::invoke(callback, unregistration_info{ resource_tag, this->ring_ptr });
         }
 
@@ -1211,8 +1219,8 @@ namespace iouxx {
                 // For fd and buffer unregister, higher bits are resource tag that set during registration.
                 const std::uint64_t resource_tag = user_data & ~pointer_tag_mask;
                 // Split resource tag to two parts into res and cqe_flags, reassemble later.
-                const std::int32_t res = std::bit_cast<std::int32_t>(std::uint32_t(resource_tag));
-                const std::uint32_t cqe_flags = std::uint32_t(resource_tag >> 32);
+                const auto [res, cqe_flags]
+                    = std::bit_cast<details::resource_tag_helper>(resource_tag);
                 iouops::operation_base* cb = nullptr;
                 if (tag == tag_fd_unregister) {
                     cb = fd_unregister_callback.get();
