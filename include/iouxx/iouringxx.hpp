@@ -92,14 +92,17 @@ namespace iouxx::details {
             | std::ranges::to<std::vector<::iovec>>();
     }
 
+    using real_resource_tag_type = __u64;
+
     template<utility::resource_tag_range Tags>
-    std::vector<utility::resource_tag_type> to_tags(Tags&& tags, utility::resource_tag_type bit_tag) {
+    std::vector<real_resource_tag_type> to_tags(Tags&& tags, std::uint64_t bit_tag) {
         return std::forward<Tags>(tags)
             | std::views::transform([bit_tag]<typename Tag>(Tag&& tag) {
-                const utility::resource_tag_type raw = std::forward<Tag>(tag);
-                return static_cast<utility::resource_tag_type>((raw << 3) | bit_tag);
+                const std::uint64_t raw = std::forward<Tag>(tag);
+                IOUXX_ASSERT((raw & 0b111) == 0);
+                return static_cast<real_resource_tag_type>((raw << 3) | bit_tag);
             })
-            | std::ranges::to<std::vector<utility::resource_tag_type>>();
+            | std::ranges::to<std::vector<real_resource_tag_type>>();
     }
 
 } // namespace iouxx::details
@@ -477,7 +480,7 @@ namespace iouxx::inline iouops {
         -> ring_management_operation<F>;
 
     struct unregistration_info {
-        utility::resource_tag_type cqe_flags;
+        std::uint64_t resource_tag;
         iouxx::ring* ring;
     };
 
@@ -500,7 +503,7 @@ namespace iouxx::inline iouops {
         {}
 
         using callback_type = Callback;
-        using result_type = utility::resource_tag_type;
+        using result_type = std::uint64_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_NOP;
 
@@ -513,13 +516,12 @@ namespace iouxx::inline iouops {
             std::unreachable();
         }
 
-        void do_callback(int, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+        void do_callback(int res, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             std::is_nothrow_invocable_v<callback_type, result_type>) {
-            std::unique_ptr<unregister_operation> self_guard(this);
-            std::invoke(callback, unregistration_info{
-                static_cast<utility::resource_tag_type>(cqe_flags),
-                this->ring_ptr
-            });
+            // Reassemble resource tag from res and cqe_flags
+            const std::uint64_t resource_tag = (std::uint64_t(cqe_flags) << 32)
+                | std::uint64_t(std::bit_cast<std::uint32_t>(std::int32_t(res)));
+            std::invoke(callback, unregistration_info{ resource_tag, this->ring_ptr });
         }
 
         [[no_unique_address]] callback_type callback;
@@ -936,10 +938,6 @@ namespace iouxx {
             return result;
         }
 
-        // Maximum size of resource tag used by fd and buffer registration.
-        using resource_tag_type = utility::resource_tag_type;
-        static constexpr std::size_t max_resource_tag_size = std::numeric_limits<std::uint32_t>::max();
-
         template<std::invocable<iouops::unregistration_info> Callback>
         void register_buffer_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
@@ -960,13 +958,13 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
+        // Warning: the lower 3 bits of tag value are reserved.
         template<utility::buffer_range Buffers, utility::resource_tag_range Tags>
         std::error_code update_buffer_table(std::size_t offset, Buffers&& buffers, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             try {
-                std::vector<::iovec> iovecs = details::to_iovecs(std::forward<Buffers>(buffers));
-                std::vector<resource_tag_type> tags
-                    = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
+                auto iovecs = details::to_iovecs(std::forward<Buffers>(buffers));
+                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
                 int ev = 0;
                 if (tags.empty()) {
                     ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
@@ -982,13 +980,13 @@ namespace iouxx {
             }
         }
 
+        // Warning: the lower 3 bits of tag value are reserved.
         template<utility::buffer_range Buffers, utility::resource_tag_range Tags>
         std::error_code register_buffers(Buffers&& buffers, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             try {
-                std::vector<::iovec> iovecs = details::to_iovecs(std::forward<Buffers>(buffers));
-                std::vector<resource_tag_type> tags
-                    = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
+                auto iovecs = details::to_iovecs(std::forward<Buffers>(buffers));
+                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
                 int ev = 0;
                 if (tags.empty()) {
                     ev = ::io_uring_register_buffers(&raw_ring,
@@ -1010,14 +1008,14 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
+        // Warning: the lower 3 bits of tag value are reserved.
         template<utility::resource_tag_range Tags>
         std::error_code update_direct_descriptor_table(std::size_t offset,
             const std::span<const int> fds, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             int ev = 0;
             try {
-                std::vector<resource_tag_type> tags
-                    = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
+                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
                 if (tags.empty()) {
                     ev = ::io_uring_register_files_update(&raw_ring, offset,
                         fds.data(), fds.size());
@@ -1032,14 +1030,14 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
+        // Warning: the lower 3 bits of tag value are reserved.
         template<utility::resource_tag_range Tags>
         std::error_code register_direct_descriptors(
             const std::span<const int> fds, Tags&& rtags) noexcept {
             IOUXX_ASSERT(valid());
             int ev = 0;
             try {
-                std::vector<resource_tag_type> tags
-                    = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
+                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
                 if (tags.empty()) {
                     ev = ::io_uring_register_files(&raw_ring,
                         fds.data(), fds.size());
@@ -1212,7 +1210,10 @@ namespace iouxx {
                 return operation_result(cb, cqe->res, cqe->flags);
             } else {
                 // For fd and buffer unregister, higher bits are resource tag that set during registration.
-                const std::uint32_t resource_tag = static_cast<std::uint32_t>(user_data >> 3);
+                const std::uint64_t resource_tag = user_data & ~pointer_tag_mask;
+                // Split resource tag to two parts into res and cqe_flags, reassemble later.
+                const std::int32_t res = std::bit_cast<std::int32_t>(std::uint32_t(resource_tag));
+                const std::uint32_t cqe_flags = std::uint32_t(resource_tag >> 32);
                 if (tag == tag_fd_unregister) {
                     cb = fd_unregister_callback.get();
                 } else if (tag == tag_buffer_unregister) {
@@ -1220,7 +1221,7 @@ namespace iouxx {
                 } else {
                     std::unreachable();
                 }
-                return operation_result(cb, 0, resource_tag);
+                return operation_result(cb, res, cqe_flags);
             }
         }
 
