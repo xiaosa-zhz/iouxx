@@ -14,6 +14,7 @@
 #include <concepts>
 #include <type_traits>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <system_error>
 #include <expected>
@@ -82,35 +83,18 @@ namespace iouxx::details {
         return handle_cast<Promise>(h).promise().unhandled_stopped();
     }
 
-    template<utility::buffer_range Buffers>
-    inline std::vector<::iovec> to_iovecs(Buffers&& buffers) {
-        return std::forward<Buffers>(buffers)
-            | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
-                using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
-                return utility::to_iovec(std::span<byte_type>(std::forward<Buffer>(buffer)));
-            })
-            | std::ranges::to<std::vector<::iovec>>();
-    }
+    using real_resource_tag_type = ::__u64;
 
-    using real_resource_tag_type = __u64;
+    template<utility::buffer_range Buffers>
+    inline std::vector<::iovec> to_iovecs(Buffers&& buffers);
 
     template<utility::resource_tag_range Tags>
-    inline std::vector<real_resource_tag_type> to_tags(Tags&& tags, std::uint64_t bit_tag) {
-        return std::forward<Tags>(tags)
-            | std::views::transform([bit_tag]<typename Tag>(Tag&& tag) {
-                const std::uint64_t raw = std::forward<Tag>(tag);
-                IOUXX_ASSERT((raw & 0b111) == 0);
-                return static_cast<real_resource_tag_type>((raw << 3) | bit_tag);
-            })
-            | std::ranges::to<std::vector<real_resource_tag_type>>();
-    }
+    inline std::vector<real_resource_tag_type> to_tags(Tags&& tags, std::uint64_t bit_tag);
 
     struct resource_tag_helper {
         std::int32_t res;
         std::uint32_t cqe_flags;
     };
-
-    static_assert(sizeof(resource_tag_helper) == sizeof(std::uint64_t));
 
 } // namespace iouxx::details
 
@@ -946,6 +930,11 @@ namespace iouxx {
             return result;
         }
 
+        // The lower 3 bits of resource tag value are reserved.
+        // If user wants to set resource tag as pointer, it shall be aligned to 8 bytes.
+        // If lower bits is set anyway, they will be discarded.
+        static constexpr std::size_t reserved_tag_bits = 3;
+
         template<std::invocable<iouops::unregistration_info> Callback>
         void register_buffer_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
@@ -1203,7 +1192,7 @@ namespace iouxx {
             return unregistration_callback_handle(op.release(), &do_delete<operation_type>);
         }
 
-        static constexpr std::uint64_t pointer_tag_mask = 0b111;
+        static constexpr std::uint64_t pointer_tag_mask = ~(std::uint64_t(-1) << reserved_tag_bits);
         static constexpr std::uint64_t tag_normal_callback = 0;
         static constexpr std::uint64_t tag_fd_unregister = 1;
         static constexpr std::uint64_t tag_buffer_unregister = 2;
@@ -1212,21 +1201,25 @@ namespace iouxx {
             IOUXX_ASSERT(cqe != nullptr);
             const std::uint64_t user_data = ::io_uring_cqe_get_data64(cqe);
             const std::uint64_t tag = user_data & pointer_tag_mask;
+            const std::uint64_t data = user_data & ~pointer_tag_mask;
+            iouops::operation_base* cb = nullptr;
             if (tag == tag_normal_callback) [[likely]] {
-                iouops::operation_base* cb = static_cast<iouops::operation_base*>(::io_uring_cqe_get_data(cqe));
+                cb = static_cast<iouops::operation_base*>(
+                    reinterpret_cast<void*>(static_cast<std::uintptr_t>(data))
+                );
                 return operation_result(cb, cqe->res, cqe->flags);
             } else {
                 // For fd and buffer unregister, higher bits are resource tag that set during registration.
-                const std::uint64_t resource_tag = user_data & ~pointer_tag_mask;
+                const std::uint64_t resource_tag = data;
                 // Split resource tag to two parts into res and cqe_flags, reassemble later.
                 const auto [res, cqe_flags]
                     = std::bit_cast<details::resource_tag_helper>(resource_tag);
-                iouops::operation_base* cb = nullptr;
                 if (tag == tag_fd_unregister) {
                     cb = fd_unregister_callback.get();
                 } else if (tag == tag_buffer_unregister) {
                     cb = buffer_unregister_callback.get();
                 } else {
+                    IOUXX_ASSERT(false);
                     std::unreachable();
                 }
                 return operation_result(cb, res, cqe_flags);
@@ -1265,6 +1258,20 @@ namespace iouxx {
         unregistration_callback_handle buffer_unregister_callback = empty_unregistration_callback_handle();
     };
 
+    // Helper function to set fd value as tag of it self
+    inline std::uint64_t make_fd_tag(int fd) noexcept {
+        return static_cast<std::uint64_t>(
+            std::bit_cast<std::uint32_t>(static_cast<std::int32_t>(fd))
+        ) << ring::reserved_tag_bits;
+    }
+
+    // Helper function to restore fd value from tag
+    inline int parse_fd_tag(std::uint64_t tag) noexcept {
+        return static_cast<int>(std::bit_cast<std::int32_t>(
+            static_cast<std::uint32_t>(tag >> ring::reserved_tag_bits)
+        ));
+    }
+
 } // namespace iouxx
 
 namespace iouxx::details {
@@ -1281,6 +1288,37 @@ namespace iouxx::details {
 
     inline std::uint32_t get_native_handle(const ring& r) noexcept {
         return static_cast<std::uint32_t>(r.native_handle());
+    }
+
+    template<utility::buffer_range Buffers>
+    inline std::vector<::iovec> to_iovecs(Buffers&& buffers) {
+        return std::forward<Buffers>(buffers)
+            | std::views::transform([]<typename Buffer>(Buffer&& buffer) noexcept {
+                using byte_type = std::ranges::range_value_t<std::remove_cvref_t<Buffer>>;
+                return utility::to_iovec(std::span<byte_type>(std::forward<Buffer>(buffer)));
+            })
+            | std::ranges::to<std::vector<::iovec>>();
+    }
+
+    template<utility::resource_tag_range Tags>
+    inline std::vector<real_resource_tag_type> to_tags(Tags&& tags, std::uint64_t bit_tag) {
+        return std::forward<Tags>(tags)
+            | std::views::transform([bit_tag]<typename Tag>(Tag&& tag) noexcept {
+                std::uint64_t raw = 0;
+                if constexpr (std::convertible_to<Tag&&, std::uint64_t>) {
+                    raw = std::forward<Tag>(tag);
+                } else if constexpr (std::convertible_to<Tag&&, void*>) {
+                    raw = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(
+                        static_cast<void*>(std::forward<Tag>(tag))
+                    ));
+                } else {
+                    static_assert(utility::always_false<Tag>, "Unreachable");
+                }
+                constexpr std::uint64_t mask = ~(std::uint64_t(-1) << ring::reserved_tag_bits);
+                raw = (raw & ~mask) | (bit_tag & mask);
+                return raw;
+            })
+            | std::ranges::to<std::vector<real_resource_tag_type>>();
     }
 
 } // namespace iouxx::details
