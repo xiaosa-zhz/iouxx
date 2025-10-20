@@ -12,7 +12,7 @@ import iouxx.ring;
 #include <cstring>
 #include <cstddef>
 
-#include "iouringxx.hpp"
+#include "iouxx/iouringxx.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 
