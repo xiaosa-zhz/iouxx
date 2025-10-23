@@ -38,11 +38,11 @@ inline constexpr std::string_view client_msg = "Hello io_uring!"sv;
 inline constexpr std::size_t client_msg_cnt = 10;
 // Use different port among tests to avoid conflict
 #if defined(__clang__)
-inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:8080"_sockv4;
-inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:8081"_sockv4;
+inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:38080"_sockv4;
+inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38081"_sockv4;
 #elif defined(__GNUC__)
-inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:8082"_sockv4;
-inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:8083"_sockv4;
+inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:38082"_sockv4;
+inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38083"_sockv4;
 #endif
 static std::atomic<bool> server_started = false; // publish after listen is ready
 
