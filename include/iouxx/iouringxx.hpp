@@ -946,15 +946,15 @@ namespace iouxx {
         template<std::invocable<iouops::unregistration_info> Callback>
         void register_buffer_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
-            this->buffer_unregister_callback
-                = make_unregistration_callback_handle(std::forward<Callback>(callback));
+            this->buffer_unregister_callback =
+                make_unregistration_callback_handle(std::forward<Callback>(callback));
         }
 
         template<std::invocable<iouops::unregistration_info> Callback>
         void register_direct_descriper_unregistration_callback(Callback&& callback) {
             IOUXX_ASSERT(valid());
-            this->fd_unregister_callback
-                = make_unregistration_callback_handle(std::forward<Callback>(callback));
+            this->fd_unregister_callback =
+                make_unregistration_callback_handle(std::forward<Callback>(callback));
         }
 
         std::error_code register_buffer_table(std::size_t size) noexcept {
@@ -1189,22 +1189,17 @@ namespace iouxx {
 
         using unregistration_callback_handle = std::unique_ptr<operation_base, deleter_type>;
 
-        unregistration_callback_handle noop_unregistration_callback_handle() noexcept {
-            static iouops::unregister_operation noop_unregistration_callback = {
-                *this,
-                [](iouops::unregistration_info) static noexcept {}
-            };
-            return unregistration_callback_handle(
-                &noop_unregistration_callback,
-                +[](iouops::operation_base* op) static noexcept {}
-            );
-        }
-
         template<typename Callback>
         unregistration_callback_handle make_unregistration_callback_handle(Callback&& callback) {
             using operation_type = iouops::unregister_operation<std::decay_t<Callback>>;
             auto op = std::make_unique<operation_type>(*this, std::forward<Callback>(callback));
             return unregistration_callback_handle(op.release(), &do_delete<operation_type>);
+        }
+
+        unregistration_callback_handle noop_unregistration_callback_handle() noexcept {
+            return make_unregistration_callback_handle(
+                [](iouops::unregistration_info) static noexcept {}
+            );
         }
 
         static constexpr std::uint64_t pointer_tag_mask = ~(std::uint64_t(-1) << reserved_tag_bits);
@@ -1227,8 +1222,8 @@ namespace iouxx {
                 // For fd and buffer unregister, higher bits are resource tag that set during registration.
                 const std::uint64_t resource_tag = data;
                 // Split resource tag to two parts into res and cqe_flags, reassemble later.
-                const auto [res, cqe_flags]
-                    = std::bit_cast<details::resource_tag_helper>(resource_tag);
+                const auto [res, cqe_flags] =
+                    std::bit_cast<details::resource_tag_helper>(resource_tag);
                 if (tag == tag_fd_unregister) {
                     cb = fd_unregister_callback.get();
                 } else if (tag == tag_buffer_unregister) {
