@@ -45,8 +45,8 @@ namespace iouxx::utility {
     constexpr auto to_kernel_timespec(std::chrono::nanoseconds stdtime)
         noexcept -> ::__kernel_timespec {
         ::__kernel_timespec ts;
-        const auto sec
-            = std::chrono::duration_cast<std::chrono::seconds>(stdtime);
+        const auto sec =
+            std::chrono::duration_cast<std::chrono::seconds>(stdtime);
         const auto nsec = stdtime - sec;
         ts.tv_sec = sec.count();
         ts.tv_nsec = nsec.count();

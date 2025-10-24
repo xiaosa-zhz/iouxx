@@ -64,8 +64,8 @@ void test_noop() {
     auto sync_noop = ring.make_sync<iouxx::noop_operation>();
     auto sync_result = sync_noop.submit_and_wait();
     TEST_EXPECT(sync_result);
-    iouxx::noop_operation noop2
-        = ring.make<iouxx::noop_operation>(std::in_place_type<pinned_callback>, 1, 2, 3);
+    iouxx::noop_operation noop2 =
+        ring.make<iouxx::noop_operation>(std::in_place_type<pinned_callback>, 1, 2, 3);
     if (auto ec = noop2.submit()) {
         std::println("Failed to submit noop2 task: {}", ec.message());
         TEST_EXPECT(false);
@@ -80,8 +80,8 @@ void test_noop() {
             std::println("Awaited noop failed: {}", res.error().message());
         }
     };
-    iouxx::noop_operation noop3
-        = ring.make_in_place<iouxx::noop_operation<decltype(callback)&>>(callback);
+    iouxx::noop_operation noop3 =
+        ring.make_in_place<iouxx::noop_operation<decltype(callback)&>>(callback);
     if (auto ec = noop3.submit()) {
         std::println("Failed to submit noop3 task: {}", ec.message());
         TEST_EXPECT(false);
