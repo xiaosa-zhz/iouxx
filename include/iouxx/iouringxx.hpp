@@ -519,6 +519,14 @@ namespace iouxx::inline iouops {
         [[no_unique_address]] callback_type callback;
     };
 
+    template<utility::not_tag F>
+    unregister_operation(iouxx::ring&, F)
+        -> unregister_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    unregister_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> unregister_operation<F>;
+
 } // namespace iouxx::iouops
 
 IOUXX_EXPORT
@@ -1181,8 +1189,15 @@ namespace iouxx {
 
         using unregistration_callback_handle = std::unique_ptr<operation_base, deleter_type>;
 
-        static unregistration_callback_handle empty_unregistration_callback_handle() noexcept {
-            return unregistration_callback_handle(nullptr, nullptr);
+        unregistration_callback_handle noop_unregistration_callback_handle() noexcept {
+            static iouops::unregister_operation noop_unregistration_callback = {
+                *this,
+                [](iouops::unregistration_info) static noexcept {}
+            };
+            return unregistration_callback_handle(
+                &noop_unregistration_callback,
+                +[](iouops::operation_base* op) static noexcept {}
+            );
         }
 
         template<typename Callback>
@@ -1254,8 +1269,8 @@ namespace iouxx {
 
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
-        unregistration_callback_handle fd_unregister_callback = empty_unregistration_callback_handle();
-        unregistration_callback_handle buffer_unregister_callback = empty_unregistration_callback_handle();
+        unregistration_callback_handle fd_unregister_callback = noop_unregistration_callback_handle();
+        unregistration_callback_handle buffer_unregister_callback = noop_unregistration_callback_handle();
     };
 
     // Helper function to set fd value as tag of it self
