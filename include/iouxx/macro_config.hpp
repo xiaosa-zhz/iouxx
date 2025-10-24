@@ -41,6 +41,13 @@
 #define IOUXX_ENABLE_INTERNAL_ASSERTION 1
 #endif // IOUXX_CONFIG_DISABLE_ASSERTION
 
+// IOUXX_CONFIG_ASSERT_ASSUME
+// Define this macro will make all assertions use 'assume' instead of runtime check.
+// Precondition violations will lead to undefined behavior instead of aborting the program.
+#ifdef IOUXX_CONFIG_ASSERT_ASSUME
+#define IOUXX_ENABLE_ASSERT_ASSUME [] static noexcept { std::unreachable(); }()
+#endif // IOUXX_CONFIG_ASSERT_ASSUME
+
 // IOUXX_CONFIG_NOT_USE_CONTRACTS
 // Define this macro to disable C++26 contract support.
 // Internal assertion will use fallback implementation.
