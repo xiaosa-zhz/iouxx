@@ -219,7 +219,11 @@ namespace iouxx::utility {
     [[noreturn]]
     constexpr void assertion_failed(const char* expr, const char* file, unsigned int line) noexcept {
         std::println(stderr, "Assertion failed: ({}) at {}:{}", expr, file, line);
+#ifdef IOUXX_ENABLE_ASSERT_ASSUME
+        std::unreachable();
+#else // !IOUXX_ENABLE_ASSERT_ASSUME
         std::abort();
+#endif // IOUXX_ENABLE_ASSERT_ASSUME
     }
 
 } // namespace iouxx::utility
