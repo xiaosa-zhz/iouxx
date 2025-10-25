@@ -70,7 +70,7 @@ namespace iouxx::inline iouops::network {
         none = 0,
         rs_poll_first = IORING_RECVSEND_POLL_FIRST,
         // r_multishot = IORING_RECV_MULTISHOT,
-        rs_fixed_buf = IORING_RECVSEND_FIXED_BUF,
+        // rs_fixed_buf = IORING_RECVSEND_FIXED_BUF,
         s_zc_report_usage = IORING_SEND_ZC_REPORT_USAGE,
         rs_bundle = IORING_RECVSEND_BUNDLE,
     };
