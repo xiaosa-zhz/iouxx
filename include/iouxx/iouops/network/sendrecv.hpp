@@ -69,7 +69,7 @@ namespace iouxx::inline iouops::network {
     enum class ioprio {
         none = 0,
         rs_poll_first = IORING_RECVSEND_POLL_FIRST,
-        r_multishot = IORING_RECV_MULTISHOT,
+        // r_multishot = IORING_RECV_MULTISHOT,
         rs_fixed_buf = IORING_RECVSEND_FIXED_BUF,
         s_zc_report_usage = IORING_SEND_ZC_REPORT_USAGE,
         rs_bundle = IORING_RECVSEND_BUNDLE,
@@ -156,9 +156,36 @@ namespace iouxx::details {
     protected:
         const void* buf = nullptr;
         std::size_t len = 0;
+        int buf_index = -1;
         send_flag flags = send_flag::none;
         ioprio ring_flags = ioprio::none;
+    };
+
+    class recv_op_base
+    {
+    public:
+        using recv_flag = iouops::network::recv_flag;
+
+        template<typename Self, utility::buffer_like Buffer>
+        Self& buffer(this Self& self, Buffer&& buf, int buf_index = -1) noexcept {
+            auto span = utility::to_buffer(std::forward<Buffer>(buf));
+            self.buf = span.data();
+            self.len = span.size();
+            self.buf_index = buf_index;
+            return self;
+        }
+
+        template<typename Self>
+        Self& options(this Self& self, recv_flag flags) noexcept {
+            self.flags = flags;
+            return self;
+        }
+
+    protected:
+        void* buf = nullptr;
+        std::size_t len = 0;
         int buf_index = -1;
+        recv_flag flags = recv_flag::none;
     };
 
 } // namespace iouxx::details
@@ -167,8 +194,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<std::size_t> Callback>
-    class socket_send_operation :
-        public operation_base,
+    class socket_send_operation : public operation_base,
         public details::send_recv_socket_base,
         public details::send_op_base
     {
@@ -240,8 +266,7 @@ namespace iouxx::inline iouops::network {
         std::variant<buffer_free_notification, send_result_more, send_result_nomore>;
 
     template<utility::eligible_callback<send_zc_result> Callback>
-    class socket_send_zc_operation :
-        public operation_base,
+    class socket_send_zc_operation : public operation_base,
         public details::send_recv_socket_base,
         public details::send_op_base
     {
@@ -315,8 +340,9 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::eligible_callback<std::size_t> Callback>
-    class socket_recv_operation
-        : public operation_base, public details::send_recv_socket_base
+    class socket_recv_operation : public operation_base,
+        public details::send_recv_socket_base,
+        public details::recv_op_base
     {
     public:
         template<utility::not_tag F>
@@ -338,19 +364,6 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_RECV;
 
-        socket_recv_operation& options(recv_flag flags) & noexcept {
-            this->flags = flags;
-            return *this;
-        }
-
-        template<utility::buffer_like Buffer>
-        socket_recv_operation& buffer(Buffer&& buf) & noexcept {
-            auto span = utility::to_buffer(std::forward<Buffer>(buf));
-            this->buf = span.data();
-            this->len = span.size();
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -358,6 +371,10 @@ namespace iouxx::inline iouops::network {
                 std::to_underlying(flags));
             if (is_fixed) {
                 sqe->flags |= IOSQE_FIXED_FILE;
+            }
+            if (buf_index >= 0) {
+                sqe->buf_index = buf_index;
+                sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
             }
         }
 
@@ -370,9 +387,6 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void* buf = nullptr;
-        std::size_t len = 0;
-        recv_flag flags = recv_flag::none;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -382,6 +396,70 @@ namespace iouxx::inline iouops::network {
     template<typename F, typename... Args>
     socket_recv_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_recv_operation<F>;
+
+    struct multishot_recv_result {
+        std::size_t bytes_received;
+        bool more;
+    };
+
+    template<utility::eligible_callback<multishot_recv_result> Callback>
+    class socket_multishot_recv_operation : public operation_base,
+        public details::send_recv_socket_base,
+        public details::recv_op_base
+    {
+        static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
+            "Multishot operation does not support syncronous wait.");
+        static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
+            "Multishot operation does not support coroutine await.");
+    public:
+        template<utility::not_tag F>
+        explicit socket_multishot_recv_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<socket_multishot_recv_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_multishot_recv_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_multishot_recv_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = multishot_recv_result;
+
+        static constexpr std::uint8_t opcode = IORING_OP_RECV;
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_recv_multishot(sqe, fd, buf, len,
+                std::to_underlying(flags));
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
+            if (buf_index >= 0) {
+                sqe->buf_index = buf_index;
+                sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
+            }
+        }
+
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            const bool more = cqe_flags & IORING_CQE_F_MORE;
+            if (ev >= 0) {
+                std::invoke(callback, multishot_recv_result{
+                    .bytes_received = static_cast<std::size_t>(ev),
+                    .more = more
+                });
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        [[no_unique_address]] callback_type callback;
+    };
 
 } // namespace iouxx::iouops::network
 
