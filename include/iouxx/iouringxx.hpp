@@ -1102,8 +1102,8 @@ namespace iouxx {
             template<utility::buffer_like Buffer>
             void insert(Buffer&& buffer, std::uint16_t bid) noexcept {
                 auto buf = utility::to_buffer(std::forward<Buffer>(buffer));
-                ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(),
-                    bid, ::io_uring_buf_ring_mask(entries), 0);
+                ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(), bid,
+                    ::io_uring_buf_ring_mask(entries), 0);
                 ::io_uring_buf_ring_advance(buf_ring, 1);
             }
 
@@ -1121,8 +1121,8 @@ namespace iouxx {
                     IOUXX_ASSERT(bufs.size() == bids.size());
                     std::uint16_t total = 0;
                     for (const auto& [buf, bid] : std::views::zip(bufs, bids)) {
-                        ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(),
-                            bid, ::io_uring_buf_ring_mask(entries), total++);
+                        ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(), bid,
+                            ::io_uring_buf_ring_mask(entries), total++);
                     }
                     ::io_uring_buf_ring_advance(buf_ring, total);
                     return std::error_code();

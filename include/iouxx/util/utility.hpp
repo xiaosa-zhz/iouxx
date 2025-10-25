@@ -189,23 +189,19 @@ namespace iouxx::utility {
             && errorcode_callback<Callback>
             && nothrow_errorcode_callback<Callback>));
 
-    constexpr auto void_success()
-        noexcept -> std::expected<void, std::error_code> {
+    constexpr auto void_success() noexcept -> std::expected<void, std::error_code> {
         return {};
     }
 
-    constexpr auto fail(int ev)
-        noexcept -> std::unexpected<std::error_code> {
+    constexpr auto fail(int ev) noexcept -> std::unexpected<std::error_code> {
         return std::unexpected(make_system_error_code(ev));
     }
 
-    constexpr auto fail(std::errc ec)
-        noexcept -> std::unexpected<std::error_code> {
+    constexpr auto fail(std::errc ec) noexcept -> std::unexpected<std::error_code> {
         return std::unexpected(std::make_error_code(ec));
     }
 
-    constexpr auto fail_invalid_argument()
-        noexcept -> std::unexpected<std::error_code> {
+    constexpr auto fail_invalid_argument() noexcept -> std::unexpected<std::error_code> {
         return fail(std::errc::invalid_argument);
     }
 
