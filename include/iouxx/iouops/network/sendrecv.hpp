@@ -447,8 +447,8 @@ namespace iouxx::inline iouops::network {
 
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
-            const bool more = cqe_flags & IORING_CQE_F_MORE;
             if (ev >= 0) {
+                const bool more = cqe_flags & IORING_CQE_F_MORE;
                 std::invoke(callback, multishot_recv_result{
                     .bytes_received = static_cast<std::size_t>(ev),
                     .more = more
