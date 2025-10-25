@@ -820,7 +820,7 @@ namespace iouxx {
                 reg.timeout = { -1, -1 };
             }
             reg.flags |= IORING_ASYNC_CANCEL_ANY | IORING_ASYNC_CANCEL_ALL;
-            int ev = ::io_uring_register_sync_cancel(&raw_ring, &reg);
+            int ev = ::io_uring_register_sync_cancel(native(), &reg);
             return utility::make_system_error_code(-ev);
         }
 
@@ -902,7 +902,7 @@ namespace iouxx {
             if (!sqe) {
                 return std::make_error_code(std::errc::resource_unavailable_try_again);
             }
-            int ev = ::io_uring_submit(&raw_ring);
+            int ev = ::io_uring_submit(native());
             if (ev < 0) {
                 return utility::make_system_error_code(-ev);
             }
@@ -912,12 +912,12 @@ namespace iouxx {
         std::expected<operation_result, std::error_code> fetch_result() noexcept {
             IOUXX_ASSERT(valid());
             ::io_uring_cqe* cqe = nullptr;
-            int ev = ::io_uring_peek_cqe(&raw_ring, &cqe);
+            int ev = ::io_uring_peek_cqe(native(), &cqe);
             if (ev < 0) {
                 return utility::fail(-ev);
             }
             operation_result result = to_result(cqe);
-            ::io_uring_cqe_seen(&raw_ring, cqe);
+            ::io_uring_cqe_seen(native(), cqe);
             return result;
         }
 
@@ -928,15 +928,15 @@ namespace iouxx {
             int ev = 0;
             if (timeout.count() != 0) {
                 auto ts = utility::to_kernel_timespec(timeout);
-                ev = ::io_uring_wait_cqe_timeout(&raw_ring, &cqe, &ts);
+                ev = ::io_uring_wait_cqe_timeout(native(), &cqe, &ts);
             } else {
-                ev = ::io_uring_wait_cqe(&raw_ring, &cqe);
+                ev = ::io_uring_wait_cqe(native(), &cqe);
             }
             if (ev < 0) {
                 return utility::fail(-ev);
             }
             operation_result result = to_result(cqe);
-            ::io_uring_cqe_seen(&raw_ring, cqe);
+            ::io_uring_cqe_seen(native(), cqe);
             return result;
         }
 
@@ -963,7 +963,7 @@ namespace iouxx {
 
         std::error_code register_buffer_table(std::size_t size) noexcept {
             IOUXX_ASSERT(valid());
-            int ev = ::io_uring_register_buffers_sparse(&raw_ring, size);
+            int ev = ::io_uring_register_buffers_sparse(native(), size);
             return utility::make_system_error_code(-ev);
         }
 
@@ -976,11 +976,11 @@ namespace iouxx {
                 auto tags = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
                 int ev = 0;
                 if (tags.empty()) {
-                    ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
+                    ev = ::io_uring_register_buffers_update_tag(native(), offset,
                         iovecs.data(), nullptr, iovecs.size());
                 } else {
                     IOUXX_ASSERT(tags.size() == iovecs.size());
-                    ev = ::io_uring_register_buffers_update_tag(&raw_ring, offset,
+                    ev = ::io_uring_register_buffers_update_tag(native(), offset,
                         iovecs.data(), tags.data(), iovecs.size());
                 }
                 return utility::make_system_error_code(-ev);
@@ -998,17 +998,67 @@ namespace iouxx {
                 auto tags = details::to_tags(std::forward<Tags>(rtags), tag_buffer_unregister);
                 int ev = 0;
                 if (tags.empty()) {
-                    ev = ::io_uring_register_buffers(&raw_ring,
+                    ev = ::io_uring_register_buffers(native(),
                         iovecs.data(), iovecs.size());
                 } else {
                     IOUXX_ASSERT(tags.size() == iovecs.size());
-                    ev = ::io_uring_register_buffers_tags(&raw_ring,
+                    ev = ::io_uring_register_buffers_tags(native(),
                         iovecs.data(), tags.data(), iovecs.size());
                 }
                 return utility::make_system_error_code(-ev);
             } catch (...) {
                 return std::make_error_code(std::errc::not_enough_memory);
             }
+        }
+
+        std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
+            IOUXX_ASSERT(valid());
+            int ev = ::io_uring_register_files_sparse(native(), size);
+            return utility::make_system_error_code(-ev);
+        }
+
+        // Warning: the lower 3 bits of tag value are reserved.
+        template<utility::resource_tag_range Tags>
+        std::error_code update_direct_descriptor_table(std::size_t offset,
+            const std::span<const int> fds, Tags&& rtags) noexcept {
+            IOUXX_ASSERT(valid());
+            int ev = 0;
+            try {
+                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
+                if (tags.empty()) {
+                    ev = ::io_uring_register_files_update(native(), offset,
+                        fds.data(), fds.size());
+                } else {
+                    IOUXX_ASSERT(tags.size() == fds.size());
+                    ev = ::io_uring_register_files_update_tag(native(), offset,
+                        fds.data(), tags.data(), fds.size());
+                }
+            } catch (...) {
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
+            return utility::make_system_error_code(-ev);
+        }
+
+        // Warning: the lower 3 bits of tag value are reserved.
+        template<utility::resource_tag_range Tags>
+        std::error_code register_direct_descriptors(
+            const std::span<const int> fds, Tags&& rtags) noexcept {
+            IOUXX_ASSERT(valid());
+            int ev = 0;
+            try {
+                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
+                if (tags.empty()) {
+                    ev = ::io_uring_register_files(native(),
+                        fds.data(), fds.size());
+                } else {
+                    IOUXX_ASSERT(tags.size() == fds.size());
+                    ev = ::io_uring_register_files_tags(native(),
+                        fds.data(), tags.data(), fds.size());
+                }
+            } catch (...) {
+                return std::make_error_code(std::errc::not_enough_memory);
+            }
+            return utility::make_system_error_code(-ev);
         }
 
     private:
@@ -1145,7 +1195,7 @@ namespace iouxx {
             if (br.valid()) {
                 return utility::fail(std::errc::file_exists);
             }
-            auto res = buffer_ring::make(&raw_ring, entries, bgid,
+            auto res = buffer_ring::make(native(), entries, bgid,
                 inc_consume ? 0 : IOU_PBUF_RING_INC);
             if (!res) {
                 return std::unexpected(res.error());
@@ -1167,56 +1217,6 @@ namespace iouxx {
             } else {
                 return buffer_group{};
             }
-        }
-
-        std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
-            IOUXX_ASSERT(valid());
-            int ev = ::io_uring_register_files_sparse(&raw_ring, size);
-            return utility::make_system_error_code(-ev);
-        }
-
-        // Warning: the lower 3 bits of tag value are reserved.
-        template<utility::resource_tag_range Tags>
-        std::error_code update_direct_descriptor_table(std::size_t offset,
-            const std::span<const int> fds, Tags&& rtags) noexcept {
-            IOUXX_ASSERT(valid());
-            int ev = 0;
-            try {
-                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
-                if (tags.empty()) {
-                    ev = ::io_uring_register_files_update(&raw_ring, offset,
-                        fds.data(), fds.size());
-                } else {
-                    IOUXX_ASSERT(tags.size() == fds.size());
-                    ev = ::io_uring_register_files_update_tag(&raw_ring, offset,
-                        fds.data(), tags.data(), fds.size());
-                }
-            } catch (...) {
-                return std::make_error_code(std::errc::not_enough_memory);
-            }
-            return utility::make_system_error_code(-ev);
-        }
-
-        // Warning: the lower 3 bits of tag value are reserved.
-        template<utility::resource_tag_range Tags>
-        std::error_code register_direct_descriptors(
-            const std::span<const int> fds, Tags&& rtags) noexcept {
-            IOUXX_ASSERT(valid());
-            int ev = 0;
-            try {
-                auto tags = details::to_tags(std::forward<Tags>(rtags), tag_fd_unregister);
-                if (tags.empty()) {
-                    ev = ::io_uring_register_files(&raw_ring,
-                        fds.data(), fds.size());
-                } else {
-                    IOUXX_ASSERT(tags.size() == fds.size());
-                    ev = ::io_uring_register_files_tags(&raw_ring,
-                        fds.data(), tags.data(), fds.size());
-                }
-            } catch (...) {
-                return std::make_error_code(std::errc::not_enough_memory);
-            }
-            return utility::make_system_error_code(-ev);
         }
 
         ::io_uring* native() & noexcept {
@@ -1285,7 +1285,7 @@ namespace iouxx {
             ::io_uring_napi napi = {};
             napi.prefer_busy_poll = prefer_busy_poll ? 1 : 0;
             napi.busy_poll_to = static_cast<std::uint32_t>(timeout.count());
-            int ev = ::io_uring_register_napi(&raw_ring, &napi);
+            int ev = ::io_uring_register_napi(native(), &napi);
             if (ev == 0) {
                 return napi_config{
                     std::chrono::microseconds(napi.busy_poll_to),
@@ -1300,7 +1300,7 @@ namespace iouxx {
             IOUXX_ASSERT(valid());
             IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
             ::io_uring_napi napi = {};
-            int ev = ::io_uring_unregister_napi(&raw_ring, &napi);
+            int ev = ::io_uring_unregister_napi(native(), &napi);
             if (ev == 0) {
                 return napi_config{
                     std::chrono::microseconds(napi.busy_poll_to),
