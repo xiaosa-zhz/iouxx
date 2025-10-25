@@ -6,9 +6,10 @@
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
+- [ ] Add provided ring buffer and add support in recv/read operations
 
 ## Medium Priority
-- [ ] Add version check in both compile time and runtime (when liburing has it)
+- [ ] Add epoll support
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
 
 ## Low Priority
@@ -27,6 +28,7 @@
 - [x] ~~Add test for cancel operation~~
 - [x] ~~Add C++ module support~~
 - [x] ~~Add io_uring_prep_cmd_sock operations~~
+- [x] ~~Add version check for liburing in both compile time and runtime~~
 
 ## Postponed
 - [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)
