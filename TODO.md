@@ -7,6 +7,7 @@
 
 ## High Priority
 - [ ] Find a suitable environment to really test networking
+- [ ] Find a suitable environment to really test fixed fd/buffer
 - [ ] Add a default buffer management utility
 
 ## Medium Priority

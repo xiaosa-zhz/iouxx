@@ -18,7 +18,6 @@ import iouxx.ops.file.fileio;
 
 int main() {
     using namespace iouxx;
-    using namespace std::literals;
     ring ring(256);
     file::file fd = [&] {
         auto open = ring.make_sync<file::file_open_operation>();
@@ -37,7 +36,7 @@ int main() {
         }
     }();
     auto write = ring.make_sync<file::file_write_operation>();
-    auto msg = "Hello, io_uring fixed file!"sv;
+    std::string_view msg = "Hello, io_uring fixed file!";
     write.file(fd)
         .buffer(std::as_bytes(std::span(msg)))
         .offset(0);
@@ -48,7 +47,7 @@ int main() {
         std::abort();
     }
     auto read = ring.make_sync<file::file_read_operation>();
-    std::string buffer(msg.size() + 1, '\0');
+    std::string buffer(msg.size(), '\0');
     read.file(fd)
         .buffer(std::as_writable_bytes(std::span(buffer)))
         .offset(0);
@@ -56,6 +55,10 @@ int main() {
         std::println("Read {} bytes from fixed file: {}", *res, buffer);
     } else {
         std::println(stderr, "Fail to read from fixed file: {}", res.error().message());
+        std::abort();
+    }
+    if (buffer != msg) {
+        std::println(stderr, "Data read does not match data written");
         std::abort();
     }
     auto close = ring.make_sync<file::file_close_operation>();
