@@ -830,6 +830,7 @@ namespace iouxx {
                 IOUXX_ASSERT(res != utility::fail_invalid_argument().error());
                 probe.reset();
                 buffer_rings.clear();
+                buffer_rings.resize(65536);
                 ::io_uring_queue_exit(&raw_ring);
                 raw_ring = invalid_ring();
             }
@@ -1007,6 +1008,13 @@ namespace iouxx {
                 return std::make_error_code(std::errc::not_enough_memory);
             }
         }
+
+        /*
+         * TODO:
+         *  Add methods:
+         *  - register_buffer_group, unregister_buffer_group
+         *  - find_buffer_group
+        */
 
         std::error_code register_direct_descriptor_table(std::size_t size) noexcept {
             IOUXX_ASSERT(valid());
@@ -1229,6 +1237,52 @@ namespace iouxx {
                 std::ranges::swap(bgid, other.bgid);
             }
 
+            ~buffer_ring() {
+                if (buf_ring) {
+                    ::io_uring_free_buf_ring(raw_ring, buf_ring, entries, bgid);
+                }
+            }
+
+            // User has to ensure total amount of added buffers does not exceed the ring capacity.
+            template<utility::buffer_like Buffer>
+            void insert(Buffer&& buffer, std::uint16_t bid) noexcept {
+                auto buf = utility::to_buffer(std::forward<Buffer>(buffer));
+                ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(),
+                    bid, ::io_uring_buf_ring_mask(entries), 0);
+                ::io_uring_buf_ring_advance(buf_ring, 1);
+            }
+
+            // User has to ensure total amount of added buffers does not exceed the ring capacity.
+            template<utility::buffer_range Buffers, std::ranges::input_range Bufbids>
+            std::error_code insert_range(Buffers&& buffers, Bufbids&& bufbids) noexcept {
+                try {
+                    std::vector bufs = std::forward<Buffers>(buffers)
+                        | std::views::transform([]<typename Buffer>(Buffer&& buffer) {
+                            return utility::to_buffer(std::forward<Buffer>(buffer));
+                        })
+                        | std::ranges::to<std::vector>();
+                    std::vector bids = std::forward<Bufbids>(bufbids)
+                        | std::ranges::to<std::vector<std::uint16_t>>();
+                    IOUXX_ASSERT(bufs.size() == bids.size());
+                    std::uint16_t total = 0;
+                    for (auto&& [buf, bid] : std::views::zip(bufs, bids)) {
+                        ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(),
+                            bid, ::io_uring_buf_ring_mask(entries), total++);
+                    }
+                    ::io_uring_buf_ring_advance(buf_ring, total);
+                    return std::error_code();
+                } catch (...) {
+                    return std::make_error_code(std::errc::not_enough_memory);
+                }
+            }
+
+        private:
+            friend ring;
+            buffer_ring(::io_uring* raw_ring, ::io_uring_buf_ring* buf_ring,
+                std::uint32_t entries, std::int32_t bgid) noexcept
+                : raw_ring(raw_ring), buf_ring(buf_ring), entries(entries), bgid(bgid)
+            {}
+
             static std::expected<buffer_ring, std::error_code> make(::io_uring* raw_ring,
                 unsigned int entries, int bgid, int flags) noexcept {
                 int err = 0;
@@ -1239,26 +1293,6 @@ namespace iouxx {
                 }
                 return buffer_ring(raw_ring, buf_ring, entries, bgid);
             }
-
-            ~buffer_ring() {
-                ::io_uring_free_buf_ring(raw_ring, buf_ring, entries, bgid);
-            }
-
-            // User has to ensure total amount of added buffers does not exceed the ring capacity.
-            template<utility::buffer_like Buffer>
-            void add(Buffer&& buffer, std::uint16_t bid) noexcept {
-                auto buf = utility::to_buffer(std::forward<Buffer>(buffer));
-                ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(),
-                    bid, ::io_uring_buf_ring_mask(entries), 0);
-                ::io_uring_buf_ring_advance(buf_ring, 1);
-            }
-
-        private:
-            friend ring;
-            buffer_ring(::io_uring* raw_ring, ::io_uring_buf_ring* buf_ring,
-                std::uint32_t entries, std::int32_t bgid) noexcept
-                : raw_ring(raw_ring), buf_ring(buf_ring), entries(entries), bgid(bgid)
-            {}
             
             ::io_uring* raw_ring = nullptr;
             ::io_uring_buf_ring* buf_ring = nullptr;
@@ -1328,7 +1362,7 @@ namespace iouxx {
 
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
-        std::vector<buffer_ring> buffer_rings = std::vector<buffer_ring>();
+        std::vector<buffer_ring> buffer_rings = std::vector<buffer_ring>(65536);
         unregistration_callback_handle fd_unregister_callback = noop_unregistration_callback_handle();
         unregistration_callback_handle buffer_unregister_callback = noop_unregistration_callback_handle();
     };

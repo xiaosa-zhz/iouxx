@@ -7,6 +7,7 @@
 ## High Priority
 - [ ] Find a suitable environment to really test networking
 - [ ] Add provided ring buffer and add support in recv/read operations
+- [ ] Add a default buffer management utility
 
 ## Medium Priority
 - [ ] Add epoll support
