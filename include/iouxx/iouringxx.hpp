@@ -829,6 +829,7 @@ namespace iouxx {
                 [[maybe_unused]] std::error_code res = stop();
                 IOUXX_ASSERT(res != utility::fail_invalid_argument().error());
                 probe.reset();
+                buffer_rings.clear();
                 ::io_uring_queue_exit(&raw_ring);
                 raw_ring = invalid_ring();
             }
@@ -1202,6 +1203,69 @@ namespace iouxx {
             );
         }
 
+        class buffer_ring
+        {
+        public:
+            buffer_ring() = default;
+            buffer_ring(const buffer_ring&) = delete;
+            buffer_ring& operator=(const buffer_ring&) = delete;
+
+            buffer_ring(buffer_ring&& other) noexcept :
+                raw_ring(other.raw_ring),
+                buf_ring(std::exchange(other.buf_ring, nullptr)),
+                entries(std::exchange(other.entries, 0)),
+                bgid(std::exchange(other.bgid, -1))
+            {}
+
+            buffer_ring& operator=(buffer_ring&& other) noexcept {
+                buffer_ring(std::move(other)).swap(*this);
+                return *this;
+            }
+
+            void swap(buffer_ring& other) noexcept {
+                std::ranges::swap(raw_ring, other.raw_ring);
+                std::ranges::swap(buf_ring, other.buf_ring);
+                std::ranges::swap(entries, other.entries);
+                std::ranges::swap(bgid, other.bgid);
+            }
+
+            static std::expected<buffer_ring, std::error_code> make(::io_uring* raw_ring,
+                unsigned int entries, int bgid, int flags) noexcept {
+                int err = 0;
+                ::io_uring_buf_ring* buf_ring = 
+                    ::io_uring_setup_buf_ring(raw_ring, entries, bgid, flags, &err);
+                if (err < 0) {
+                    return utility::fail(-err);
+                }
+                return buffer_ring(raw_ring, buf_ring, entries, bgid);
+            }
+
+            ~buffer_ring() {
+                ::io_uring_free_buf_ring(raw_ring, buf_ring, entries, bgid);
+            }
+
+            // User has to ensure total amount of added buffers does not exceed the ring capacity.
+            template<utility::buffer_like Buffer>
+            void add(Buffer&& buffer, std::uint16_t bid) noexcept {
+                auto buf = utility::to_buffer(std::forward<Buffer>(buffer));
+                ::io_uring_buf_ring_add(buf_ring, buf.data(), buf.size(),
+                    bid, ::io_uring_buf_ring_mask(entries), 0);
+                ::io_uring_buf_ring_advance(buf_ring, 1);
+            }
+
+        private:
+            friend ring;
+            buffer_ring(::io_uring* raw_ring, ::io_uring_buf_ring* buf_ring,
+                std::uint32_t entries, std::int32_t bgid) noexcept
+                : raw_ring(raw_ring), buf_ring(buf_ring), entries(entries), bgid(bgid)
+            {}
+            
+            ::io_uring* raw_ring = nullptr;
+            ::io_uring_buf_ring* buf_ring = nullptr;
+            unsigned int entries = 0; // 2^n
+            int bgid = -1; // 0...65535
+        };
+
         static constexpr std::uint64_t pointer_tag_mask = ~(std::uint64_t(-1) << reserved_tag_bits);
         static constexpr std::uint64_t tag_normal_callback = 0;
         static constexpr std::uint64_t tag_fd_unregister = 1;
@@ -1264,6 +1328,7 @@ namespace iouxx {
 
         ::io_uring raw_ring = invalid_ring(); // using ring_fd to detect if valid
         probe_handle probe = nullptr;
+        std::vector<buffer_ring> buffer_rings = std::vector<buffer_ring>();
         unregistration_callback_handle fd_unregister_callback = noop_unregistration_callback_handle();
         unregistration_callback_handle buffer_unregister_callback = noop_unregistration_callback_handle();
     };
