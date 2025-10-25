@@ -29,6 +29,9 @@ namespace iouxx::inline iouops::file {
         nonblock = O_NONBLOCK,
         temporary_file = O_TMPFILE,
         truncate = O_TRUNC,
+        readonly = O_RDONLY,
+        writeonly = O_WRONLY,
+        readwrite = O_RDWR,
     };
 
     constexpr open_flag operator|(open_flag lhs, open_flag rhs) noexcept {
@@ -131,7 +134,7 @@ namespace iouxx::inline iouops::file {
         {}
 
         using callback_type = Callback;
-        using result_type = int;
+        using result_type = file;
 
         static constexpr std::uint8_t opcode = IORING_OP_OPENAT;
 
@@ -140,7 +143,7 @@ namespace iouxx::inline iouops::file {
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_openat(sqe, dirfd,
                 pathstr.c_str(),
-                std::to_underlying(flags),
+                std::to_underlying(flags) | O_NONBLOCK,
                 std::to_underlying(modes)
             );
         }
@@ -198,7 +201,7 @@ namespace iouxx::inline iouops::file {
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_openat_direct(sqe, dirfd,
                 pathstr.c_str(),
-                std::to_underlying(flags),
+                std::to_underlying(flags) | O_NONBLOCK,
                 std::to_underlying(modes),
                 file_index
             );

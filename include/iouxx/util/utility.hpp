@@ -98,7 +98,7 @@ namespace iouxx::utility {
         }
     }
 
-    template<buffer_like R>
+    template<readonly_buffer_like R>
     inline auto to_readonly_buffer(R&& r) noexcept {
         if constexpr (readonly_byte_span_like<R>) {
             return std::span<const std::byte>(std::forward<R>(r));

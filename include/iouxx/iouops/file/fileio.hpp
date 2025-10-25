@@ -18,6 +18,39 @@
 
 namespace iouxx::details {
 
+    class file_read_buffer_operation_base
+    {
+    public:
+        template<typename Self, utility::buffer_like Buffer>
+        Self& buffer(this Self& self, Buffer&& buf) noexcept {
+            auto span = utility::to_buffer(std::forward<Buffer>(buf));
+            self.buf = span.data();
+            self.len = span.size();
+            return self;
+        }
+
+    protected:
+        void* buf = nullptr;
+        std::size_t len = 0;
+    };
+
+    class file_write_buffer_operation_base
+    {
+    public:
+        public:
+        template<typename Self, utility::readonly_buffer_like Buffer>
+        Self& buffer(this Self& self, Buffer&& buf) noexcept {
+            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
+            self.buf = span.data();
+            self.len = span.size();
+            return self;
+        }
+
+    protected:
+        const void* buf = nullptr;
+        std::size_t len = 0;
+    };
+
     class file_read_write_operation_base
     {
     public:
@@ -35,14 +68,6 @@ namespace iouxx::details {
             return self;
         }
 
-        template<typename Self, utility::buffer_like Buffer>
-        Self& buffer(this Self& self, Buffer&& buf) noexcept {
-            auto span = utility::to_buffer(std::forward<Buffer>(buf));
-            self.buf = span.data();
-            self.len = span.size();
-            return self;
-        }
-
         template<typename Self>
         Self& offset(this Self& self, std::size_t offset) noexcept {
             self.off = offset;
@@ -50,10 +75,8 @@ namespace iouxx::details {
         }
 
     protected:
-        int fd = -1;
         bool is_fixed = false;
-        void* buf = nullptr;
-        std::size_t len = 0;
+        int fd = -1;
         std::size_t off = 0;
     };
 
@@ -63,8 +86,9 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::file {
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_read_operation
-        : public operation_base, public details::file_read_write_operation_base
+    class file_read_operation : public operation_base,
+        public details::file_read_write_operation_base,
+        public details::file_read_buffer_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -82,7 +106,7 @@ namespace iouxx::inline iouops::file {
         {}
 
         using callback_type = Callback;
-        using result_type = void;
+        using result_type = std::ptrdiff_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_READ;
 
@@ -114,8 +138,9 @@ namespace iouxx::inline iouops::file {
     file_read_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_read_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_read_fixed_operation
-        : public operation_base, public details::file_read_write_operation_base
+    class file_read_fixed_operation : public operation_base,
+        public details::file_read_write_operation_base,
+        public details::file_read_buffer_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -133,13 +158,13 @@ namespace iouxx::inline iouops::file {
         {}
 
         using callback_type = Callback;
-        using result_type = void;
+        using result_type = std::ptrdiff_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_READ_FIXED;
 
         template<utility::buffer_like Buffer>
         file_read_fixed_operation& buffer(Buffer&& buf, int index) & noexcept {
-            this->file_read_write_operation_base::buffer(std::forward<Buffer>(buf));
+            this->details::file_read_buffer_operation_base::buffer(std::forward<Buffer>(buf));
             this->buf_index = index;
             return *this;
         }
@@ -178,8 +203,9 @@ namespace iouxx::inline iouops::file {
         -> file_read_fixed_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_write_operation
-        : public operation_base, public details::file_read_write_operation_base
+    class file_write_operation : public operation_base,
+        public details::file_read_write_operation_base,
+        public details::file_write_buffer_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -197,7 +223,7 @@ namespace iouxx::inline iouops::file {
         {}
 
         using callback_type = Callback;
-        using result_type = void;
+        using result_type = std::ptrdiff_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_WRITE;
 
@@ -226,8 +252,9 @@ namespace iouxx::inline iouops::file {
     file_write_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_write_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_write_fixed_operation
-        : public operation_base, public details::file_read_write_operation_base
+    class file_write_fixed_operation : public operation_base,
+        public details::file_read_write_operation_base,
+        public details::file_write_buffer_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -245,13 +272,13 @@ namespace iouxx::inline iouops::file {
         {}
 
         using callback_type = Callback;
-        using result_type = void;
+        using result_type = std::ptrdiff_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_WRITE_FIXED;
 
-        template<utility::buffer_like Buffer>
+        template<utility::readonly_buffer_like Buffer>
         file_write_fixed_operation& buffer(Buffer&& buf, int index) & noexcept {
-            this->file_read_write_operation_base::buffer(std::forward<Buffer>(buf));
+            this->details::file_write_buffer_operation_base::buffer(std::forward<Buffer>(buf));
             this->buf_index = index;
             return *this;
         }
