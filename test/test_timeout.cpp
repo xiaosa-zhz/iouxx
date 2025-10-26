@@ -62,7 +62,7 @@ void test_multishot_timeout() {
     });
     timer.wait_for(10ms);
     timer.repeat(5);
-    auto start = std::chrono::steady_clock::now();
+    auto start = iouxx::boottime_clock::now();
     if (auto ec = timer.submit()) {
         std::println("Failed to submit timer task: {}", ec.message());
         TEST_EXPECT(false);
@@ -73,7 +73,7 @@ void test_multishot_timeout() {
         result();
     }
     TEST_EXPECT(counter == 5);
-    auto end = std::chrono::steady_clock::now();
+    auto end = iouxx::boottime_clock::now();
     auto duration = end - start;
     TEST_EXPECT(duration < 100ms);
     std::println("Timer completed after {}.",
