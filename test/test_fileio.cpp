@@ -35,38 +35,44 @@ int main() {
             std::abort();
         }
     }();
-    auto write = ring.make_sync<file::file_write_operation>();
     std::string_view msg = "Hello, io_uring fixed file!";
-    write.file(fd)
-        .buffer(std::as_bytes(std::span(msg)))
-        .offset(0);
-    if (auto res = write.submit_and_wait()) {
-        std::println("Wrote {} bytes to fixed file", *res);
-    } else {
-        std::println(stderr, "Fail to write to fixed file: {}", res.error().message());
-        std::abort();
+    {
+        auto write = ring.make_sync<file::file_write_operation>();
+        write.file(fd)
+            .buffer(std::as_bytes(std::span(msg)))
+            .offset(0);
+        if (auto res = write.submit_and_wait()) {
+            std::println("Wrote {} bytes to fixed file", *res);
+        } else {
+            std::println(stderr, "Fail to write to fixed file: {}", res.error().message());
+            std::abort();
+        }
     }
-    auto read = ring.make_sync<file::file_read_operation>();
-    std::string buffer(msg.size(), '\0');
-    read.file(fd)
-        .buffer(std::as_writable_bytes(std::span(buffer)))
-        .offset(0);
-    if (auto res = read.submit_and_wait()) {
-        std::println("Read {} bytes from fixed file: {}", *res, buffer);
-    } else {
-        std::println(stderr, "Fail to read from fixed file: {}", res.error().message());
-        std::abort();
+    {
+        std::string buffer(msg.size(), '\0');
+        auto read = ring.make_sync<file::file_read_operation>();
+        read.file(fd)
+            .buffer(std::as_writable_bytes(std::span(buffer)))
+            .offset(0);
+        if (auto res = read.submit_and_wait()) {
+            std::println("Read {} bytes from fixed file: {}", *res, buffer);
+        } else {
+            std::println(stderr, "Fail to read from fixed file: {}", res.error().message());
+            std::abort();
+        }
+        if (buffer != msg) {
+            std::println(stderr, "Data read does not match data written");
+            std::abort();
+        }
     }
-    if (buffer != msg) {
-        std::println(stderr, "Data read does not match data written");
-        std::abort();
-    }
-    auto close = ring.make_sync<file::file_close_operation>();
-    close.file(fd);
-    if (auto res = close.submit_and_wait()) {
-        std::println("Fixed file closed");
-    } else {
-        std::println(stderr, "Fail to close fixed file: {}", res.error().message());
-        std::abort();
+    {
+        auto close = ring.make_sync<file::file_close_operation>();
+        close.file(fd);
+        if (auto res = close.submit_and_wait()) {
+            std::println("Fixed file closed");
+        } else {
+            std::println(stderr, "Fail to close fixed file: {}", res.error().message());
+            std::abort();
+        }
     }
 }
