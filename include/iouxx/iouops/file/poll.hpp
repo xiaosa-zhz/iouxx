@@ -210,7 +210,7 @@ namespace iouxx::inline iouops::file {
 
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
-            if constexpr (utility::callback<callback_type, void>) {
+            if constexpr (utility::stdexpected_callback<callback_type, void>) {
                 if (ev == 0) {
                     std::invoke(callback, utility::void_success());
                 } else {
@@ -274,7 +274,7 @@ namespace iouxx::inline iouops::file {
 
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
-            if constexpr (utility::callback<callback_type, void>) {
+            if constexpr (utility::stdexpected_callback<callback_type, void>) {
                 if (ev == 0) {
                     std::invoke(callback, utility::void_success());
                 } else {

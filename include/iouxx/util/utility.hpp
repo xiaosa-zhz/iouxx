@@ -143,39 +143,57 @@ namespace iouxx::utility {
     concept errorcode_callback = std::invocable<Callback&, std::error_code>;
 
     template<typename Callback, typename Result>
-    concept callback = void_like<Callback>
-        || (std::invocable<Callback&, std::unexpected<std::error_code>>
-        && std::invocable<Callback&, std::expected<Result, std::error_code>>
-        && (void_like<Result> || std::invocable<Callback&, Result>));
+    concept eligible_errorcode_callback = void_like<Result> && errorcode_callback<Callback>;
 
     template<typename Callback, typename Result>
-    concept eligible_callback = (callback<Callback, Result>)
-        || (void_like<Result> && errorcode_callback<Callback>);
+    concept direct_result_callback = void_like<Result> || std::invocable<Callback&, Result>;
+
+    template<typename Callback, typename Result>
+    concept expected_callback = std::invocable<Callback&, std::expected<Result, std::error_code>>
+        && direct_result_callback<Callback, Result>;
+
+    template<typename Callback>
+    concept unexpected_callback = std::invocable<Callback&, std::unexpected<std::error_code>>;
+
+    template<typename Callback, typename Result>
+    concept stdexpected_callback = expected_callback<Callback, Result> && unexpected_callback<Callback>;
+
+    template<typename Callback, typename Result>
+    concept eligible_callback = stdexpected_callback<Callback, Result>
+        || eligible_errorcode_callback<Callback, Result>;
 
     template<typename Callback, typename Result>
     concept eligible_maybe_void_callback = void_like<Callback>
         || eligible_callback<Callback, Result>;
 
-    template<typename Callback>
-    concept nothrow_errorcode_callback = nothrow_invocable<Callback&, std::error_code>;
-
-    template<typename Callback>
-    concept nothrow_unexpected_callback =
-        nothrow_invocable<Callback&, std::unexpected<std::error_code>>;
+    template<typename Callback, typename Result>
+    concept eligible_nothrow_errorcode_callback = eligible_errorcode_callback<Callback, Result>
+        && nothrow_invocable<Callback&, std::error_code>;
 
     template<typename Callback, typename Result>
-    concept nothrow_expected_callback =
-        nothrow_invocable<Callback&, std::expected<Result, std::error_code>>
-        && (void_like<Result> || nothrow_invocable<Callback&, Result>);
+    concept nothrow_direct_invoke = void_like<Result> || nothrow_invocable<Callback&, Result>;
+
+    template<typename Callback, typename Result>
+    concept nothrow_expected_callback = expected_callback<Callback, Result>
+        && nothrow_invocable<Callback&, std::expected<Result, std::error_code>>
+        && nothrow_direct_invoke<Callback, Result>;
+
+    template<typename Callback>
+    concept nothrow_unexpected_callback = unexpected_callback<Callback>
+        && nothrow_invocable<Callback&, std::unexpected<std::error_code>>;
+
+    template<typename Callback, typename Result>
+    concept nothrow_stdexpected_callback = stdexpected_callback<Callback, Result>
+        && nothrow_expected_callback<Callback, Result>
+        && nothrow_unexpected_callback<Callback>;
+
+    template<typename Callback, typename Result>
+    concept nothrow_stdexpected_or_errorcode_callback = nothrow_stdexpected_callback<Callback, Result>
+        || eligible_nothrow_errorcode_callback<Callback, Result>;
 
     template<typename Callback, typename Result>
     concept eligible_nothrow_callback = eligible_callback<Callback, Result>
-        && ((callback<Callback, Result>
-            && nothrow_expected_callback<Callback, Result>
-            && nothrow_unexpected_callback<Callback>)
-        || (void_like<Result>
-            && errorcode_callback<Callback>
-            && nothrow_errorcode_callback<Callback>));
+        && nothrow_stdexpected_or_errorcode_callback<Callback, Result>;
 
     constexpr auto void_success() noexcept -> std::expected<void, std::error_code> {
         return {};
