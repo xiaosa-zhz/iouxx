@@ -1,0 +1,23 @@
+name: auto test
+on: [push, pull_request]
+jobs:
+  Auto-Test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: uname -a
+      - run: echo "Find eligible compilers..."
+      - run: sudo apt install g++-15
+      - run: sudo apt install clang-20
+      - run: echo "Check out..."
+      - name: check out
+        uses: actions/checkout@v5
+      - run: echo "Starting auto test..."
+      - name: setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          actions-cache-folder: '.xmake-cache'
+          package-cache-key: 'archlinux-ci'
+          project-path: 'prpjectiouxx'
+      - run: xmake b -y
+      - run: xmake test
