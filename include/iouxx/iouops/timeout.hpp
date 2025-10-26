@@ -35,11 +35,14 @@ namespace iouxx::details {
         };
 #endif // __cpp_lib_chrono
 
+    template<clock Clock>
+    using clock_duration_t = typename Clock::duration;
+
     // io_uring only supports CLOCK_MONOTONIC, CLOCK_REALTIME,and CLOCK_BOOTTIME.
     // Corresponding to std::chrono::steady_clock, std::chrono::system_clock,
     // and iouxx::boottime_clock (provided by this library).
     template<clock Clock>
-    inline consteval void is_supported_clock() noexcept {
+    consteval void is_supported_clock() noexcept {
         static_assert(std::same_as<Clock, std::chrono::steady_clock>
                       || std::same_as<Clock, std::chrono::system_clock>
                       || std::same_as<Clock, iouxx::boottime_clock>,
@@ -93,8 +96,8 @@ namespace iouxx::inline iouops {
         static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
-        auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{}) &
-            noexcept -> timeout_operation& {
+        timeout_operation& wait_for(details::clock_duration_t<Clock> duration,
+            Clock clock = Clock{}) & noexcept {
             details::is_supported_clock<Clock>();
             ts = utility::to_kernel_timespec(duration);
             details::set_clock_flag<Clock>(flags);
@@ -103,8 +106,7 @@ namespace iouxx::inline iouops {
         }
 
         template<details::clock Clock, typename Duration>
-        auto wait_until(std::chrono::time_point<Clock, Duration> time_point) &
-            noexcept -> timeout_operation& {
+        timeout_operation& wait_until(std::chrono::time_point<Clock, Duration> time_point) & noexcept {
             details::is_supported_clock<Clock>();
             ts = utility::to_kernel_timespec(time_point.time_since_epoch());
             details::set_clock_flag<Clock>(flags);
@@ -179,8 +181,8 @@ namespace iouxx::inline iouops {
         static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT;
 
         template<details::clock Clock = std::chrono::steady_clock>
-        auto wait_for(std::chrono::nanoseconds duration, Clock clock = Clock{})
-            & noexcept -> multishot_timeout_operation& {
+        multishot_timeout_operation& wait_for(details::clock_duration_t<Clock> duration,
+            Clock clock = Clock{}) & noexcept {
             details::is_supported_clock<Clock>();
             ts = utility::to_kernel_timespec(duration);
             details::set_clock_flag<Clock>(flags);

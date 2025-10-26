@@ -20,7 +20,6 @@
 #ifndef IOUXX_USE_CXX_MODULE
 
 #include <chrono>
-#include <cstdint>
 #include <ctime>
 #include <bits/time.h> // CLOCK_BOOTTIME
 #include "macro_config.hpp" // IWYU pragma: keep
@@ -37,9 +36,9 @@ IOUXX_EXPORT
 namespace iouxx {
 
     struct boottime_clock {
-        using rep        = std::int64_t;
-        using period     = std::nano; // same resolution as clock_gettime returns (nanoseconds)
         using duration   = std::chrono::nanoseconds;
+        using rep        = duration::rep;
+        using period     = duration::period;
         using time_point = std::chrono::time_point<boottime_clock, duration>;
         static constexpr bool is_steady = true; // monotonic + never goes backwards
 
@@ -52,7 +51,7 @@ namespace iouxx {
         }
     };
 
-    inline ::timespec to_timespec(boottime_clock::duration d) noexcept {
+    constexpr ::timespec to_timespec(boottime_clock::duration d) noexcept {
         using rep = boottime_clock::rep;
         rep total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(d).count();
         ::timespec ts{};
