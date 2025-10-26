@@ -4,10 +4,10 @@
 
 #ifndef IOUXX_USE_CXX_MODULE
 
+#include <type_traits>
 #include <functional>
 #include <string>
 #include <utility>
-#include <type_traits>
 
 #include "iouxx/macro_config.hpp"
 #include "iouxx/util/utility.hpp"
@@ -297,6 +297,137 @@ namespace iouxx::inline iouops::file {
 
     template<typename F, typename... Args>
     file_close_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_close_operation<F>;
+    
+    template<utility::eligible_callback<fixed_file> Callback>
+    class fixed_file_register_operation : public operation_base
+    {
+    public:
+        template<utility::not_tag F>
+        explicit fixed_file_register_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<fixed_file_register_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit fixed_file_register_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<fixed_file_register_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = fixed_file;
+
+        static constexpr std::uint8_t opcode = IORING_OP_FILES_UPDATE;
+
+        fixed_file_register_operation& files(file fd) & noexcept {
+            this->fd = fd.native_handle();
+            return *this;
+        }
+
+        fixed_file_register_operation& offset(int offset) & noexcept {
+            this->off = offset;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_files_update(sqe, &fd, 1, off);
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, fixed_file(
+                    off == alloc_index ? fd : off
+                ));
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        int fd = -1;
+        int off = alloc_index;
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::not_tag F>
+    fixed_file_register_operation(iouxx::ring&, F)
+        -> fixed_file_register_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    fixed_file_register_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> fixed_file_register_operation<F>;
+
+    struct fixed_file_register_batch_result {
+        std::size_t allocated;
+        std::span<int> file_index;
+    };
+
+    template<utility::eligible_callback<fixed_file_register_batch_result> Callback>
+    class fixed_file_register_batch_operation : public operation_base
+    {
+    public:
+        template<utility::not_tag F>
+        explicit fixed_file_register_batch_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<fixed_file_register_batch_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit fixed_file_register_batch_operation(iouxx::ring& ring,
+            std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<fixed_file_register_batch_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = fixed_file_register_batch_result;
+
+        static constexpr std::uint8_t opcode = IORING_OP_FILES_UPDATE;
+
+        // fds will be updated with indexes of fixed files
+        fixed_file_register_batch_operation& files(std::span<int> fds) & noexcept {
+            this->fds = fds;
+            return *this;
+        }
+
+        fixed_file_register_batch_operation& offset(int offset) & noexcept {
+            this->off = offset;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_files_update(sqe, fds.data(), fds.size(), off);
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                if (off != alloc_index) {
+                    for (int i = 0; i < fds.size(); ++i) {
+                        fds[i] = off + i;
+                    }
+                }
+                std::invoke(callback, fixed_file_register_batch_result{
+                    .allocated = static_cast<std::size_t>(ev),
+                    .file_index = fds
+                });
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        std::span<int> fds;
+        int off = alloc_index;
+        [[no_unique_address]] callback_type callback;
+    };
 
 } // namespace iouxx::inline iouops::file
 
