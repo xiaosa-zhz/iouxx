@@ -1,3 +1,4 @@
+#include "iouxx/clock.hpp"
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
@@ -27,7 +28,7 @@ void test_timeout() {
     using namespace std::literals;
     iouxx::ring ring(64);
     auto timer = ring.make_sync<iouxx::timeout_operation>();
-    timer.wait_for(50ms);
+    timer.wait_for(50ms, iouxx::boottime_clock{});
     auto start = std::chrono::steady_clock::now();
     if (auto res = timer.submit_and_wait()) {
         std::println("Timer expired!");
