@@ -5,7 +5,6 @@ module;
 #include "macro_config.hpp" // IWYU pragma: export
 #include "cxxmodule_helper.hpp" // IWYU pragma: export
 #include <liburing.h> // IWYU pragma: export
-#include <sys/mman.h> // IWYU pragma: export
 #include "util/assertion.hpp" // IWYU pragma: export
 export module iouxx.ring;
 import std;

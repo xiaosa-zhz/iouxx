@@ -109,18 +109,6 @@ namespace iouxx::utility {
         }
     }
 
-    template<typename R>
-    concept buffer_range = std::ranges::input_range<std::remove_cvref_t<R>>
-        && buffer_like<std::ranges::range_value_t<std::remove_cvref_t<R>>>;
-
-    template<typename T>
-    concept tag_compatible = std::convertible_to<T, std::uint64_t>
-        || (std::convertible_to<T, void*>);
-
-    template<typename R>
-    concept resource_tag_range = std::ranges::input_range<std::remove_cvref_t<R>>
-        && tag_compatible<std::ranges::range_reference_t<std::remove_cvref_t<R>>>;
-
     template<byte_unit ByteType, std::size_t N>
     inline ::iovec to_iovec(std::span<ByteType, N> buffer) noexcept {
         return ::iovec{
@@ -129,10 +117,10 @@ namespace iouxx::utility {
         };
     }
 
+    // Need to specify ByteType
     template<byte_unit ByteType>
     inline std::span<ByteType> from_iovec(const ::iovec& iov) noexcept {
-        return std::span<ByteType>(
-            static_cast<ByteType*>(iov.iov_base), iov.iov_len);
+        return std::span<ByteType>(static_cast<ByteType*>(iov.iov_base), iov.iov_len);
     }
 
     template<template<typename...> class tmp, typename T>
