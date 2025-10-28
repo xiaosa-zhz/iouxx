@@ -1209,11 +1209,9 @@ namespace iouxx {
             bool prefer_busy_poll = false;
         };
 
-        // Only available if ring is set up with IOPOLL.
         auto register_napi(std::chrono::microseconds timeout, bool prefer_busy_poll = true) & noexcept
             -> std::expected<napi_config, std::error_code> {
             IOUXX_ASSERT(valid());
-            IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
             ::io_uring_napi napi = {};
             napi.prefer_busy_poll = prefer_busy_poll ? 1 : 0;
             napi.busy_poll_to = static_cast<std::uint32_t>(timeout.count());
@@ -1230,7 +1228,6 @@ namespace iouxx {
 
         auto unregister_napi() & noexcept -> std::expected<napi_config, std::error_code> {
             IOUXX_ASSERT(valid());
-            IOUXX_ASSERT(test_flag(ring_option::flag::iopoll));
             ::io_uring_napi napi = {};
             int ev = ::io_uring_unregister_napi(native(), &napi);
             if (ev == 0) {
