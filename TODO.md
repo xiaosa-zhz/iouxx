@@ -8,8 +8,6 @@
 ## High Priority
 - [ ] Find a suitable environment to really test networking
 - [ ] Find a suitable environment to really test fixed fd/buffer
-- [ ] Add a default buffer management utility
-- [ ] Update test coverage in README
 
 ## Medium Priority
 - [ ] Add epoll support
@@ -32,6 +30,7 @@
 - [x] ~~Add C++ module support~~
 - [x] ~~Add io_uring_prep_cmd_sock operations~~
 - [x] ~~Add version check for liburing in both compile time and runtime~~
+- [x] ~~Update test coverage in README~~
 
 ## Postponed
 - [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)
