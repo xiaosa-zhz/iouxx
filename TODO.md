@@ -9,6 +9,7 @@
 - [ ] Find a suitable environment to really test networking
 - [ ] Find a suitable environment to really test fixed fd/buffer
 - [ ] Add a default buffer management utility
+- [ ] Update test coverage in README
 
 ## Medium Priority
 - [ ] Add epoll support
