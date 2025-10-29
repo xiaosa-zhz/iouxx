@@ -57,11 +57,12 @@ inline void exit_if_function_not_supported(const std::error_code& ec) noexcept {
     }
 }
 
-template<class T>
-[[nodiscard]] T* start_lifetime_as_array(void* p, std::size_t n) noexcept {
-    // Implicitly start lifetime for array of T
-    void* washed = std::memmove(p, p, n * sizeof(T));
-    return std::launder(static_cast<T*>(washed));
+template<typename T, typename ByteType>
+[[nodiscard]] std::span<T> start_lifetime_as(std::span<ByteType> byte_span) noexcept {
+    void* p = byte_span.data();
+    std::size_t n = byte_span.size();
+    void* washed = std::memmove(p, p, n);
+    return std::span<T>(std::launder(static_cast<T*>(washed)), n / sizeof(T));
 }
 
 void echo_server() {
@@ -181,22 +182,18 @@ void echo_server() {
     }();
     std::vector<std::byte> buffer(4096);
     while (true) {
-        std::size_t received = 0;
         std::println("Waiting for data...");
+        std::string_view message;
         auto recv = ring.make_sync<network::socket_recv_operation>();
         recv.socket(connection)
             .buffer(buffer);
         if (auto res = recv.submit_and_wait()) {
-            received = *res;
-            std::string_view message(
-                start_lifetime_as_array<char>(buffer.data(), received),
-                received
-            );
+            message = std::string_view(start_lifetime_as<char>(*res));
             if (message == magic_word) {
                 std::println("Magic word received, exiting...");
                 break;
             } else {
-                std::println("Received {} bytes: '{}'", received, message);
+                std::println("Received {} bytes: '{}'", message.size(), message);
             }
         } else {
             exit_if_function_not_supported(res.error());
@@ -238,7 +235,7 @@ void echo_server() {
             }
         });
         send.socket(connection)
-            .buffer(std::span(buffer.data(), received));
+            .buffer(std::span(buffer.data(), message.size()));
         if (auto res = send.submit()) {
             exit_if_function_not_supported(res);
             std::println("Failed to submit send operation: {}", res.message());
@@ -401,13 +398,9 @@ void echo_client() {
             recv.socket(sock)
                 .buffer(rxbuf);
             if (auto res = recv.submit_and_wait()) {
-                std::size_t received = *res;
-                std::string_view message(
-                    start_lifetime_as_array<char>(rxbuf.data(), received),
-                    received
-                );
+                std::string_view message(start_lifetime_as<char>(*res));
                 std::println("Received {} bytes (msg #{}): '{}'",
-                    received, i + 1, message);
+                    message.size(), i + 1, message);
             } else {
                 exit_if_function_not_supported(res.error());
                 std::println("Receive failed: {}", res.error().message());

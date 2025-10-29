@@ -339,11 +339,16 @@ namespace iouxx::inline iouops::network {
         [[no_unique_address]] callback_type callback;
     };
 
-    template<utility::eligible_callback<std::size_t> Callback>
+    template<typename Callback>
+        requires utility::eligible_alternative_callback<Callback,
+            std::span<std::byte>, std::span<unsigned char>>
     class socket_recv_operation : public operation_base,
         public details::send_recv_socket_base,
         public details::recv_op_base
     {
+        using chosen_traits = utility::chosen_result<
+            Callback, std::span<std::byte>, std::span<unsigned char>
+        >;
     public:
         template<utility::not_tag F>
         explicit socket_recv_operation(iouxx::ring& ring, F&& f)
@@ -360,7 +365,7 @@ namespace iouxx::inline iouops::network {
         {}
 
         using callback_type = Callback;
-        using result_type = std::size_t;
+        using result_type = chosen_traits::type;
 
         static constexpr std::uint8_t opcode = IORING_OP_RECV;
 
@@ -378,10 +383,14 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_callback<callback_type, result_type>) {
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(chosen_traits::nothrow) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::size_t>(ev));
+                // result_type is a std::span
+                using byte_type = result_type::value_type;
+                std::invoke(callback, result_type(
+                    static_cast<byte_type*>(buf),
+                    static_cast<std::size_t>(ev)
+                ));
             } else {
                 std::invoke(callback, utility::fail(-ev));
             }
@@ -397,12 +406,17 @@ namespace iouxx::inline iouops::network {
     socket_recv_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> socket_recv_operation<F>;
 
+    template<utility::byte_unit ByteType>
     struct multishot_recv_result {
-        std::size_t bytes_received;
+        using value_type = std::span<ByteType>::value_type;
+        std::span<ByteType> data;
         bool more;
     };
 
-    template<utility::eligible_callback<multishot_recv_result> Callback>
+    template<typename Callback>
+        requires utility::eligible_alternative_callback<Callback,
+            multishot_recv_result<std::byte>,
+            multishot_recv_result<unsigned char>>
     class socket_multishot_recv_operation : public operation_base,
         public details::send_recv_socket_base,
         public details::recv_op_base
@@ -411,6 +425,9 @@ namespace iouxx::inline iouops::network {
             "Multishot operation does not support syncronous wait.");
         static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
             "Multishot operation does not support coroutine await.");
+        using chosen_traits = utility::chosen_result<
+            Callback, multishot_recv_result<std::byte>, multishot_recv_result<unsigned char>
+        >;
     public:
         template<utility::not_tag F>
         explicit socket_multishot_recv_operation(iouxx::ring& ring, F&& f)
@@ -427,7 +444,7 @@ namespace iouxx::inline iouops::network {
         {}
 
         using callback_type = Callback;
-        using result_type = multishot_recv_result;
+        using result_type = chosen_traits::type;
 
         static constexpr std::uint8_t opcode = IORING_OP_RECV;
 
@@ -445,12 +462,16 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_callback<callback_type, result_type>) {
+        void do_callback(int ev, std::uint32_t cqe_flags)
+            IOUXX_CALLBACK_NOEXCEPT_IF(chosen_traits::nothrow) {
+            using byte_type = result_type::value_type;
             if (ev >= 0) {
                 const bool more = cqe_flags & IORING_CQE_F_MORE;
-                std::invoke(callback, multishot_recv_result{
-                    .bytes_received = static_cast<std::size_t>(ev),
+                std::invoke(callback, result_type{
+                    .data = std::span<byte_type>(
+                        static_cast<byte_type*>(buf),
+                        static_cast<std::size_t>(ev)
+                    ),
                     .more = more
                 });
             } else {

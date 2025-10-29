@@ -247,11 +247,13 @@ namespace iouxx::inline iouops::network {
     };
 
     template<typename Callback>
-        requires utility::eligible_callback<Callback, accept_result>
-        || utility::eligible_callback<Callback, connection>
+        requires utility::eligible_alternative_callback<Callback, accept_result, connection>
     class socket_accept_operation
         : public operation_base, protected details::peer_socket_info_base
     {
+        using chosen_traits = utility::chosen_result<
+            Callback, accept_result, connection
+        >;
     public:
         template<utility::not_tag F>
         explicit socket_accept_operation(iouxx::ring& ring, F&& f)
@@ -268,11 +270,7 @@ namespace iouxx::inline iouops::network {
         {}
 
         using callback_type = Callback;
-        using result_type = std::conditional_t<
-            utility::eligible_callback<Callback, accept_result>,
-            accept_result,
-            connection
-        >;
+        using result_type = chosen_traits::type;
 
         static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
 
@@ -298,8 +296,7 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_callback<callback_type, result_type>) {
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(chosen_traits::nothrow) {
             if (ev >= 0) {
                 if constexpr (std::same_as<result_type, accept_result>) {
                     this->from_system_sockaddr();
@@ -332,11 +329,13 @@ namespace iouxx::inline iouops::network {
     };
 
     template<typename Callback>
-        requires utility::eligible_callback<Callback, fixed_accept_result>
-        || utility::eligible_callback<Callback, fixed_connection>
+        requires utility::eligible_alternative_callback<Callback, fixed_accept_result, fixed_connection>
     class fixed_socket_accept_operation
         : public operation_base, protected details::peer_socket_info_base
     {
+        using chosen_traits = utility::chosen_result<
+            Callback, fixed_accept_result, fixed_connection
+        >;
     public:
         template<utility::not_tag F>
         explicit fixed_socket_accept_operation(iouxx::ring& ring, F&& f)
@@ -354,11 +353,7 @@ namespace iouxx::inline iouops::network {
         {}
 
         using callback_type = Callback;
-        using result_type = std::conditional_t<
-            utility::eligible_callback<Callback, fixed_accept_result>,
-            fixed_accept_result,
-            fixed_connection
-        >;
+        using result_type = chosen_traits::type;
 
         static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
 
@@ -390,8 +385,7 @@ namespace iouxx::inline iouops::network {
             sqe->flags |= IOSQE_FIXED_FILE;
         }
 
-        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_callback<callback_type, result_type>) {
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(chosen_traits::nothrow) {
             if (ev >= 0) {
                 if constexpr (std::same_as<result_type, fixed_accept_result>) {
                     this->from_system_sockaddr();

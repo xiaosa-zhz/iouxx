@@ -162,6 +162,9 @@ namespace iouxx::utility {
     concept eligible_callback = stdexpected_callback<Callback, Result>
         || eligible_errorcode_callback<Callback, Result>;
 
+    template<typename Callback, typename... PossibleResults>
+    concept eligible_alternative_callback = (... || eligible_callback<Callback, PossibleResults>);
+
     template<typename Callback, typename Result>
     concept eligible_maybe_void_callback = void_like<Callback>
         || eligible_callback<Callback, Result>;
@@ -194,6 +197,32 @@ namespace iouxx::utility {
     template<typename Callback, typename Result>
     concept eligible_nothrow_callback = eligible_callback<Callback, Result>
         && nothrow_stdexpected_or_errorcode_callback<Callback, Result>;
+    
+    template<typename Callback, typename... PossibleResults>
+    concept eligible_nothrow_alternative_callback =
+        eligible_alternative_callback<Callback, PossibleResults...>
+        && (... && eligible_nothrow_callback<Callback, PossibleResults>);
+
+    // Fetch the first result type that Callback is eligible for.
+    template<typename Callback, typename... PossibleResults>
+    struct chosen_result;
+
+    template<typename Callback>
+    struct chosen_result<Callback> {
+        // No eligible result type found.
+    };
+
+    template<typename Callback, typename FirstResult, typename... RestResults>
+        requires eligible_callback<Callback, FirstResult>
+    struct chosen_result<Callback, FirstResult, RestResults...> {
+        using type = FirstResult;
+        static constexpr bool nothrow = eligible_nothrow_callback<Callback, FirstResult>;
+    };
+
+    template<typename Callback, typename FirstResult, typename... RestResults>
+    struct chosen_result<Callback, FirstResult, RestResults...>
+        : chosen_result<Callback, RestResults...>
+    {};
 
     constexpr auto void_success() noexcept -> std::expected<void, std::error_code> {
         return {};
