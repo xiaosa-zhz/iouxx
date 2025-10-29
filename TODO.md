@@ -17,6 +17,7 @@
 - [ ] Remove fallback around chrono when libc++ implementation is complete
 - [ ] Remove start_lifetime_as in test_network.cpp when supported
 - [ ] Use more start_lifetime_as in buffer related operations when supported
+- [ ] Add enable R_DISABLED ring
 
 ## Completed
 - [x] ~~Rewrite registration mechanism~~
