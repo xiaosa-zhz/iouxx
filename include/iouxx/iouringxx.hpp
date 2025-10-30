@@ -1240,7 +1240,7 @@ namespace iouxx {
             }
         }
 
-        std::error_code register_worker_affinity(std::span<std::uint32_t> thread_cpus) & noexcept {
+        std::error_code set_worker_affinity(std::span<std::uint32_t> thread_cpus) & noexcept {
             ::cpu_set_t mask;
             CPU_ZERO(&mask);
             for (auto cpu : thread_cpus) {
@@ -1250,7 +1250,7 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
-        std::error_code unregister_worker_affinity() & noexcept {
+        std::error_code reset_worker_affinity() & noexcept {
             int ev = ::io_uring_unregister_iowq_aff(native());
             return utility::make_system_error_code(-ev);
         }
@@ -1271,7 +1271,7 @@ namespace iouxx {
             };
         }
 
-        std::error_code register_worker_maximum(
+        std::error_code set_worker_maximum(
             unsigned int bounded, unsigned int unbounded) & noexcept {
             IOUXX_ASSERT(valid());
             unsigned int info[2] = { bounded, unbounded };
