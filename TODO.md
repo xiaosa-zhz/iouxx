@@ -17,7 +17,6 @@
 - [ ] Remove fallback around chrono when libc++ implementation is complete
 - [ ] Remove start_lifetime_as in test_network.cpp when supported
 - [ ] Use more start_lifetime_as in buffer related operations when supported
-- [ ] Add enable R_DISABLED ring
 
 ## Completed
 - [x] ~~Rewrite registration mechanism~~
@@ -33,6 +32,7 @@
 - [x] ~~Add version check for liburing in both compile time and runtime~~
 - [x] ~~Update test coverage in README~~
 - [x] ~~Add work thread related registration~~
+- [x] ~~Add enable R_DISABLED ring~~
 
 ## Postponed
 - [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)

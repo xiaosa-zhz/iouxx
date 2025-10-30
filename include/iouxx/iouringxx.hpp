@@ -794,6 +794,11 @@ namespace iouxx {
             }
         }
 
+        std::error_code start_from_disabled() & noexcept {
+            int ev = ::io_uring_enable_rings(native());
+            return utility::make_system_error_code(-ev);
+        }
+
         // Explicitly specify operation template to create.
         template<template<typename...> class Operation, utility::not_tag Callback>
         Operation<std::decay_t<Callback>> make(Callback&& callback) &
