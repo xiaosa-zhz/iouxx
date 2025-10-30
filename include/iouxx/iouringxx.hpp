@@ -1240,6 +1240,45 @@ namespace iouxx {
             }
         }
 
+        std::error_code register_worker_affinity(std::span<std::uint32_t> thread_cpus) & noexcept {
+            ::cpu_set_t mask;
+            CPU_ZERO(&mask);
+            for (auto cpu : thread_cpus) {
+                CPU_SET(cpu, &mask);
+            }
+            int ev = ::io_uring_register_iowq_aff(native(), sizeof(mask), &mask);
+            return utility::make_system_error_code(-ev);
+        }
+
+        std::error_code unregister_worker_affinity() & noexcept {
+            int ev = ::io_uring_unregister_iowq_aff(native());
+            return utility::make_system_error_code(-ev);
+        }
+
+        struct worker_maximum {
+            unsigned int bounded = 0;
+            unsigned int unbounded = 0;
+        };
+
+        worker_maximum current_worker_maximum() & noexcept {
+            IOUXX_ASSERT(valid());
+            unsigned int info[2] = { 0, 0 };
+            int ev = ::io_uring_register_iowq_max_workers(native(), info);
+            IOUXX_ASSERT(ev == 0);
+            return worker_maximum{
+                .bounded = info[0],
+                .unbounded = info[1]
+            };
+        }
+
+        std::error_code register_worker_maximum(
+            unsigned int bounded, unsigned int unbounded) & noexcept {
+            IOUXX_ASSERT(valid());
+            unsigned int info[2] = { bounded, unbounded };
+            int ev = ::io_uring_register_iowq_max_workers(native(), info);
+            return utility::make_system_error_code(-ev);
+        }
+
     private:
         static ::io_uring invalid_ring() noexcept {
             return { .ring_fd = -1, .enter_ring_fd = -1 };

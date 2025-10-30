@@ -12,7 +12,6 @@
 ## Medium Priority
 - [ ] Add epoll support
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
-- [ ] Add work thread related registration
 
 ## Low Priority
 - [ ] Remove fallback around chrono when libc++ implementation is complete
@@ -33,6 +32,7 @@
 - [x] ~~Add io_uring_prep_cmd_sock operations~~
 - [x] ~~Add version check for liburing in both compile time and runtime~~
 - [x] ~~Update test coverage in README~~
+- [x] ~~Add work thread related registration~~
 
 ## Postponed
 - [ ] Add CI/CD pipeline (due to linux kernel in github actions is too old)
