@@ -21,16 +21,12 @@
 
 #include <chrono>
 #include <ctime>
+#include <cstdlib> // IWYU pragma: keep
 #include <bits/time.h> // CLOCK_BOOTTIME
 #include "macro_config.hpp" // IWYU pragma: keep
 #include "cxxmodule_helper.hpp" // IWYU pragma: keep
 
 #endif // IOUXX_USE_CXX_MODULE
-
-// Some libcs may require _GNU_SOURCE for CLOCK_BOOTTIME, but build system can define it globally.
-#ifndef CLOCK_BOOTTIME
-#error "CLOCK_BOOTTIME not available on this system. boottime_clock requires Linux with CLOCK_BOOTTIME."
-#endif
 
 IOUXX_EXPORT
 namespace iouxx {
@@ -42,6 +38,8 @@ namespace iouxx {
         using time_point = std::chrono::time_point<boottime_clock, duration>;
         static constexpr bool is_steady = true; // monotonic + never goes backwards
 
+// Some libc may require _GNU_SOURCE for CLOCK_BOOTTIME, but build system can define it globally.
+#ifdef CLOCK_BOOTTIME
         static time_point now() noexcept {
             ::timespec ts;
             ::clock_gettime(CLOCK_BOOTTIME, &ts);
@@ -49,6 +47,10 @@ namespace iouxx {
             auto ns = static_cast<rep>(ts.tv_sec) * 1'000'000'000 + static_cast<rep>(ts.tv_nsec);
             return time_point(duration{ns});
         }
+#else // !CLOCK_BOOTTIME
+#warning "CLOCK_BOOTTIME not defined!"
+        static time_point now() noexcept = delete;
+#endif // CLOCK_BOOTTIME
     };
 
     constexpr ::timespec to_timespec(boottime_clock::duration d) noexcept {
