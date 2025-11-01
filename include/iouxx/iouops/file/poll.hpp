@@ -20,14 +20,14 @@ namespace iouxx::details {
     {
     public:
         template<typename Self>
-        Self& file(this Self& self, file::file file) noexcept {
+        Self& file(this Self& self, fileops::file file) noexcept {
             self.fd = file.native_handle();
             self.is_fixed = false;
             return self;
         }
 
         template<typename Self>
-        Self& file(this Self& self, file::fixed_file file) noexcept {
+        Self& file(this Self& self, fileops::fixed_file file) noexcept {
             self.fd = file.index();
             self.is_fixed = true;
             return self;
@@ -41,7 +41,7 @@ namespace iouxx::details {
 } // namespace iouxx::details
 
 IOUXX_EXPORT
-namespace iouxx::inline iouops::file {
+namespace iouxx::inline iouops::fileops {
 
     enum class poll_event : unsigned {
         in = POLLIN,

@@ -17,7 +17,7 @@
 #endif // IOUXX_USE_CXX_MODULE
 
 IOUXX_EXPORT
-namespace iouxx::inline iouops::file {
+namespace iouxx::inline iouops::fileops {
 
     enum class open_flag {
         unspec = 0,
@@ -72,7 +72,7 @@ namespace iouxx::inline iouops::file {
 
 } // namespace iouxx::iouops::file
 
-namespace iouxx::inline iouops::file {
+namespace iouxx::inline iouops::fileops {
 
     class file_open_operation_base
     {
@@ -111,7 +111,7 @@ namespace iouxx::inline iouops::file {
 } // namespace iouxx::iouops::file
 
 IOUXX_EXPORT
-namespace iouxx::inline iouops::file {
+namespace iouxx::inline iouops::fileops {
 
     // TODO: change openat to openat2
 
@@ -429,6 +429,6 @@ namespace iouxx::inline iouops::file {
         [[no_unique_address]] callback_type callback;
     };
 
-} // namespace iouxx::inline iouops::file
+} // namespace iouxx::inline iouops::fileops
 
 #endif // IOUXX_OPERATION_FILE_CLOSE_H

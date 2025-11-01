@@ -10,7 +10,7 @@
 #endif // IOUXX_USE_CXX_MODULE
 
 IOUXX_EXPORT
-namespace iouxx::inline iouops::file {
+namespace iouxx::inline iouops::fileops {
 
     // Warning:
     // This class is NOT a RAII wrapper of fd.

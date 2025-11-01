@@ -170,9 +170,9 @@ namespace iouxx::inline iouops::network {
         -> fixed_socket_open_operation<F>;
 
     template<typename Callback>
-    class socket_close_operation : public file::file_close_operation<Callback>
+    class socket_close_operation : public fileops::file_close_operation<Callback>
     {
-        using base = file::file_close_operation<Callback>;
+        using base = fileops::file_close_operation<Callback>;
     public:
         using base::base; // Inherit constructors
 
@@ -187,8 +187,8 @@ namespace iouxx::inline iouops::network {
         }
 
         // Shadow the file_close_operation::file methods to avoid misuse
-        void file(const file::file&) & noexcept = delete;
-        void file(const file::fixed_file&) & noexcept = delete;
+        void file(const fileops::file&) & noexcept = delete;
+        void file(const fileops::fixed_file&) & noexcept = delete;
     };
 
     template<utility::eligible_callback<void> Callback>

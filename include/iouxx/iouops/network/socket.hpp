@@ -103,7 +103,7 @@ namespace iouxx::inline iouops::network {
 
     // Warning:
     // This class is NOT a RAII wrapper of socket fd.
-    class socket : public file::file, protected socket_config
+    class socket : public fileops::file, protected socket_config
     {
     public:
         constexpr socket() = default;
@@ -120,7 +120,7 @@ namespace iouxx::inline iouops::network {
         using socket_config::socket_protocol;
     };
 
-    class fixed_socket : public file::fixed_file, protected socket_config
+    class fixed_socket : public fileops::fixed_file, protected socket_config
     {
     public:
         constexpr fixed_socket() = default;

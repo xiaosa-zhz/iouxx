@@ -19,14 +19,14 @@ import iouxx.ops.file.fileio;
 int main() {
     using namespace iouxx;
     ring ring(256);
-    file::file fd = [&] {
-        auto open = ring.make_sync<file::file_open_operation>();
+    fileops::file fd = [&] {
+        auto open = ring.make_sync<fileops::file_open_operation>();
         open.path("/tmp")
-            .options(file::open_flag::temporary_file
-                | file::open_flag::cloexec
-                | file::open_flag::readwrite)
-            .mode(file::open_mode::uread
-                | file::open_mode::uwrite);
+            .options(fileops::open_flag::temporary_file
+                | fileops::open_flag::cloexec
+                | fileops::open_flag::readwrite)
+            .mode(fileops::open_mode::uread
+                | fileops::open_mode::uwrite);
         if (auto res = open.submit_and_wait()) {
             std::println("Temporary fixed file opened with fd {}", res->native_handle());
             return *res;
@@ -37,7 +37,7 @@ int main() {
     }();
     std::string_view msg = "Hello, io_uring fixed file!";
     {
-        auto write = ring.make_sync<file::file_write_operation>();
+        auto write = ring.make_sync<fileops::file_write_operation>();
         write.file(fd)
             .buffer(std::as_bytes(std::span(msg)))
             .offset(0);
@@ -50,7 +50,7 @@ int main() {
     }
     {
         std::string buffer(msg.size(), '\0');
-        auto read = ring.make_sync<file::file_read_operation>();
+        auto read = ring.make_sync<fileops::file_read_operation>();
         read.file(fd)
             .buffer(std::as_writable_bytes(std::span(buffer)))
             .offset(0);
@@ -66,7 +66,7 @@ int main() {
         }
     }
     {
-        auto close = ring.make_sync<file::file_close_operation>();
+        auto close = ring.make_sync<fileops::file_close_operation>();
         close.file(fd);
         if (auto res = close.submit_and_wait()) {
             std::println("Fixed file closed");

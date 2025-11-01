@@ -55,14 +55,14 @@ namespace iouxx::details {
     {
     public:
         template<typename Self>
-        Self& file(this Self& self, iouops::file::file f) noexcept {
+        Self& file(this Self& self, fileops::file f) noexcept {
             self.fd = f.native_handle();
             self.is_fixed = false;
             return self;
         }
 
         template<typename Self>
-        Self& file(this Self& self, iouops::file::fixed_file f) noexcept {
+        Self& file(this Self& self, fileops::fixed_file f) noexcept {
             self.fd = f.index();
             self.is_fixed = true;
             return self;
@@ -83,7 +83,7 @@ namespace iouxx::details {
 } // namespace iouxx::details
 
 IOUXX_EXPORT
-namespace iouxx::inline iouops::file {
+namespace iouxx::inline iouops::fileops {
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
     class file_read_operation : public operation_base,
