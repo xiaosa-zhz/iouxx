@@ -12,6 +12,7 @@
 ## Medium Priority
 - [ ] Add epoll support
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
+- [ ] Add file system related operations
 
 ## Low Priority
 - [ ] Remove fallback around chrono when libc++ implementation is complete
