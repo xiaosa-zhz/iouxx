@@ -104,6 +104,10 @@ namespace iouxx::inline iouops {
             : operation_base(iouxx::op_tag<noop_operation>, ring)
         {}
 
+        explicit noop_operation(iouxx::ring& ring, std::in_place_type_t<void>)
+            : operation_base(iouxx::op_tag<noop_operation>, ring)
+        {}
+
         using callback_type = void;
         using result_type = void;
 
@@ -125,6 +129,8 @@ namespace iouxx::inline iouops {
     noop_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> noop_operation<F>;
 
     noop_operation(iouxx::ring&) -> noop_operation<void>;
+
+    noop_operation(iouxx::ring&, std::in_place_type_t<void>) -> noop_operation<void>;
 
 } // namespace iouxx::iouops
 
