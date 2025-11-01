@@ -42,7 +42,7 @@ namespace iouxx::details {
     // Corresponding to std::chrono::steady_clock, std::chrono::system_clock,
     // and iouxx::boottime_clock (provided by this library).
     template<clock Clock>
-    consteval void is_supported_clock() noexcept {
+    consteval void check_supported_clock() noexcept {
         static_assert(std::same_as<Clock, std::chrono::steady_clock>
                       || std::same_as<Clock, std::chrono::system_clock>
                       || std::same_as<Clock, iouxx::boottime_clock>,
@@ -62,9 +62,36 @@ namespace iouxx::details {
             flags &= ~IORING_TIMEOUT_REALTIME;
         } else {
             // Should never reach here
-            is_supported_clock<Clock>();
+            check_supported_clock<Clock>();
         }
     }
+
+    class timeout_base
+    {
+    public:
+        template<typename Self, details::clock Clock = std::chrono::steady_clock>
+        Self& wait_for(this Self& self, details::clock_duration_t<Clock> duration,
+            Clock clock = Clock{}) noexcept {
+            details::check_supported_clock<Clock>();
+            self.ts = utility::to_kernel_timespec(duration);
+            details::set_clock_flag<Clock>(self.flags);
+            self.flags &= ~IORING_TIMEOUT_ABS;
+            return self;
+        }
+
+        template<typename Self, details::clock Clock, typename Duration>
+        Self& wait_until(this Self& self, std::chrono::time_point<Clock, Duration> time_point) noexcept {
+            details::check_supported_clock<Clock>();
+            self.ts = utility::to_kernel_timespec(time_point.time_since_epoch());
+            details::set_clock_flag<Clock>(self.flags);
+            self.flags |= IORING_TIMEOUT_ABS;
+            return self;
+        }
+
+    protected:
+        ::__kernel_timespec ts{};
+        unsigned flags = 0;
+    };
 
 } // namespace iouxx::details
 
@@ -73,7 +100,7 @@ namespace iouxx::inline iouops {
 
     // Timeout operation with user-defined callback.
     template<utility::eligible_callback<void> Callback>
-    class timeout_operation : public operation_base
+    class timeout_operation : public operation_base, public details::timeout_base
     {
     public:
         template<utility::not_tag F>
@@ -94,25 +121,6 @@ namespace iouxx::inline iouops {
         using result_type = void;
 
         static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT;
-
-        template<details::clock Clock = std::chrono::steady_clock>
-        timeout_operation& wait_for(details::clock_duration_t<Clock> duration,
-            Clock clock = Clock{}) & noexcept {
-            details::is_supported_clock<Clock>();
-            ts = utility::to_kernel_timespec(duration);
-            details::set_clock_flag<Clock>(flags);
-            flags &= ~IORING_TIMEOUT_ABS;
-            return *this;
-        }
-
-        template<details::clock Clock, typename Duration>
-        timeout_operation& wait_until(std::chrono::time_point<Clock, Duration> time_point) & noexcept {
-            details::is_supported_clock<Clock>();
-            ts = utility::to_kernel_timespec(time_point.time_since_epoch());
-            details::set_clock_flag<Clock>(flags);
-            flags |= IORING_TIMEOUT_ABS;
-            return *this;
-        }
 
     private:
         friend operation_base;
@@ -138,8 +146,6 @@ namespace iouxx::inline iouops {
             }
         }
 
-        ::__kernel_timespec ts{};
-        unsigned flags = 0;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -154,7 +160,7 @@ namespace iouxx::inline iouops {
     // Warning:
     // The operation object must outlive the whole execution of the multishot
     template<utility::eligible_callback<bool> Callback>
-    class multishot_timeout_operation : public operation_base
+    class multishot_timeout_operation : public operation_base, public details::timeout_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "Multishot operation does not support syncronous wait.");
@@ -180,15 +186,6 @@ namespace iouxx::inline iouops {
         
         static constexpr std::uint8_t opcode = IORING_OP_TIMEOUT;
 
-        template<details::clock Clock = std::chrono::steady_clock>
-        multishot_timeout_operation& wait_for(details::clock_duration_t<Clock> duration,
-            Clock clock = Clock{}) & noexcept {
-            details::is_supported_clock<Clock>();
-            ts = utility::to_kernel_timespec(duration);
-            details::set_clock_flag<Clock>(flags);
-            return *this;
-        }
-
         // n = 0 means infinite
         multishot_timeout_operation& repeat(std::size_t n) & noexcept {
             count = n;
@@ -196,13 +193,17 @@ namespace iouxx::inline iouops {
         }
 
         multishot_timeout_operation& repeat_forever() & noexcept {
-            count = 0;
-            return *this;
+            return repeat(0);
         }
+
+        // Poison overload to disable wait_until
+        template<details::clock Clock, typename Duration>
+        multishot_timeout_operation& wait_until(std::chrono::time_point<Clock, Duration>) & noexcept = delete;
 
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
+            flags |= IORING_TIMEOUT_MULTISHOT;
             ::io_uring_prep_timeout(sqe, &ts, count, flags);
         }
 
@@ -219,9 +220,7 @@ namespace iouxx::inline iouops {
             }
         }
 
-        ::__kernel_timespec ts{};
         std::size_t count = 1;
-        unsigned flags = IORING_TIMEOUT_MULTISHOT;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -295,6 +294,10 @@ namespace iouxx::inline iouops {
             operation_base(iouxx::op_tag<timeout_cancel_operation>, ring)
         {}
 
+        explicit timeout_cancel_operation(iouxx::ring& ring, std::in_place_type_t<void>) noexcept :
+            operation_base(iouxx::op_tag<timeout_cancel_operation>, ring)
+        {}
+
         using callback_type = void;
         using result_type = void;
 
@@ -327,6 +330,9 @@ namespace iouxx::inline iouops {
         -> timeout_cancel_operation<F>;
 
     timeout_cancel_operation(iouxx::ring&) -> timeout_cancel_operation<void>;
+
+    timeout_cancel_operation(iouxx::ring&, std::in_place_type_t<void>)
+        -> timeout_cancel_operation<void>;
 
 } // namespace iouxx::iouops
 
