@@ -4,9 +4,9 @@
 
 #ifndef IOUXX_USE_CXX_MODULE
 
+#include <concepts>
 #include <chrono>
 #include <functional>
-#include <concepts>
 #include <utility>
 #include <type_traits>
 
@@ -20,25 +20,48 @@
 namespace iouxx::details {
 
     // libcxx has not implemented is_clock_v yet
-    template<typename Clock>
-    concept clock =
 #if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
-        std::chrono::is_clock_v<Clock>;
+    template<typename Clock>
+    concept clock = std::chrono::is_clock_v<Clock>;
 #else // ! __cpp_lib_chrono
-        requires {
-            typename Clock::rep;
-            typename Clock::period;
-            typename Clock::duration;
-            typename Clock::time_point;
-            { Clock::is_steady } -> std::convertible_to<bool>;
-            { Clock::now() } -> std::convertible_to<typename Clock::time_point>;
-        };
+
+    template<typename Dur>
+    constexpr bool is_std_duration_v = false;
+
+    template<auto Num, auto Denom, typename Rep>
+        requires std::is_arithmetic_v<Rep>
+    constexpr bool is_std_duration_v<std::chrono::duration<Rep, std::ratio<Num, Denom>>> = true;
+
+    template<typename TimePoint, typename Clock>
+    constexpr bool is_matched_time_point_v = false;
+
+    template<typename TimePointClock, typename Clock>
+        requires std::same_as<TimePointClock, Clock>
+    constexpr bool is_matched_time_point_v<std::chrono::time_point<TimePointClock, typename Clock::duration>, Clock> = true;
+
+    // Fallback implementation
+    template<typename Clock>
+    concept clock = requires {
+        typename Clock::duration;
+        requires is_std_duration_v<typename Clock::duration>;
+        typename Clock::rep;
+        requires std::same_as<typename Clock::rep, typename Clock::duration::rep>;
+        typename Clock::period;
+        requires std::same_as<typename Clock::period, typename Clock::duration::period>;
+        requires std::same_as<std::chrono::duration<typename Clock::rep, typename Clock::period>, typename Clock::duration>;
+        typename Clock::time_point;
+        requires is_matched_time_point_v<typename Clock::time_point, Clock>;
+        Clock::is_steady;
+        requires std::same_as<decltype(Clock::is_steady), const bool>;
+        { Clock::now() } -> std::same_as<typename Clock::time_point>;
+    };
+
 #endif // __cpp_lib_chrono
 
     template<clock Clock>
     using clock_duration_t = typename Clock::duration;
 
-    // io_uring only supports CLOCK_MONOTONIC, CLOCK_REALTIME,and CLOCK_BOOTTIME.
+    // io_uring only supports CLOCK_MONOTONIC, CLOCK_REALTIME, and CLOCK_BOOTTIME.
     // Corresponding to std::chrono::steady_clock, std::chrono::system_clock,
     // and iouxx::boottime_clock (provided by this library).
     template<clock Clock>
@@ -311,10 +334,7 @@ namespace iouxx::inline iouops {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            const std::uint64_t user_data = static_cast<std::uint64_t>(
-                reinterpret_cast<std::uintptr_t>(id.user_data())
-            );
-            ::io_uring_prep_timeout_remove(sqe, user_data, 0);
+            ::io_uring_prep_timeout_remove(sqe, id.user_data64(), 0);
         }
 
         void do_callback(int, std::int32_t) noexcept {}
