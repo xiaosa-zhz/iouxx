@@ -26,7 +26,7 @@ namespace iouxx::inline iouops::fileops {
         msg = POLLMSG,
     };
 
-} // namespace iouxx::iouops::fileops
+} // namespace iouxx::iouops::fileopsops
 
 namespace iouxx::details {
 
@@ -296,6 +296,6 @@ namespace iouxx::inline iouops::fileops {
         [[no_unique_address]] callback_type callback;
     };
 
-} // namespace iouxx::iouops::file
+} // namespace iouxx::iouops::fileops
 
 #endif // IOUXX_IOUOPS_FILE_POLL_H

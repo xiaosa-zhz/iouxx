@@ -70,7 +70,7 @@ namespace iouxx::inline iouops::fileops {
 
     inline constexpr directory current_directory{ AT_FDCWD };
 
-} // namespace iouxx::iouops::file
+} // namespace iouxx::iouops::fileops
 
 namespace iouxx::inline iouops::fileops {
 
@@ -108,7 +108,7 @@ namespace iouxx::inline iouops::fileops {
         open_mode modes = open_mode::uread | open_mode::uwrite;
     };
 
-} // namespace iouxx::iouops::file
+} // namespace iouxx::iouops::fileops
 
 IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {

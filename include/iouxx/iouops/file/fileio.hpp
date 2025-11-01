@@ -308,6 +308,6 @@ namespace iouxx::inline iouops::fileops {
         [[no_unique_address]] callback_type callback;
     };
 
-} // namespace iouxx::iouops::file
+} // namespace iouxx::iouops::fileops
 
 #endif // IOUXX_OPERATION_FILEIO_H

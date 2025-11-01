@@ -59,6 +59,6 @@ namespace iouxx::inline iouops::fileops {
         int fd_index = -1;
     };
 
-} // namespace iouxx::iouops::file
+} // namespace iouxx::iouops::fileops
 
 #endif // IOUXX_OPERATION_FILE_FILE_INSTANCE_H
