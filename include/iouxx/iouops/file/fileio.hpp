@@ -37,7 +37,6 @@ namespace iouxx::details {
     class file_write_buffer_operation_base
     {
     public:
-        public:
         template<typename Self, utility::readonly_buffer_like Buffer>
         Self& buffer(this Self& self, Buffer&& buf) noexcept {
             auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
