@@ -13,8 +13,66 @@
 #include "iouxx/util/utility.hpp"
 #include "iouxx/macro_config.hpp" // IWYU pragma: keep
 #include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/file/file.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
+
+namespace iouxx::details {
+
+    class cancel_id_base
+    {
+    public:
+        template<typename Self>
+        Self& target(this Self& self, operation_identifier identifier) noexcept {
+            self.id = identifier;
+            return self;
+        }
+
+    protected:
+        operation_identifier id = operation_identifier();
+    };
+
+    class cancel_fd_base
+    {
+    public:
+        template<typename Self>
+        Self& target(this Self& self, fileops::file file) noexcept {
+            self.fd = file.native_handle();
+            self.flags &= ~IORING_ASYNC_CANCEL_FD_FIXED;
+            return self;
+        }
+
+        template<typename Self>
+        Self& target(this Self& self, fileops::fixed_file file) noexcept {
+            self.fd = file.index();
+            self.flags |= IORING_ASYNC_CANCEL_FD_FIXED;
+            return self;
+        }
+
+    protected:
+        int fd = -1;
+    };
+
+    class cancel_base
+    {
+    public:
+        template<typename Self>
+        Self& cancel_one(this Self& self) noexcept {
+            self.flags &= ~IORING_ASYNC_CANCEL_ALL;
+            return self;
+        }
+
+        template<typename Self>
+        Self& cancel_all(this Self& self) noexcept {
+            self.flags |= IORING_ASYNC_CANCEL_ALL;
+            return self;
+        }
+
+    protected:
+        unsigned flags = IORING_ASYNC_CANCEL_USERDATA;
+    };
+
+} // namespace iouxx::details
 
 IOUXX_EXPORT
 namespace iouxx::inline iouops {
@@ -22,7 +80,9 @@ namespace iouxx::inline iouops {
     // Cancel operation with user-defined callback by provided identifier.
     // On success, callback receive a number indicating how many operations were cancelled.
     template<utility::eligible_maybe_void_callback<std::size_t> Callback>
-    class cancel_operation : public operation_base
+    class cancel_operation : public operation_base,
+        public details::cancel_base,
+        public details::cancel_id_base
     {
     public:
         template<utility::not_tag F>
@@ -43,21 +103,6 @@ namespace iouxx::inline iouops {
 
         static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
-        cancel_operation& target(operation_identifier identifier) & noexcept {
-            id = identifier;
-            return *this;
-        }
-
-        cancel_operation& cancel_one() & noexcept {
-            flags &= ~IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
-        cancel_operation& cancel_all() & noexcept {
-            flags |= IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -82,17 +127,21 @@ namespace iouxx::inline iouops {
             }
         }
 
-        operation_identifier id = operation_identifier();
-        unsigned flags = IORING_ASYNC_CANCEL_USERDATA;
         [[no_unique_address]] callback_type callback;
     };
 
     // Pure cancel operation, does nothing on completion.
     template<>
-    class cancel_operation<void> : public operation_base
+    class cancel_operation<void> : public operation_base,
+        public details::cancel_base,
+        public details::cancel_id_base
     {
     public:
         explicit cancel_operation(iouxx::ring& ring) noexcept :
+            operation_base(iouxx::op_tag<cancel_operation>, ring)
+        {}
+
+        explicit cancel_operation(iouxx::ring& ring, std::in_place_type_t<void>) noexcept :
             operation_base(iouxx::op_tag<cancel_operation>, ring)
         {}
 
@@ -101,21 +150,6 @@ namespace iouxx::inline iouops {
 
         static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
-        cancel_operation& target(operation_identifier identifier) & noexcept {
-            id = identifier;
-            return *this;
-        }
-
-        cancel_operation& cancel_one() & noexcept {
-            flags &= ~IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
-        cancel_operation& cancel_all() & noexcept {
-            flags |= IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -123,9 +157,6 @@ namespace iouxx::inline iouops {
         }
 
         void do_callback(int, std::int32_t) noexcept {}
-
-        operation_identifier id = operation_identifier();
-        unsigned flags = 0;
     };
 
     template<utility::not_tag F>
@@ -136,10 +167,14 @@ namespace iouxx::inline iouops {
 
     cancel_operation(iouxx::ring&) -> cancel_operation<void>;
 
+    cancel_operation(iouxx::ring&, std::in_place_type_t<void>) -> cancel_operation<void>;
+
     // Cancel operation with user-defined callback by provided file descriptor.
     // On success, callback receive a number indicating how many operations were cancelled.
     template<utility::eligible_maybe_void_callback<std::size_t> Callback>
-    class cancel_fd_operation : public operation_base
+    class cancel_fd_operation : public operation_base,
+        public details::cancel_base,
+        public details::cancel_fd_base
     {
     public:
         template<utility::not_tag F>
@@ -160,29 +195,6 @@ namespace iouxx::inline iouops {
 
         static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
-        cancel_fd_operation& target(int file_descriptor) & noexcept {
-            fd = file_descriptor;
-            flags &= ~IORING_ASYNC_CANCEL_FD_FIXED;
-            return *this;
-        }
-
-        // Provide file descriptor that is an 'direct descripor' of io_uring
-        cancel_fd_operation& target_direct(int file_descriptor) & noexcept {
-            fd = file_descriptor;
-            flags |= IORING_ASYNC_CANCEL_FD_FIXED;
-            return *this;
-        }
-
-        cancel_fd_operation& cancel_one() & noexcept {
-            flags &= ~IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
-        cancel_fd_operation& cancel_all() & noexcept {
-            flags |= IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -207,17 +219,21 @@ namespace iouxx::inline iouops {
             }
         }
 
-        int fd = -1;
-        unsigned flags = IORING_ASYNC_CANCEL_FD;
         [[no_unique_address]] callback_type callback;
     };
 
     // Pure cancel fd operation, does nothing on completion.
     template<>
-    class cancel_fd_operation<void> : public operation_base
+    class cancel_fd_operation<void> : public operation_base,
+        public details::cancel_base,
+        public details::cancel_fd_base
     {
     public:
         explicit cancel_fd_operation(iouxx::ring& ring) noexcept :
+            operation_base(iouxx::op_tag<cancel_fd_operation>, ring)
+        {}
+
+        explicit cancel_fd_operation(iouxx::ring& ring, std::in_place_type_t<void>) noexcept :
             operation_base(iouxx::op_tag<cancel_fd_operation>, ring)
         {}
 
@@ -226,29 +242,6 @@ namespace iouxx::inline iouops {
 
         static constexpr std::uint8_t opcode = IORING_OP_ASYNC_CANCEL;
 
-        cancel_fd_operation& target(int file_descriptor) & noexcept {
-            fd = file_descriptor;
-            flags &= ~IORING_ASYNC_CANCEL_FD_FIXED;
-            return *this;
-        }
-
-        // Provide file descriptor that is an 'direct descripor' of io_uring
-        cancel_fd_operation& target_direct(int file_descriptor) & noexcept {
-            fd = file_descriptor;
-            flags |= IORING_ASYNC_CANCEL_FD_FIXED;
-            return *this;
-        }
-
-        cancel_fd_operation& cancel_one() & noexcept {
-            flags &= ~IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
-        cancel_fd_operation& cancel_all() & noexcept {
-            flags |= IORING_ASYNC_CANCEL_ALL;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -256,9 +249,6 @@ namespace iouxx::inline iouops {
         }
 
         void do_callback(int, std::int32_t) noexcept {}
-
-        int fd = -1;
-        unsigned flags = IORING_ASYNC_CANCEL_FD;
     };
 
     template<utility::not_tag F>
@@ -268,6 +258,8 @@ namespace iouxx::inline iouops {
     cancel_fd_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> cancel_fd_operation<F>;
 
     cancel_fd_operation(iouxx::ring&) -> cancel_fd_operation<void>;
+
+    cancel_fd_operation(iouxx::ring&, std::in_place_type_t<void>) -> cancel_fd_operation<void>;
 
 } // namespace iouxx::iouops
 
