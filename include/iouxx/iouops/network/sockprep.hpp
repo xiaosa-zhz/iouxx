@@ -53,8 +53,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<socket> Callback>
-    class socket_open_operation
-        : public operation_base, public details::socket_prep_base
+    class socket_open_operation : public operation_base, public details::socket_prep_base
     {
     public:
         template<utility::not_tag F>
@@ -108,8 +107,7 @@ namespace iouxx::inline iouops::network {
         -> socket_open_operation<F>;
 
     template<utility::eligible_callback<fixed_socket> Callback>
-    class fixed_socket_open_operation
-        : public operation_base, public details::socket_prep_base
+    class fixed_socket_open_operation : public operation_base, public details::socket_prep_base
     {
     public:
         template<utility::not_tag F>
