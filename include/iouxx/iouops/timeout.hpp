@@ -69,21 +69,21 @@ namespace iouxx::details {
     class timeout_base
     {
     public:
-        template<typename Self, details::clock Clock = std::chrono::steady_clock>
-        Self& wait_for(this Self& self, details::clock_duration_t<Clock> duration,
+        template<typename Self, clock Clock = std::chrono::steady_clock>
+        Self& wait_for(this Self& self, clock_duration_t<Clock> duration,
             Clock clock = Clock{}) noexcept {
-            details::check_supported_clock<Clock>();
+            check_supported_clock<Clock>();
             self.ts = utility::to_kernel_timespec(duration);
-            details::set_clock_flag<Clock>(self.flags);
+            set_clock_flag<Clock>(self.flags);
             self.flags &= ~IORING_TIMEOUT_ABS;
             return self;
         }
 
-        template<typename Self, details::clock Clock, typename Duration>
+        template<typename Self, clock Clock, typename Duration>
         Self& wait_until(this Self& self, std::chrono::time_point<Clock, Duration> time_point) noexcept {
-            details::check_supported_clock<Clock>();
+            check_supported_clock<Clock>();
             self.ts = utility::to_kernel_timespec(time_point.time_since_epoch());
-            details::set_clock_flag<Clock>(self.flags);
+            set_clock_flag<Clock>(self.flags);
             self.flags |= IORING_TIMEOUT_ABS;
             return self;
         }
