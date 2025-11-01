@@ -14,6 +14,20 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
+IOUXX_EXPORT
+namespace iouxx::inline iouops::fileops {
+
+    enum class poll_event : unsigned {
+        in = POLLIN,
+        pri = POLLPRI,
+        out = POLLOUT,
+        err = POLLERR,
+        hup = POLLHUP,
+        msg = POLLMSG,
+    };
+
+} // namespace iouxx::iouops::fileops
+
 namespace iouxx::details {
 
     class poll_base
@@ -38,19 +52,36 @@ namespace iouxx::details {
         bool is_fixed = false;
     };
 
+    class poll_event_base
+    {
+    public:
+        template<typename Self>
+        Self& events(this Self& self, fileops::poll_event events) noexcept {
+            self.mask = events;
+            return self;
+        }
+
+    protected:
+        fileops::poll_event mask{};
+    };
+
+    class poll_target_base
+    {
+    public:
+        template<typename Self>
+        Self& target(this Self& self, operation_identifier identifier) noexcept {
+            self.id = identifier;
+            return self;
+        }
+
+    protected:
+        operation_identifier id = operation_identifier();
+    };
+
 } // namespace iouxx::details
 
 IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
-
-    enum class poll_event : unsigned {
-        in = POLLIN,
-        pri = POLLPRI,
-        out = POLLOUT,
-        err = POLLERR,
-        hup = POLLHUP,
-        msg = POLLMSG,
-    };
 
     constexpr poll_event operator|(poll_event lhs, poll_event rhs) noexcept {
         return static_cast<poll_event>(
@@ -59,7 +90,9 @@ namespace iouxx::inline iouops::fileops {
     }
 
     template<utility::eligible_callback<poll_event> Callback>
-    class file_poll_add_operation : public operation_base, private details::poll_base
+    class file_poll_add_operation : public operation_base,
+        public details::poll_base,
+        public details::poll_event_base
     {
     public:
         template<utility::not_tag F>
@@ -81,13 +114,6 @@ namespace iouxx::inline iouops::fileops {
 
         static constexpr std::uint8_t opcode = IORING_OP_POLL_ADD;
 
-        using details::poll_base::file;
-
-        file_poll_add_operation& events(poll_event events) & noexcept {
-            this->mask = events;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -106,7 +132,6 @@ namespace iouxx::inline iouops::fileops {
             }
         }
 
-        poll_event mask{};
         [[no_unique_address]] callback_type callback;
     };
 
@@ -116,7 +141,9 @@ namespace iouxx::inline iouops::fileops {
     };
 
     template<utility::eligible_callback<multishot_poll_result> Callback>
-    class file_poll_multishot_operation : public operation_base, private details::poll_base
+    class file_poll_multishot_operation : public operation_base,
+        public details::poll_base,
+        public details::poll_event_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "Multishot operation does not support syncronous wait.");
@@ -142,13 +169,6 @@ namespace iouxx::inline iouops::fileops {
 
         static constexpr std::uint8_t opcode = IORING_OP_POLL_ADD;
 
-        using details::poll_base::file;
-
-        file_poll_multishot_operation& events(poll_event events) & noexcept {
-            this->mask = events;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -170,12 +190,11 @@ namespace iouxx::inline iouops::fileops {
             }
         }
 
-        poll_event mask{};
         [[no_unique_address]] callback_type callback;
     };
 
     template<utility::eligible_callback<void> Callback>
-    class file_poll_remove_operation : public operation_base
+    class file_poll_remove_operation : public operation_base, public details::poll_target_base
     {
     public:
         template<utility::not_tag F>
@@ -196,11 +215,6 @@ namespace iouxx::inline iouops::fileops {
         using result_type = void;
 
         static constexpr std::uint8_t opcode = IORING_OP_POLL_REMOVE;
-
-        file_poll_remove_operation& target(operation_identifier identifier) & noexcept {
-            id = identifier;
-            return *this;
-        }
 
     private:
         friend operation_base;
@@ -223,12 +237,13 @@ namespace iouxx::inline iouops::fileops {
             }
         }
 
-        operation_identifier id = operation_identifier();
         [[no_unique_address]] callback_type callback;
     };
 
     template<utility::eligible_callback<void> Callback>
-    class file_poll_update_operation : public operation_base
+    class file_poll_update_operation : public operation_base,
+        public details::poll_event_base,
+        public details::poll_target_base
     {
     public:
         template<utility::not_tag F>
@@ -249,16 +264,6 @@ namespace iouxx::inline iouops::fileops {
         using result_type = void;
 
         static constexpr std::uint8_t opcode = IORING_OP_POLL_REMOVE;
-
-        file_poll_update_operation& target(operation_identifier identifier) & noexcept {
-            id = identifier;
-            return *this;
-        }
-
-        file_poll_update_operation& events(poll_event events) & noexcept {
-            this->mask = events;
-            return *this;
-        }
 
         file_poll_update_operation& multishot() & noexcept {
             flags |= IORING_POLL_ADD_MULTI;
@@ -287,8 +292,6 @@ namespace iouxx::inline iouops::fileops {
             }
         }
 
-        operation_identifier id = operation_identifier();
-        poll_event mask{};
         unsigned int flags = IORING_POLL_UPDATE_EVENTS;
         [[no_unique_address]] callback_type callback;
     };

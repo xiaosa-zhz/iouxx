@@ -160,8 +160,8 @@ namespace iouxx::inline iouops::network {
         -> socket_listen_operation<F>;
 
     template<utility::eligible_callback<void> Callback>
-    class socket_connect_operation
-        : public operation_base, protected details::peer_socket_info_base
+    class socket_connect_operation : public operation_base,
+        protected details::peer_socket_info_base
     {
     public:
         template<utility::not_tag F>
@@ -248,8 +248,8 @@ namespace iouxx::inline iouops::network {
 
     template<typename Callback>
         requires utility::eligible_alternative_callback<Callback, accept_result, connection>
-    class socket_accept_operation
-        : public operation_base, protected details::peer_socket_info_base
+    class socket_accept_operation : public operation_base,
+        protected details::peer_socket_info_base
     {
         using chosen_traits = utility::chosen_result<
             Callback, accept_result, connection
@@ -330,8 +330,8 @@ namespace iouxx::inline iouops::network {
 
     template<typename Callback>
         requires utility::eligible_alternative_callback<Callback, fixed_accept_result, fixed_connection>
-    class fixed_socket_accept_operation
-        : public operation_base, protected details::peer_socket_info_base
+    class fixed_socket_accept_operation : public operation_base,
+        protected details::peer_socket_info_base
     {
         using chosen_traits = utility::chosen_result<
             Callback, fixed_accept_result, fixed_connection
@@ -421,8 +421,8 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::eligible_callback<multishot_accept_result> Callback>
-    class socket_multishot_accept_operation
-        : public operation_base, protected details::peer_socket_info_base
+    class socket_multishot_accept_operation : public operation_base,
+        protected details::peer_socket_info_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");
@@ -504,8 +504,8 @@ namespace iouxx::inline iouops::network {
     // Note: multishot_accept_direct always allocates all new slots,
     //  so user cannot specify index here.
     template<utility::eligible_callback<multishot_fixed_accept_result> Callback>
-    class fixed_socket_multishot_accept_operation
-        : public operation_base, protected details::peer_socket_info_base
+    class fixed_socket_multishot_accept_operation : public operation_base,
+        protected details::peer_socket_info_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");
