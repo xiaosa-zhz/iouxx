@@ -25,7 +25,7 @@ namespace iouxx::inline iouops::fileops {
         cloexec = O_CLOEXEC,
         create = O_CREAT,
         direct = O_DIRECT,
-        // directory = O_DIRECTORY, // use open_directory_operation instead
+        // directory = O_DIRECTORY, // use directory_open_operation instead
         nonblock = O_NONBLOCK,
         temporary_file = O_TMPFILE,
         truncate = O_TRUNC,
@@ -134,7 +134,7 @@ namespace iouxx::inline iouops::fileops {
     protected:
         std::string pathstr;
         int dirfd = current_directory.native_handle();
-        ::open_how how = { .flags = 0, .mode = S_IRUSR | S_IWUSR, .resolve = 0 };
+        ::open_how how = { .flags = 0, .mode = 0, .resolve = 0 };
     };
 
 } // namespace iouxx::iouops::fileops
@@ -250,6 +250,57 @@ namespace iouxx::inline iouops::fileops {
     template<typename F, typename... Args>
     fixed_file_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> fixed_file_open_operation<F>;
+
+    template<utility::eligible_callback<directory> Callback>
+    class directory_open_operation : public operation_base, public file_open_operation_base
+    {
+    public:
+        template<utility::not_tag F>
+        explicit directory_open_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<directory_open_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit directory_open_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<directory_open_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = fileops::directory;
+
+        static constexpr std::uint8_t opcode = IORING_OP_OPENAT2;
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            how.flags |= O_DIRECTORY | O_NONBLOCK;
+            ::io_uring_prep_openat2(sqe, dirfd,
+                pathstr.c_str(), &how
+            );
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, fileops::directory(ev));
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::not_tag F>
+    directory_open_operation(iouxx::ring&, F) -> directory_open_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    directory_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> directory_open_operation<F>;
 
     template<utility::eligible_callback<void> Callback>
     class file_close_operation : public operation_base
