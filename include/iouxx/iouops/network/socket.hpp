@@ -2,6 +2,15 @@
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_H 1
 
+/*
+    * Wrappers of
+    *   socket fd and fixed socket index
+    *   connection fd and fixed connection index (accepted socket)
+    * for io_uring network operations.
+    * Meant to be tagged wrapper type to avoid missuse.
+    * Also includes protocol database for socket protocols.
+*/
+
 #ifndef IOUXX_USE_CXX_MODULE
 
 #include "sys/socket.h"

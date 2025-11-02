@@ -2,6 +2,11 @@
 #ifndef IOUXX_OPERATION_FILE_FILE_INSTANCE_H
 #define IOUXX_OPERATION_FILE_FILE_INSTANCE_H 1
 
+/*
+    * Wrappers of fd, directory fd, and fixed file index for io_uring.
+    * Meant to be tagged wrapper type to avoid missuse.
+*/
+
 #ifndef IOUXX_USE_CXX_MODULE
 
 #include "iouxx/macro_config.hpp" // IWYU pragma: export
