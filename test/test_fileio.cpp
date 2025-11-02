@@ -16,6 +16,12 @@ import iouxx.ops.file.fileio;
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 
+#define LOG_INFO(fmtstr, ...) \
+    std::println("[INFO] " fmtstr __VA_OPT__(,) __VA_ARGS__)
+
+#define LOG_ERR(fmtstr, ...) \
+    std::println(stderr, "[ERROR] " fmtstr __VA_OPT__(,) __VA_ARGS__)
+
 int main() {
     using namespace iouxx;
     ring ring(256);
@@ -28,10 +34,10 @@ int main() {
             .mode(fileops::open_mode::uread
                 | fileops::open_mode::uwrite);
         if (auto res = open.submit_and_wait()) {
-            std::println("Temporary fixed file opened with fd {}", res->native_handle());
+            LOG_INFO("Temporary fixed file opened with fd {}", res->native_handle());
             return *res;
         } else {
-            std::println(stderr, "Fail to open temporary file: {}", res.error().message());
+            LOG_ERR("Fail to open temporary file: {}", res.error().message());
             std::abort();
         }
     }();
@@ -42,9 +48,9 @@ int main() {
             .buffer(std::as_bytes(std::span(msg)))
             .offset(0);
         if (auto res = write.submit_and_wait()) {
-            std::println("Wrote {} bytes to fixed file", *res);
+            LOG_INFO("Wrote {} bytes to fixed file", *res);
         } else {
-            std::println(stderr, "Fail to write to fixed file: {}", res.error().message());
+            LOG_ERR("Fail to write to fixed file: {}", res.error().message());
             std::abort();
         }
     }
@@ -55,13 +61,13 @@ int main() {
             .buffer(std::as_writable_bytes(std::span(buffer)))
             .offset(0);
         if (auto res = read.submit_and_wait()) {
-            std::println("Read {} bytes from fixed file: {}", *res, buffer);
+            LOG_INFO("Read {} bytes from fixed file: {}", *res, buffer);
         } else {
-            std::println(stderr, "Fail to read from fixed file: {}", res.error().message());
+            LOG_ERR("Fail to read from fixed file: {}", res.error().message());
             std::abort();
         }
         if (buffer != msg) {
-            std::println(stderr, "Data read does not match data written");
+            LOG_ERR("Data read does not match data written");
             std::abort();
         }
     }
@@ -69,9 +75,9 @@ int main() {
         auto close = ring.make_sync<fileops::file_close_operation>();
         close.file(fd);
         if (auto res = close.submit_and_wait()) {
-            std::println("Fixed file closed");
+            LOG_INFO("Fixed file closed");
         } else {
-            std::println(stderr, "Fail to close fixed file: {}", res.error().message());
+            LOG_ERR("Fail to close fixed file: {}", res.error().message());
             std::abort();
         }
     }
