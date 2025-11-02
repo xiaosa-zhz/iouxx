@@ -17,8 +17,7 @@
 IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
 
-    // Warning:
-    // This class is NOT a RAII wrapper of fd.
+    // Warning: This class is NOT a RAII wrapper of fd.
     class file
     {
     public:
@@ -37,8 +36,8 @@ namespace iouxx::inline iouops::fileops {
 
     inline constexpr file invalid_file = {};
 
-    // Warning:
-    // This class is NOT a RAII wrapper of directory fd.
+    // Warning: This class is NOT a RAII wrapper of directory fd.
+    // Note: directory fd is always a regular fd (never fixed).
     class directory : public file
     {
     public:
@@ -46,6 +45,7 @@ namespace iouxx::inline iouops::fileops {
     };
 
     // io_uring fixed file
+    // Warning: This class is NOT a RAII wrapper of fixed file index.
     class fixed_file
     {
     public:

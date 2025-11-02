@@ -19,13 +19,13 @@
 IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
 
-    enum class open_flag {
+    enum class open_flag : std::uint64_t {
         unspec = 0,
         append = O_APPEND,
         cloexec = O_CLOEXEC,
         create = O_CREAT,
         direct = O_DIRECT,
-        directory = O_DIRECTORY,
+        // directory = O_DIRECTORY, // use open_directory_operation instead
         nonblock = O_NONBLOCK,
         temporary_file = O_TMPFILE,
         truncate = O_TRUNC,
@@ -45,7 +45,8 @@ namespace iouxx::inline iouops::fileops {
         return lhs;
     }
 
-    enum class open_mode {
+    enum class open_mode : std::uint64_t {
+        none = 0,
         uread = S_IRUSR,
         uwrite = S_IWUSR,
         uexec = S_IXUSR,
@@ -64,6 +65,29 @@ namespace iouxx::inline iouops::fileops {
     }
 
     constexpr open_mode& operator|=(open_mode& lhs, open_mode rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    enum class open_resolve_flag : std::uint64_t {
+        none = 0,
+        no_xdev = RESOLVE_NO_XDEV,
+        no_magiclinks = RESOLVE_NO_MAGICLINKS,
+        no_symlinks = RESOLVE_NO_SYMLINKS,
+        beneath = RESOLVE_BENEATH,
+        in_root = RESOLVE_IN_ROOT,
+        cached = RESOLVE_CACHED,
+    };
+
+    constexpr open_resolve_flag operator|(
+        open_resolve_flag lhs, open_resolve_flag rhs) noexcept {
+        return static_cast<open_resolve_flag>(
+            std::to_underlying(lhs) | std::to_underlying(rhs)
+        );
+    }
+
+    constexpr open_resolve_flag& operator|=(
+        open_resolve_flag& lhs, open_resolve_flag rhs) noexcept {
         lhs = lhs | rhs;
         return lhs;
     }
@@ -91,29 +115,32 @@ namespace iouxx::inline iouops::fileops {
 
         template<typename Self>
         Self& options(this Self& self, open_flag flags) noexcept {
-            self.flags = flags;
+            self.how.flags = std::to_underlying(flags);
             return self;
         }
 
         template<typename Self>
         Self& mode(this Self& self, open_mode mode) noexcept {
-            self.modes = mode;
+            self.how.mode = std::to_underlying(mode);
+            return self;
+        }
+
+        template<typename Self>
+        Self& resolve_flags(this Self& self, open_resolve_flag resolve) noexcept {
+            self.how.resolve = std::to_underlying(resolve);
             return self;
         }
 
     protected:
         std::string pathstr;
         int dirfd = current_directory.native_handle();
-        open_flag flags = open_flag::unspec;
-        open_mode modes = open_mode::uread | open_mode::uwrite;
+        ::open_how how = { .flags = 0, .mode = S_IRUSR | S_IWUSR, .resolve = 0 };
     };
 
 } // namespace iouxx::iouops::fileops
 
 IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
-
-    // TODO: change openat to openat2
 
     template<utility::eligible_callback<file> Callback>
     class file_open_operation : public operation_base, public file_open_operation_base
@@ -136,15 +163,14 @@ namespace iouxx::inline iouops::fileops {
         using callback_type = Callback;
         using result_type = file;
 
-        static constexpr std::uint8_t opcode = IORING_OP_OPENAT;
+        static constexpr std::uint8_t opcode = IORING_OP_OPENAT2;
 
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            ::io_uring_prep_openat(sqe, dirfd,
-                pathstr.c_str(),
-                std::to_underlying(flags) | O_NONBLOCK,
-                std::to_underlying(modes)
+            how.flags |= O_NONBLOCK;
+            ::io_uring_prep_openat2(sqe, dirfd,
+                pathstr.c_str(), &how
             );
         }
 
@@ -189,7 +215,7 @@ namespace iouxx::inline iouops::fileops {
         using callback_type = Callback;
         using result_type = fixed_file;
 
-        static constexpr std::uint8_t opcode = IORING_OP_OPENAT;
+        static constexpr std::uint8_t opcode = IORING_OP_OPENAT2;
 
         fixed_file_open_operation& index(int index = alloc_index) & noexcept {
             this->file_index = index;
@@ -199,11 +225,9 @@ namespace iouxx::inline iouops::fileops {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            ::io_uring_prep_openat_direct(sqe, dirfd,
-                pathstr.c_str(),
-                std::to_underlying(flags) | O_NONBLOCK,
-                std::to_underlying(modes),
-                file_index
+            how.flags |= O_NONBLOCK;
+            ::io_uring_prep_openat2_direct(sqe, dirfd,
+                pathstr.c_str(), &how, file_index
             );
         }
 
