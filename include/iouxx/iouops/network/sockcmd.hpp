@@ -24,8 +24,6 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
-#include <print>
-
 IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
@@ -774,7 +772,6 @@ namespace iouxx::inline iouops::network {
                 auto [optval, optlen] = base::params();
                 ::io_uring_prep_cmd_sock(sqe, SOCKET_URING_OP_SETSOCKOPT, this->fd,
                     base::level, base::optname, optval, optlen);
-                std::println("{} {} {}", base::level, base::optname, *optval);
                 if (this->is_fixed) {
                     sqe->flags |= IOSQE_FIXED_FILE;
                 }

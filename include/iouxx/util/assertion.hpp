@@ -6,11 +6,19 @@
 #ifdef IOUXX_ENABLE_INTERNAL_ASSERTION
 
 #ifdef IOUXX_USE_CXX_CONTRACTS
+
+#if __cpp_contracts >= 202502L
 #define IOUXX_ASSERT(...) contract_assert(__VA_ARGS__)
+#else // !__cpp_contracts >= 202502L
+#error "C++ Contracts is enabled but not supported by the compiler."
+#endif // __cpp_contracts >= 202502L
+
 #else // !IOUXX_USE_CXX_CONTRACTS
+
 #define IOUXX_ASSERT(...) ((__VA_ARGS__) \
     ? static_cast<void>(0) \
     : iouxx::utility::assertion_failed(#__VA_ARGS__, __FILE__, __LINE__))
+
 #endif // IOUXX_USE_CXX_CONTRACTS
 
 #else // !IOUXX_ENABLE_INTERNAL_ASSERTION

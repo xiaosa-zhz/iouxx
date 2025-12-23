@@ -1,7 +1,7 @@
 add_rules("mode.debug", "mode.release")
 add_includedirs("include")
 add_defines("IOUXX_CONFIG_ENABLE_FEATURE_TESTS")
-add_requires("liburing >= 2.12")
+add_requires("liburing >= 2.13")
 set_languages("c++26")
 set_encodings("utf-8")
 add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
