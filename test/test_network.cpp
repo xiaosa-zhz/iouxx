@@ -2,6 +2,7 @@
 
 import std;
 import iouxx.ring;
+import iouxx.util;
 import iouxx.ops.network.socketio;
 
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
@@ -29,6 +30,11 @@ import iouxx.ops.network.socketio;
 #include "iouxx/iouops/network/socketio.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
+
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <cerrno>
 
 using namespace iouxx;
 using namespace std::literals;

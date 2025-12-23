@@ -2,16 +2,16 @@ module;
 #ifndef IOUXX_CONFIG_USE_CXX_MODULE
 #define IOUXX_CONFIG_USE_CXX_MODULE
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-#include "macro_config.hpp" // IWYU pragma: export
-#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include "iouxx/macro_config.hpp" // IWYU pragma: export
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
 #include "netinet/in.h" // IWYU pragma: export
 #include "sys/socket.h"  // IWYU pragma: export
 #include "netdb.h" // IWYU pragma: export
-#include "util/assertion.hpp" // IWYU pragma: export
+#include "iouxx/util/assertion.hpp" // IWYU pragma: export
 export module iouxx.ops.network.ip;
 import std;
 import iouxx.util;
 export import iouxx.ops.file.fileio;
 
-#include "iouops/network/socket.hpp" // IWYU pragma: keep
-#include "iouops/network/ip.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/socket.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/ip.hpp" // IWYU pragma: keep
