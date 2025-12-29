@@ -16,6 +16,8 @@ import iouxx.ops.file.fileio;
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 
+#include <cstdio>
+
 #define LOG_INFO(fmtstr, ...) \
     std::println("[INFO] " fmtstr __VA_OPT__(,) __VA_ARGS__)
 

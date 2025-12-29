@@ -8,18 +8,18 @@ module;
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
-#include "macro_config.hpp" // IWYU pragma: export
-#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include "iouxx/macro_config.hpp" // IWYU pragma: export
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
 #include <liburing.h> // IWYU pragma: export
-#include "util/assertion.hpp" // IWYU pragma: export
+#include "iouxx/util/assertion.hpp" // IWYU pragma: export
 export module iouxx.ops.network.socketio;
 import std;
 import iouxx.util;
 import iouxx.ring;
 export import iouxx.ops.network.ip;
 
-#include "iouops/network/supported.hpp" // IWYU pragma: keep
-#include "iouops/network/sockprep.hpp" // IWYU pragma: keep
-#include "iouops/network/connection.hpp" // IWYU pragma: keep
-#include "iouops/network/sendrecv.hpp" // IWYU pragma: keep
-#include "iouops/network/sockcmd.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/supported.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/sockprep.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/connection.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/sendrecv.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/sockcmd.hpp" // IWYU pragma: keep

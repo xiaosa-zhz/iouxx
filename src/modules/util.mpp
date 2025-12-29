@@ -5,9 +5,10 @@ module;
 #include "linux/time_types.h" // IWYU pragma: export
 #include "bits/types/struct_iovec.h" // IWYU pragma: export
 #include "sys/socket.h" // IWYU pragma: export
-#include "macro_config.hpp" // IWYU pragma: export
-#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include <cstdio> // IWYU pragma: export
+#include "iouxx/macro_config.hpp" // IWYU pragma: export
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
 export module iouxx.util;
 import std;
 
-#include "util/utility.hpp" // IWYU pragma: keep
+#include "iouxx/util/utility.hpp" // IWYU pragma: keep

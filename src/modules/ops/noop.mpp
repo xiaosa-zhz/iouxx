@@ -2,12 +2,12 @@ module;
 #ifndef IOUXX_CONFIG_USE_CXX_MODULE
 #define IOUXX_CONFIG_USE_CXX_MODULE
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-#include "macro_config.hpp" // IWYU pragma: export
-#include "cxxmodule_helper.hpp" // IWYU pragma: export
+#include "iouxx/macro_config.hpp" // IWYU pragma: export
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
 #include <liburing.h> // IWYU pragma: export
 export module iouxx.ops.noop;
 import std;
 import iouxx.util;
 import iouxx.ring;
 
-#include "iouops/noop.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/noop.hpp" // IWYU pragma: keep

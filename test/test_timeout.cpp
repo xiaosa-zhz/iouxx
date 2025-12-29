@@ -1,8 +1,8 @@
-#include "iouxx/clock.hpp"
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
 import iouxx.ring;
+import iouxx.clock;
 import iouxx.ops.timeout;
 
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
