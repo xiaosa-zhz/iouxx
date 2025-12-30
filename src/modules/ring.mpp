@@ -10,4 +10,8 @@ export module iouxx.ring;
 import std;
 import iouxx.util;
 
+extern "C++" {
+
 #include "iouxx/iouringxx.hpp" // IWYU pragma: keep
+
+}

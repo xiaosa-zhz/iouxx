@@ -10,4 +10,8 @@ import std;
 import iouxx.util;
 import iouxx.ring;
 
+extern "C++" {
+
 #include "iouxx/iouops/noop.hpp" // IWYU pragma: keep
+
+}

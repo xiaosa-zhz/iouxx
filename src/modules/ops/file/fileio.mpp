@@ -10,6 +10,10 @@ import std;
 import iouxx.util;
 import iouxx.ring;
 
+extern "C++" {
+
 #include "iouxx/iouops/file/file.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/file/openclose.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/file/fileio.hpp" // IWYU pragma: keep
+
+}

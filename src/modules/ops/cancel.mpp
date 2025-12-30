@@ -11,4 +11,8 @@ import iouxx.util;
 import iouxx.ring;
 import iouxx.ops.file.fileio;
 
+extern "C++" {
+
 #include "iouxx/iouops/cancel.hpp" // IWYU pragma: keep
+
+}

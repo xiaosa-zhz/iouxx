@@ -11,4 +11,8 @@ module;
 export module iouxx.util;
 import std;
 
+extern "C++" {
+
 #include "iouxx/util/utility.hpp" // IWYU pragma: keep
+
+}
