@@ -32,11 +32,7 @@ A C++26 style thin wrapper around [liburing](https://github.com/axboe/liburing).
   - `syncwait_callback` for simple synchronous wait use case (e.g. in tests).
   - `awaiter_callback` to transform most of io_uring operations into coroutine awaitable (naturally forked operations need to be treated seperately).
 - Provide wrappers around registration API for io_uring fixed fd and buffer. These things still need to be managed by user.
-  - Reserve lower 3 bits of `user_data` to tag the unregister operation types.
-  - User can provide resource tags marking the registered resource, which will be returned in completion event.
-  - User-provided resource tags are also required to not use lower 3 bits (can be proper aligned pointers).
-  - Once unregistration callback is set and a tagged resource is unregistered, a completion event will be generated with the corresponding tag.
-  - File descriptor and buffer can have seperate unregister callbacks.
+  - Intended to not include direct registration of fds! Use registration ops or open as fixed instead.
 - Provide C++20 module support (not yet due to upstream issues).
 
 ## 📦 Dependencies
