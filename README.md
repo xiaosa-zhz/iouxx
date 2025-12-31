@@ -33,7 +33,7 @@ A C++26 style thin wrapper around [liburing](https://github.com/axboe/liburing).
   - `awaiter_callback` to transform most of io_uring operations into coroutine awaitable (naturally forked operations need to be treated seperately).
 - Provide wrappers around registration API for io_uring fixed fd and buffer. These things still need to be managed by user.
   - Intended to not include direct registration of fds! Use registration ops or open as fixed instead.
-- Provide C++20 module support (not yet due to upstream issues).
+- Provide C++20 module support (clang only for now).
 
 ## 📦 Dependencies
 
