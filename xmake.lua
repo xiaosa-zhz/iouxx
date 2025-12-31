@@ -24,7 +24,6 @@ local function configure_toochains(name)
     if name == "clang" then
         set_toolchains("clang")
         set_runtimes("c++_shared")
-        add_linkdir_rpath("/usr/local/lib/x86_64-unknown-linux-gnu")
     elseif name == "gcc" then
         set_toolchains("gcc")
         set_runtimes("stdc++_shared")
