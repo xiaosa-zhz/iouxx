@@ -3,7 +3,7 @@
 #define IOUXX_OPERATION_SOCKETIO_H 1
 
 /*
-    * This file is a convenience header to include all socket related operations.
+ * This file is a convenience header to include all socket related operations.
 */
 
 #include "sockprep.hpp" // IWYU pragma: export
@@ -14,7 +14,7 @@
 namespace iouxx::details {
 
     // Make 'empty header warning' happy
-    [[maybe_unused]] inline void all_network_headers_anchor() noexcept {}
+    [[maybe_unused]] consteval void all_network_headers_anchor() noexcept {}
 
 } // namespace iouxx::details
 

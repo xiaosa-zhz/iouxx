@@ -3,7 +3,7 @@
 #define IOUXX_ALL_OPERATION_HEADERS_H 1
 
 /*
-    * This file is a convenience header that includes all headers of iouops.
+ * This file is a convenience header that includes all headers of iouops.
 */
 
 #include "noop.hpp" // IWYU pragma: export
@@ -15,7 +15,7 @@
 namespace iouxx::details {
 
     // Make 'empty header warning' happy
-    [[maybe_unused]] inline void all_iouops_headers_anchor() noexcept {}
+    [[maybe_unused]] consteval void all_iouops_headers_anchor() noexcept {}
 
 } // namespace iouxx::details
 

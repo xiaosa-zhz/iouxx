@@ -3,7 +3,7 @@
 #define IOUXX_ALL_HEADERS_H 1
 
 /*
-    * This file is a convenience header that includes all headers of iouxx.
+ * This file is a convenience header that includes all headers of iouxx.
 */
 
 #include "clock.hpp" // IWYU pragma: export
@@ -19,7 +19,7 @@
 namespace iouxx::details {
 
     // Make 'empty header warning' happy
-    [[maybe_unused]] inline void all_headers_anchor() noexcept {}
+    [[maybe_unused]] consteval void all_headers_anchor() noexcept {}
 
 } // namespace iouxx::details
 
