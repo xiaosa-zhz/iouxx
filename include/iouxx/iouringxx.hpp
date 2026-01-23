@@ -987,6 +987,7 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
+        [[deprecated("Use async registration methods instead.")]]
         std::error_code update_direct_descriptor_table(std::size_t offset,
             const std::span<const int> fds) noexcept {
             IOUXX_ASSERT(valid());
@@ -995,6 +996,7 @@ namespace iouxx {
             return utility::make_system_error_code(-ev);
         }
 
+        [[deprecated("Use async registration methods instead.")]]
         std::error_code register_direct_descriptors(
             const std::span<const int> fds) noexcept {
             IOUXX_ASSERT(valid());

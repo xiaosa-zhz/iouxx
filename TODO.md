@@ -1,11 +1,12 @@
 # TODO List
 
 ## Work in Progress
-- [ ] Add module build for gcc when liburing upstream fixed
 - [ ] Add event related operations
 - [ ] Add provided ring buffer and add support in recv/read operations
 
 ## High Priority
+- [ ] Add async mutex support
+- [ ] Add module build for gcc when gcc 16 released
 - [ ] Find a suitable environment to really test networking
 - [ ] Find a suitable environment to really test fixed fd/buffer
 
