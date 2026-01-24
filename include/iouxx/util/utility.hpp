@@ -123,11 +123,11 @@ namespace iouxx::utility {
         return std::span<ByteType>(static_cast<ByteType*>(iov.iov_base), iov.iov_len);
     }
 
-    template<template<typename...> class tmp, typename T>
+    template<template<typename...> class TMP, typename T>
     inline constexpr bool is_specialization_of_v = false;
 
-    template<template<typename...> class tmp, typename... Args>
-    inline constexpr bool is_specialization_of_v<tmp, tmp<Args...>> = true;
+    template<template<typename...> class TMP, typename... Args>
+    inline constexpr bool is_specialization_of_v<TMP, TMP<Args...>> = true;
 
     template<typename T>
     concept expected_like = is_specialization_of_v<std::expected, std::remove_cvref_t<T>>;
