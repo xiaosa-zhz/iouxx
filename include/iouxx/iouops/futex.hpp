@@ -122,7 +122,7 @@ namespace iouxx::inline iouops {
     futex_wait_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> futex_wait_operation<F>;
 
-    template<utility::eligible_maybe_void_callback<void> Callback>
+    template<utility::eligible_callback<std::size_t> Callback>
     class futex_wake_operation : public operation_base, public details::futex_operation_base
     {
     public:
@@ -141,7 +141,7 @@ namespace iouxx::inline iouops {
         {}
 
         using callback_type = Callback;
-        using result_type = void;
+        using result_type = std::size_t;
 
         static constexpr std::uint8_t opcode = IORING_OP_FUTEX_WAKE;
 
@@ -166,18 +166,12 @@ namespace iouxx::inline iouops {
                 0);
         }
 
-        void do_callback(int ev, std::int32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-            std::is_nothrow_invocable_v<callback_type>) {
-            if constexpr (utility::stdexpected_callback<callback_type, void>) {
-                if (ev >= 0) {
-                    std::invoke(callback, utility::void_success());
-                } else {
-                    std::invoke(callback, utility::fail(-ev));
-                }
-            } else if constexpr (utility::errorcode_callback<callback_type>) {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, static_cast<std::size_t>(ev));
             } else {
-                static_assert(false, "Unreachable");
+                std::invoke(callback, utility::fail(-ev));
             }
         }
 

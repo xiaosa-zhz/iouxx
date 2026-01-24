@@ -6,5 +6,6 @@ export module iouxx.ops;
 export import iouxx.ops.noop;
 export import iouxx.ops.timeout;
 export import iouxx.ops.cancel;
+export import iouxx.ops.futex;
 export import iouxx.ops.network.socketio;
 export import iouxx.ops.file.fileio;

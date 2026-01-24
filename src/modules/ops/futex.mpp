@@ -1,0 +1,18 @@
+module;
+#ifndef IOUXX_CONFIG_USE_CXX_MODULE
+#define IOUXX_CONFIG_USE_CXX_MODULE
+#endif // IOUXX_CONFIG_USE_CXX_MODULE
+#include "iouxx/macro_config.hpp" // IWYU pragma: export
+#include "iouxx/cxxmodule_helper.hpp" // IWYU pragma: export
+#include <linux/futex.h> // IWYU pragma: export
+#include <liburing.h> // IWYU pragma: export
+export module iouxx.ops.futex;
+import std;
+import iouxx.util;
+import iouxx.ring;
+
+extern "C++" {
+    
+#include "iouxx/iouops/futex.hpp" // IWYU pragma: keep
+
+}
