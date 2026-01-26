@@ -109,6 +109,7 @@ void echo_server() {
         } else {
             if (res.error() == std::errc::function_not_supported
                 || res.error() == std::errc::operation_not_supported) {
+                std::println("Socket option operation not supported, fallback to system call");
                 sockcmd_exists = false;
                 return;
             }
@@ -140,6 +141,7 @@ void echo_server() {
         } else {
             if (res.error() == std::errc::function_not_supported
                 || res.error() == std::errc::operation_not_supported) {
+                std::println("Socket bind operation not supported, fallback to system call");
                 bind_op_exists = false;
                 return;
             }
@@ -325,6 +327,7 @@ void echo_client() {
         } else {
             if (res.error() == std::errc::function_not_supported
                 || res.error() == std::errc::operation_not_supported) {
+                std::println("Socket option operation not supported, fallback to system call");
                 sockcmd_exists = false;
                 return;
             }
@@ -357,6 +360,7 @@ void echo_client() {
         } else {
             if (res.error() == std::errc::function_not_supported
                 || res.error() == std::errc::operation_not_supported) {
+                std::println("Socket bind operation not supported, fallback to system call");
                 bind_op_exists = false;
                 return;
             }
