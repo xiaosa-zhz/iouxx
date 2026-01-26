@@ -69,6 +69,7 @@ No examples yet, but test cases can be referenced for usage, see below.
 - `test_cancel.cpp`: `iouops/cancel.hpp`
 - `test_network.cpp`: `iouops/network/socketio.hpp`, some features are not working on older kernels thus may not be covered.
 - `test_fileio.cpp`: `iouops/fileio/fileio.hpp`
+- `test_futex.cpp`: `iouops/futex.hpp`
 - `test_concepts.cpp`: concepts of operation in `iouops/util/utility.hpp`
 
 ## 🛣️ Roadmap / TODO

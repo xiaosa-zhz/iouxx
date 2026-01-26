@@ -5,12 +5,12 @@
 - [ ] Add provided ring buffer and add support in recv/read operations
 
 ## High Priority
-- [ ] Add async mutex support
 - [ ] Add module build for gcc when gcc 16 released
 - [ ] Find a suitable environment to really test networking
 - [ ] Find a suitable environment to really test fixed fd/buffer
 
 ## Medium Priority
+- [ ] Add direct fd tests in network tests
 - [ ] Add epoll support
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
 - [ ] Add file system related operations
@@ -21,6 +21,7 @@
 - [ ] Use more start_lifetime_as in buffer related operations when supported
 
 ## Completed
+- [x] ~~Add async mutex support~~
 - [x] ~~Rewrite registration mechanism~~
 - [x] ~~Implement socket IO operations in `include/iouops/socketio.hpp`~~
 - [x] ~~Implement file IO operations in `include/iouops/fileio.hpp`~~
