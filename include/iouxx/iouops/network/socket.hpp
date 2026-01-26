@@ -79,7 +79,7 @@ namespace iouxx::inline iouops::network {
         }
 
         static constexpr int unknown_protocol_no = -1;
-        static constexpr int protocol_no_limit = 256;
+        static constexpr int protocol_no_limit = 512;
 
         enum class protocol
         {
