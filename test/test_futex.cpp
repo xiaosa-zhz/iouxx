@@ -9,17 +9,13 @@ import iouxx.ops.futex;
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
 
 #include <cstdint>
-#include <chrono>
 #include <print>
 #include <system_error>
 #include <thread>
 #include <atomic>
 #include <cstdlib>
-#include <bit>
 
 #include "iouxx/iouringxx.hpp"
-#include "iouxx/iouops/timeout.hpp"
-#include "iouxx/iouops/cancel.hpp"
 #include "iouxx/iouops/futex.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
