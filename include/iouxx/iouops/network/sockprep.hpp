@@ -125,7 +125,7 @@ namespace iouxx::inline iouops::network {
         {}
 
         using callback_type = Callback;
-        using result_type = void;
+        using result_type = fixed_socket;
 
         static constexpr std::uint8_t opcode = IORING_OP_SOCKET;
 
@@ -213,6 +213,11 @@ namespace iouxx::inline iouops::network {
         static constexpr std::uint8_t opcode = IORING_OP_BIND;
 
         socket_bind_operation& socket(const socket& s) & noexcept {
+            this->sock = s;
+            return *this;
+        }
+
+        socket_bind_operation& socket(const fixed_socket& s) & noexcept {
             this->sock = s;
             return *this;
         }

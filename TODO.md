@@ -5,6 +5,7 @@
 - [ ] Add provided ring buffer and add support in recv/read operations
 
 ## High Priority
+- [ ] Add fixed file support for network operations
 - [ ] Add module build for gcc when gcc 16 released
 - [ ] Find a suitable environment to really test networking
 - [ ] Find a suitable environment to really test fixed fd/buffer
