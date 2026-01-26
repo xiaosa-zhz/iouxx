@@ -16,6 +16,10 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
+/*
+ * Note: some flags are not compitible with io_uring fixed file
+*/
+
 IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
 
