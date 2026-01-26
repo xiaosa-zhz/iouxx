@@ -156,7 +156,7 @@ namespace iouxx::inline iouops {
 
         static constexpr std::uint8_t opcode = IORING_OP_FUTEX_WAKE;
 
-        futex_wake_operation& notify(int n) & noexcept {
+        futex_wake_operation& notify(std::size_t n) & noexcept {
             this->wakeups = n;
             return *this;
         }
@@ -186,7 +186,7 @@ namespace iouxx::inline iouops {
             }
         }
 
-        int wakeups = 1;
+        std::size_t wakeups = 1;
         [[no_unique_address]] callback_type callback;
     };
 

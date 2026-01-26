@@ -19,6 +19,7 @@ A C++26 style thin wrapper around [liburing](https://github.com/axboe/liburing).
   - OPENAT, CLOSE
   - READ, READ_FIXED, WRITE, WRITE_FIXED
   - POLL_ADD, POLL_REMOVE
+  - FUTEX_WAKE, FUTEX_WAIT, FUTEX_WAITV
 - Other helper facilities, such as IP address utilities and Linux specific timer.
 
 ## 🧱 Design Note
