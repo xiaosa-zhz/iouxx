@@ -470,366 +470,321 @@ static void echo_client() {
     }();
 }
 
-// static void echo_server_fixed() {
-//     ring ring(256);
-//     network::fixed_socket sock = [&ring] {
-//         auto open = ring.make_sync<network::fixed_socket_open_operation>();
-//         open.domain(network::socket_config::domain::ipv4)
-//             .type(network::socket_config::type::stream)
-//             .protocol(network::to_protocol("tcp"));
-//         if (auto res = open.submit_and_wait()) {
-//             std::println("Server socket created: {}", res->index());
-//             return std::move(*res);
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to create server socket: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+static void echo_server_fixed() {
+    ring ring(256);
+    network::fixed_socket sock = [&ring] {
+        auto open = ring.make_sync<network::fixed_socket_open_operation>();
+        open.domain(network::socket_config::domain::ipv4)
+            .type(network::socket_config::type::stream)
+            .protocol(network::to_protocol("tcp"));
+        if (auto res = open.submit_and_wait()) {
+            std::println("Server socket created: {}", res->index());
+            return std::move(*res);
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to create server socket: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     [&ring, &sock] {
-//         using op = network::socket_setoption<network::sockopts::general::reuseaddr>;
-//         auto setsockopt = ring.make_sync<op::operation>();
-//         setsockopt.socket(sock)
-//             .option(true);
-//         if (auto res = setsockopt.submit_and_wait()) {
-//             std::println("Socket option SO_REUSEADDR set");
-//         } else {
-//             std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+    [&ring, &sock] {
+        using op = network::socket_setoption<network::sockopts::general::reuseaddr>;
+        auto setsockopt = ring.make_sync<op::operation>();
+        setsockopt.socket(sock)
+            .option(true);
+        if (auto res = setsockopt.submit_and_wait()) {
+            std::println("Socket option SO_REUSEADDR set");
+        } else {
+            std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     [&ring, &sock] {
-//         auto bind = ring.make_sync<network::socket_bind_operation>();
-//         bind.socket(sock)
-//             .socket_info(server_addr);
-//         if (auto res = bind.submit_and_wait()) {
-//             std::println("Socket bound successfully");
-//         } else {
-//             std::println("Failed to bind socket: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+    [&ring, &sock] {
+        auto bind = ring.make_sync<network::socket_bind_operation>();
+        bind.socket(sock)
+            .socket_info(server_addr);
+        if (auto res = bind.submit_and_wait()) {
+            std::println("Socket bound successfully");
+        } else {
+            std::println("Failed to bind socket: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     if (server_bind_op_exists) {
-//         [&ring, &sock] {
-//             auto listen = ring.make_sync<network::socket_listen_operation>();
-//             listen.socket(sock)
-//                 .backlog(128);
-//             if (auto res = listen.submit_and_wait()) {
-//                 std::println("Socket is listening");
-//             } else {
-//                 exit_if_function_not_supported(res.error());
-//                 std::println("Failed to listen on socket: {}", res.error().message());
-//                 std::abort();
-//             }
-//             server_started.store(true, std::memory_order_release);
-//         }();
-//     } else {
-//         ::sockaddr_in addr = server_addr.to_system_sockaddr();
-//         if (::bind(sock.index(),
-//                 reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-//             std::println("Failed to bind socket: {}", std::strerror(errno));
-//             std::abort();
-//         }
-//         if (::listen(sock.index(), 128) < 0) {
-//             std::println("Failed to listen on socket: {}", std::strerror(errno));
-//             std::abort();
-//         }
-//         std::println("Socket is listening");
-//         server_started.store(true, std::memory_order_release);
-//     }
+    if (server_bind_op_exists) {
+        [&ring, &sock] {
+            auto listen = ring.make_sync<network::socket_listen_operation>();
+            listen.socket(sock)
+                .backlog(128);
+            if (auto res = listen.submit_and_wait()) {
+                std::println("Socket is listening");
+            } else {
+                exit_if_function_not_supported(res.error());
+                std::println("Failed to listen on socket: {}", res.error().message());
+                std::abort();
+            }
+            server_started.store(true, std::memory_order_release);
+        }();
+    } else {
+        ::sockaddr_in addr = server_addr.to_system_sockaddr();
+        if (::bind(sock.index(),
+                reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+            std::println("Failed to bind socket: {}", std::strerror(errno));
+            std::abort();
+        }
+        if (::listen(sock.index(), 128) < 0) {
+            std::println("Failed to listen on socket: {}", std::strerror(errno));
+            std::abort();
+        }
+        std::println("Socket is listening");
+        server_started.store(true, std::memory_order_release);
+    }
 
-//     network::connection connection = [&ring, &sock] {
-//         auto accept = ring.make_sync<network::socket_accept_operation>();
-//         accept.socket(sock);
-//         if (auto res = accept.submit_and_wait()) {
-//             auto&& [conn, peer] = *res;
-//             std::println("Accepted connection: {}", conn.index());
-//             auto& info = std::get<network::ip::socket_v4_info>(peer);
-//             std::println("Peer address: {}", info);
-//             if (info != client_addr) {
-//                 std::println("Peer address does not match expected client address");
-//                 std::abort();
-//             }
-//             return std::move(conn);
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to accept connection: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
-//     std::vector<std::byte> buffer(4096);
-//     while (true) {
-//         std::println("Waiting for data...");
-//         std::string_view message;
-//         auto recv = ring.make_sync<network::socket_recv_operation>();
-//         recv.socket(connection)
-//             .buffer(buffer);
-//         if (auto res = recv.submit_and_wait()) {
-//             message = std::string_view(start_lifetime_as<char>(*res));
-//             if (message == magic_word) {
-//                 std::println("Magic word received, exiting...");
-//                 break;
-//             } else {
-//                 std::println("Received {} bytes: '{}'", message.size(), message);
-//             }
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to receive data: {}", res.error().message());
-//             std::abort();
-//         }
+    network::fixed_connection connection = [&ring, &sock] {
+        auto accept = ring.make_sync<network::fixed_socket_accept_operation>();
+        accept.socket(sock);
+        if (auto res = accept.submit_and_wait()) {
+            auto&& [conn, peer] = *res;
+            std::println("Accepted connection: {}", conn.index());
+            auto& info = std::get<network::ip::socket_v4_info>(peer);
+            std::println("Peer address: {}", info);
+            if (info != client_addr) {
+                std::println("Peer address does not match expected client address");
+                std::abort();
+            }
+            return std::move(conn);
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to accept connection: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//         std::println("Echoing back...");
-//         // auto send = ring.make_sync<network::socket_send_operation>();
-//         // send.socket(connection)
-//         //     .buffer(std::span(buffer.data(), received));
-//         // if (auto res = send.submit_and_wait()) {
-//         //     std::println("Echoed back {} bytes", *res);
-//         // } else {
-//         //     exit_if_function_not_supported(res.error());
-//         //     std::println("Failed to send data: {}", res.error().message());
-//         //     std::abort();
-//         // }
-//         bool is_more = true;
-//         auto send = ring.make<network::socket_send_zc_operation>(
-//             [&](std::expected<network::send_zc_result, std::error_code> res) {
-//             if (res) {
-//                 std::visit(iouxx::utility::overloaded {
-//                     [&](const network::buffer_free_notification&) {
-//                         std::println("Buffer is free to reuse");
-//                         is_more = false;
-//                     },
-//                     [&](const network::send_result_more& r) {
-//                         std::println("Sent {} bytes, wait for buffer free", r.bytes_sent);
-//                     },
-//                     [&](const network::send_result_nomore& r) {
-//                         std::println("Sent {} bytes and buffer is free", r.bytes_sent);
-//                         is_more = false;
-//                     }
-//                 }, *res);
-//             } else {
-//                 std::println("Failed to send data: {}", res.error().message());
-//                 std::abort();
-//             }
-//         });
-//         send.socket(connection)
-//             .buffer(std::span(buffer.data(), message.size()));
-//         if (auto res = send.submit()) {
-//             exit_if_function_not_supported(res);
-//             std::println("Failed to submit send operation: {}", res.message());
-//             std::abort();
-//         } else {
-//             std::println("Send operation submitted");
-//         }
-//         while (is_more) {
-//             if (auto res = ring.wait_for_result()) {
-//                 res->callback();
-//             } else {
-//                 std::println("Failed to get send result: {}", res.error().message());
-//                 std::abort();
-//             }
-//         }
-//     }
+    std::vector<std::byte> buffer(4096);
+    while (true) {
+        std::println("Waiting for data...");
+        std::string_view message;
+        auto recv = ring.make_sync<network::socket_recv_operation>();
+        recv.socket(connection)
+            .buffer(buffer);
+        if (auto res = recv.submit_and_wait()) {
+            message = std::string_view(start_lifetime_as<char>(*res));
+            if (message == magic_word) {
+                std::println("Magic word received, exiting...");
+                break;
+            } else {
+                std::println("Received {} bytes: '{}'", message.size(), message);
+            }
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to receive data: {}", res.error().message());
+            std::abort();
+        }
 
-//     [&ring, &connection] {
-//         auto shutdown = ring.make_sync<network::socket_shutdown_operation>();
-//         shutdown.socket(connection)
-//             .options(network::shutdown_option::rdwr);
-//         if (auto res = shutdown.submit_and_wait()) {
-//             std::println("Connection shutdown successfully");
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to shutdown connection: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+        std::println("Echoing back...");
+        bool is_more = true;
+        auto send = ring.make<network::socket_send_zc_operation>(
+            [&](std::expected<network::send_zc_result, std::error_code> res) {
+            if (res) {
+                std::visit(iouxx::utility::overloaded {
+                    [&](const network::buffer_free_notification&) {
+                        std::println("Buffer is free to reuse");
+                        is_more = false;
+                    },
+                    [&](const network::send_result_more& r) {
+                        std::println("Sent {} bytes, wait for buffer free", r.bytes_sent);
+                    },
+                    [&](const network::send_result_nomore& r) {
+                        std::println("Sent {} bytes and buffer is free", r.bytes_sent);
+                        is_more = false;
+                    }
+                }, *res);
+            } else {
+                std::println("Failed to send data: {}", res.error().message());
+                std::abort();
+            }
+        });
+        send.socket(connection)
+            .buffer(std::span(buffer.data(), message.size()));
+        if (auto res = send.submit()) {
+            exit_if_function_not_supported(res);
+            std::println("Failed to submit send operation: {}", res.message());
+            std::abort();
+        } else {
+            std::println("Send operation submitted");
+        }
+        while (is_more) {
+            if (auto res = ring.wait_for_result()) {
+                res->callback();
+            } else {
+                std::println("Failed to get send result: {}", res.error().message());
+                std::abort();
+            }
+        }
+    }
 
-//     [&ring, &sock] {
-//         auto close = ring.make_sync<network::socket_close_operation>();
-//         close.socket(sock);
-//         if (auto res = close.submit_and_wait()) {
-//             std::println("Socket closed successfully");
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to close socket: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
-// }
+    [&ring, &connection] {
+        auto shutdown = ring.make_sync<network::socket_shutdown_operation>();
+        shutdown.socket(connection)
+            .options(network::shutdown_option::rdwr);
+        if (auto res = shutdown.submit_and_wait()) {
+            std::println("Connection shutdown successfully");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to shutdown connection: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-// static void echo_client_fixed() {
-//     ring ring(256);
-//     network::socket sock = [&ring] {
-//         auto open = ring.make_sync<network::socket_open_operation>();
-//         open.domain(network::socket_config::domain::ipv4)
-//             .type(network::socket_config::type::stream)
-//             .protocol(network::to_protocol("tcp"));
-//         if (auto res = open.submit_and_wait()) {
-//             std::println("Client socket created: {}", res->native_handle());
-//             return std::move(*res);
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to create client socket: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+    [&ring, &sock] {
+        auto close = ring.make_sync<network::socket_close_operation>();
+        close.socket(sock);
+        if (auto res = close.submit_and_wait()) {
+            std::println("Socket closed successfully");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to close socket: {}", res.error().message());
+            std::abort();
+        }
+    }();
+}
+
+static void echo_client_fixed() {
+    ring ring(256);
+    network::fixed_socket sock = [&ring] {
+        auto open = ring.make_sync<network::fixed_socket_open_operation>();
+        open.domain(network::socket_config::domain::ipv4)
+            .type(network::socket_config::type::stream)
+            .protocol(network::to_protocol("tcp"));
+        if (auto res = open.submit_and_wait()) {
+            std::println("Client socket created: {}", res->index());
+            return std::move(*res);
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to create client socket: {}", res.error().message());
+            std::abort();
+        }
+    }();
     
-//     // For some reason setsockopt op may not work
-//     [&ring, &sock] {
-//         using op = network::socket_setoption<network::sockopts::general::reuseaddr>;
-//         auto setsockopt = ring.make_sync<op::operation>();
-//         setsockopt.socket(sock)
-//             .option(true);
-//         if (auto res = setsockopt.submit_and_wait()) {
-//             std::println("Socket option SO_REUSEADDR set");
-//         } else {
-//             if (res.error() == std::errc::function_not_supported
-//                 || res.error() == std::errc::operation_not_supported) {
-//                 std::println("Socket option operation not supported, fallback to system call");
-//                 client_sockcmd_exists = false;
-//                 return;
-//             }
-//             std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+    [&ring, &sock] {
+        using op = network::socket_setoption<network::sockopts::general::reuseaddr>;
+        auto setsockopt = ring.make_sync<op::operation>();
+        setsockopt.socket(sock)
+            .option(true);
+        if (auto res = setsockopt.submit_and_wait()) {
+            std::println("Socket option SO_REUSEADDR set");
+        } else {
+            std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     if (!client_sockcmd_exists) {
-//         int optval = 1;
-//         int resopt = ::setsockopt(sock.native_handle(), SOL_SOCKET, SO_REUSEADDR,
-//             &optval, sizeof(optval));
-//         if (resopt < 0) {
-//             std::println("Failed to set socket options: {}", std::strerror(errno));
-//             ::close(sock.native_handle());
-//             return;
-//         }
-//     }
-    
-//     // Not until kernel 6.11 do io_uring have op bind and op listen
+    // optional bind client local address (useful to show symmetry)
+    [&ring, &sock] {
+        auto bind = ring.make_sync<network::socket_bind_operation>();
+        bind.socket(sock)
+            .socket_info(client_addr);
+        if (auto res = bind.submit_and_wait()) {
+            std::println("Client socket bound successfully");
+        } else {
+            std::println("Failed to bind client socket: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     // optional bind client local address (useful to show symmetry)
-//     [&ring, &sock] {
-//         auto bind = ring.make_sync<network::socket_bind_operation>();
-//         bind.socket(sock)
-//             .socket_info(client_addr);
-//         if (auto res = bind.submit_and_wait()) {
-//             std::println("Client socket bound successfully");
-//         } else {
-//             if (res.error() == std::errc::function_not_supported
-//                 || res.error() == std::errc::operation_not_supported) {
-//                 std::println("Socket bind operation not supported, fallback to system call");
-//                 client_bind_op_exists = false;
-//                 return;
-//             }
-//             std::println("Failed to bind client socket: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+    // connect
+    [&ring, &sock] {
+        auto connect = ring.make_sync<network::socket_connect_operation>();
+        connect.socket(sock)
+            .peer_socket_info(server_addr);
+        if (auto res = connect.submit_and_wait()) {
+            std::println("Connected to server");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Connect failed: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     if (!client_bind_op_exists) {
-//         ::sockaddr_in addr = client_addr.to_system_sockaddr();
-//         if (::bind(sock.native_handle(),
-//                 reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-//             std::println("Failed to bind client socket: {}", std::strerror(errno));
-//             std::abort();
-//         }
-//         std::println("Client socket bound successfully");
-//     }
+    // send messages and receive echoes
+    std::vector<std::byte> txbuf(client_msg.size());
+    std::memcpy(txbuf.data(), client_msg.data(), client_msg.size());
+    std::vector<std::byte> rxbuf(4096);
+    for (std::size_t i = 0; i < client_msg_cnt; ++i) {
+        // send
+        [&ring, &sock, &txbuf, i] {
+            auto send = ring.make_sync<network::socket_send_operation>();
+            send.socket(sock)
+                .buffer(txbuf);
+            if (auto res = send.submit_and_wait()) {
+                std::println("Sent {} bytes (msg #{})", *res, i + 1);
+            } else {
+                exit_if_function_not_supported(res.error());
+                std::println("Send failed: {}", res.error().message());
+                std::abort();
+            }
+        }();
+        // recv
+        [&ring, &sock, &rxbuf, i] {
+            std::println("Waiting for echo (msg #{})...", i + 1);
+            auto recv = ring.make_sync<network::socket_recv_operation>();
+            recv.socket(sock)
+                .buffer(rxbuf);
+            if (auto res = recv.submit_and_wait()) {
+                std::string_view message(start_lifetime_as<char>(*res));
+                std::println("Received {} bytes (msg #{}): '{}'",
+                    message.size(), i + 1, message);
+            } else {
+                exit_if_function_not_supported(res.error());
+                std::println("Receive failed: {}", res.error().message());
+                std::abort();
+            }
+        }();
+    }
 
-//     // connect
-//     [&ring, &sock] {
-//         auto connect = ring.make_sync<network::socket_connect_operation>();
-//         connect.socket(sock)
-//             .peer_socket_info(server_addr);
-//         if (auto res = connect.submit_and_wait()) {
-//             std::println("Connected to server");
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Connect failed: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
+    // send magic word to ask server to exit
+    [&] {
+        std::vector<std::byte> mw(magic_word.size());
+        std::memcpy(mw.data(), magic_word.data(), magic_word.size());
+        auto send = ring.make_sync<network::socket_send_operation>();
+        send.socket(sock)
+            .buffer(std::span(mw));
+        if (auto res = send.submit_and_wait()) {
+            std::println("Sent magic word, {} bytes", *res);
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Send magic word failed: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     // send messages and receive echoes
-//     std::vector<std::byte> txbuf(client_msg.size());
-//     std::memcpy(txbuf.data(), client_msg.data(), client_msg.size());
-//     std::vector<std::byte> rxbuf(4096);
-//     for (std::size_t i = 0; i < client_msg_cnt; ++i) {
-//         // send
-//         [&ring, &sock, &txbuf, i] {
-//             auto send = ring.make_sync<network::socket_send_operation>();
-//             send.socket(sock)
-//                 .buffer(txbuf);
-//             if (auto res = send.submit_and_wait()) {
-//                 std::println("Sent {} bytes (msg #{})", *res, i + 1);
-//             } else {
-//                 exit_if_function_not_supported(res.error());
-//                 std::println("Send failed: {}", res.error().message());
-//                 std::abort();
-//             }
-//         }();
-//         // recv
-//         [&ring, &sock, &rxbuf, i] {
-//             std::println("Waiting for echo (msg #{})...", i + 1);
-//             auto recv = ring.make_sync<network::socket_recv_operation>();
-//             recv.socket(sock)
-//                 .buffer(rxbuf);
-//             if (auto res = recv.submit_and_wait()) {
-//                 std::string_view message(start_lifetime_as<char>(*res));
-//                 std::println("Received {} bytes (msg #{}): '{}'",
-//                     message.size(), i + 1, message);
-//             } else {
-//                 exit_if_function_not_supported(res.error());
-//                 std::println("Receive failed: {}", res.error().message());
-//                 std::abort();
-//             }
-//         }();
-//     }
+    // shutdown + close
+    [&ring, &sock] {
+        auto shutdown = ring.make_sync<network::socket_shutdown_operation>();
+        shutdown.socket(sock)
+            .options(network::shutdown_option::rdwr);
+        if (auto res = shutdown.submit_and_wait()) {
+            std::println("Client shutdown successfully");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Client shutdown failed: {}", res.error().message());
+            std::abort();
+        }
+    }();
 
-//     // send magic word to ask server to exit
-//     [&] {
-//         std::vector<std::byte> mw(magic_word.size());
-//         std::memcpy(mw.data(), magic_word.data(), magic_word.size());
-//         auto send = ring.make_sync<network::socket_send_operation>();
-//         send.socket(sock)
-//             .buffer(std::span(mw));
-//         if (auto res = send.submit_and_wait()) {
-//             std::println("Sent magic word, {} bytes", *res);
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Send magic word failed: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
-
-//     // shutdown + close
-//     [&ring, &sock] {
-//         auto shutdown = ring.make_sync<network::socket_shutdown_operation>();
-//         shutdown.socket(sock)
-//             .options(network::shutdown_option::rdwr);
-//         if (auto res = shutdown.submit_and_wait()) {
-//             std::println("Client shutdown successfully");
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Client shutdown failed: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
-
-//     [&ring, &sock] {
-//         auto close = ring.make_sync<network::socket_close_operation>();
-//         close.socket(sock);
-//         if (auto res = close.submit_and_wait()) {
-//             std::println("Socket closed successfully");
-//         } else {
-//             exit_if_function_not_supported(res.error());
-//             std::println("Failed to close socket: {}", res.error().message());
-//             std::abort();
-//         }
-//     }();
-// }
+    [&ring, &sock] {
+        auto close = ring.make_sync<network::socket_close_operation>();
+        close.socket(sock);
+        if (auto res = close.submit_and_wait()) {
+            std::println("Socket closed successfully");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to close socket: {}", res.error().message());
+            std::abort();
+        }
+    }();
+}
 
 int main() {
     if (network::to_protocol("tcp") == network::socket_config::protocol::unknown) {
@@ -846,7 +801,17 @@ int main() {
     }
 
     if (server_sockcmd_exists && server_bind_op_exists && client_sockcmd_exists && client_bind_op_exists) {
-        // do extra tests about fixed file
-
+        server_started.store(false, std::memory_order_release);
+        std::println("All socket operations are supported, testing fixed socket variant");
+        {
+            std::jthread srv(&echo_server_fixed);
+            // wait until server has called listen and set the flag
+            while (!server_started.load(std::memory_order_acquire)) {
+                std::this_thread::sleep_for(10ms);
+            }
+            echo_client_fixed();
+        }
+    } else {
+        std::println("Some socket operations are not supported, skip fixed socket variant test");
     }
 }

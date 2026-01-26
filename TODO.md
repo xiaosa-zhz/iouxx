@@ -1,17 +1,16 @@
 # TODO List
 
 ## Work in Progress
+- [ ] Add direct fd tests in network tests
 - [ ] Add event related operations
 - [ ] Add provided ring buffer and add support in recv/read operations
 
 ## High Priority
-- [ ] Add fixed file support for network operations
 - [ ] Add module build for gcc when gcc 16 released
 - [ ] Find a suitable environment to really test networking
 - [ ] Find a suitable environment to really test fixed fd/buffer
 
 ## Medium Priority
-- [ ] Add direct fd tests in network tests
 - [ ] Add epoll support
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
 - [ ] Add file system related operations
