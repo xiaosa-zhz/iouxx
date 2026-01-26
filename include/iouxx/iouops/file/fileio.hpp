@@ -230,6 +230,9 @@ namespace iouxx::inline iouops::fileops {
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
             ::io_uring_prep_write(sqe, fd, buf, len, off);
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
         }
 
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
