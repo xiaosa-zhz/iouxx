@@ -16,6 +16,13 @@
 
 #endif // IOUXX_USE_CXX_MODULE
 
+// Currently io_uring only supports futex2 with u32 size
+#ifndef FUTEX2_SIZE_U32
+
+// No futex operations here!
+
+#else // FUTEX2_SIZE_U32
+
 /*
  * Although futex should be intergrated with userspace facilities
  * to provide proper locking mechanism, existed facilities are
@@ -50,6 +57,10 @@ namespace iouxx::details {
         std::uint32_t mask = FUTEX_BITSET_MATCH_ANY;
         bool is_private = true;
     };
+
+    constexpr std::uint32_t build_futex2_flags(bool is_private) noexcept {
+        return (is_private ? FUTEX2_PRIVATE : 0) | FUTEX2_SIZE_U32;
+    }
 
 } // namespace iouxx::details
 
@@ -91,7 +102,7 @@ namespace iouxx::inline iouops {
                 futex_addr,
                 last_value,
                 mask,
-                is_private ? FUTEX_PRIVATE_FLAG : 0,
+                details::build_futex2_flags(is_private),
                 0);
         }
 
@@ -162,7 +173,7 @@ namespace iouxx::inline iouops {
                 futex_addr,
                 wakeups,
                 mask,
-                is_private ? FUTEX_PRIVATE_FLAG : 0,
+                details::build_futex2_flags(is_private),
                 0);
         }
 
@@ -192,7 +203,7 @@ namespace iouxx::inline iouops {
         ::futex_waitv fwv = {};
         fwv.uaddr = reinterpret_cast<std::uintptr_t>(addr);
         fwv.val = expected;
-        fwv.flags = is_private ? FUTEX_PRIVATE_FLAG : 0;
+        fwv.flags = details::build_futex2_flags(is_private);
         return fwv;
     }
 
@@ -247,5 +258,7 @@ namespace iouxx::inline iouops {
     };
 
 } // namespace iouxx::iouops
+
+#endif // FUTEX2_SIZE_U32
 
 #endif // IOUXX_OPERATION_MUTEX_H
