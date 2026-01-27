@@ -370,17 +370,16 @@ namespace iouxx::inline iouops::network {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
             if constexpr (std::same_as<result_type, fixed_accept_result>) {
                 this->set_socket_info_type(sock.socket_domain());
             }
             if (std::holds_alternative<unspecified_socket_info>(sock_info)) {
                 ::io_uring_prep_accept_direct(sqe, sock.index(),
-                    nullptr, nullptr, flags, file_index);
+                    nullptr, nullptr, SOCK_NONBLOCK, file_index);
             } else {
                 auto [addr, addrlen] = this->get_accept_addr_params();
                 ::io_uring_prep_accept_direct(sqe, sock.index(),
-                    addr, addrlen, flags, file_index);
+                    addr, addrlen, SOCK_NONBLOCK, file_index);
             }
             sqe->flags |= IOSQE_FIXED_FILE;
         }

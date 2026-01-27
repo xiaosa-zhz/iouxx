@@ -98,7 +98,7 @@ static void echo_server() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to create server socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
     [&ring, &sock] {
@@ -116,7 +116,7 @@ static void echo_server() {
                 return;
             }
             std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -127,7 +127,7 @@ static void echo_server() {
         if (resopt < 0) {
             std::println("Failed to set socket options: {}", std::strerror(errno));
             ::close(sock.native_handle());
-            std::abort();
+            std::exit(1);
         }
     }
 
@@ -147,7 +147,7 @@ static void echo_server() {
                 return;
             }
             std::println("Failed to bind socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -161,7 +161,7 @@ static void echo_server() {
             } else {
                 exit_if_function_not_supported(res.error());
                 std::println("Failed to listen on socket: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
             server_started.store(true, std::memory_order_release);
         }();
@@ -170,11 +170,11 @@ static void echo_server() {
         if (::bind(sock.native_handle(),
                 reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
             std::println("Failed to bind socket: {}", std::strerror(errno));
-            std::abort();
+            std::exit(1);
         }
         if (::listen(sock.native_handle(), 128) < 0) {
             std::println("Failed to listen on socket: {}", std::strerror(errno));
-            std::abort();
+            std::exit(1);
         }
         std::println("Socket is listening");
         server_started.store(true, std::memory_order_release);
@@ -190,13 +190,13 @@ static void echo_server() {
             std::println("Peer address: {}", info);
             if (info != client_addr) {
                 std::println("Peer address does not match expected client address");
-                std::abort();
+                std::exit(1);
             }
             return std::move(conn);
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to accept connection: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
     std::vector<std::byte> buffer(4096);
@@ -217,7 +217,7 @@ static void echo_server() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to receive data: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
 
         std::println("Echoing back...");
@@ -229,7 +229,7 @@ static void echo_server() {
         // } else {
         //     exit_if_function_not_supported(res.error());
         //     std::println("Failed to send data: {}", res.error().message());
-        //     std::abort();
+        //     std::exit(1);
         // }
         bool is_more = true;
         auto send = ring.make<network::socket_send_zc_operation>(
@@ -250,7 +250,7 @@ static void echo_server() {
                 }, *res);
             } else {
                 std::println("Failed to send data: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         });
         send.socket(connection)
@@ -258,7 +258,7 @@ static void echo_server() {
         if (auto res = send.submit()) {
             exit_if_function_not_supported(res);
             std::println("Failed to submit send operation: {}", res.message());
-            std::abort();
+            std::exit(1);
         } else {
             std::println("Send operation submitted");
         }
@@ -267,7 +267,7 @@ static void echo_server() {
                 res->callback();
             } else {
                 std::println("Failed to get send result: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         }
     }
@@ -281,7 +281,7 @@ static void echo_server() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to shutdown connection: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -293,7 +293,7 @@ static void echo_server() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to close socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 }
@@ -311,7 +311,7 @@ static void echo_client() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to create client socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
     
@@ -331,7 +331,7 @@ static void echo_client() {
                 return;
             }
             std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -363,7 +363,7 @@ static void echo_client() {
                 return;
             }
             std::println("Failed to bind client socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -372,7 +372,7 @@ static void echo_client() {
         if (::bind(sock.native_handle(),
                 reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
             std::println("Failed to bind client socket: {}", std::strerror(errno));
-            std::abort();
+            std::exit(1);
         }
         std::println("Client socket bound successfully");
     }
@@ -387,7 +387,7 @@ static void echo_client() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Connect failed: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -406,7 +406,7 @@ static void echo_client() {
             } else {
                 exit_if_function_not_supported(res.error());
                 std::println("Send failed: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         }();
         // recv
@@ -422,7 +422,7 @@ static void echo_client() {
             } else {
                 exit_if_function_not_supported(res.error());
                 std::println("Receive failed: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         }();
     }
@@ -439,7 +439,7 @@ static void echo_client() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Send magic word failed: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -453,7 +453,7 @@ static void echo_client() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Client shutdown failed: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -465,13 +465,17 @@ static void echo_client() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to close socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 }
 
 static void echo_server_fixed() {
     ring ring(256);
+    if (std::error_code ec = ring.register_direct_descriptor_table(64)) {
+        std::println("Fail to register direct descriptor table: {}", ec.message());
+        std::exit(1);
+    }
     network::fixed_socket sock = [&ring] {
         auto open = ring.make_sync<network::fixed_socket_open_operation>();
         open.domain(network::socket_config::domain::ipv4)
@@ -483,7 +487,7 @@ static void echo_server_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to create server socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -496,7 +500,7 @@ static void echo_server_fixed() {
             std::println("Socket option SO_REUSEADDR set");
         } else {
             std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -508,38 +512,23 @@ static void echo_server_fixed() {
             std::println("Socket bound successfully");
         } else {
             std::println("Failed to bind socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
-    if (server_bind_op_exists) {
-        [&ring, &sock] {
-            auto listen = ring.make_sync<network::socket_listen_operation>();
-            listen.socket(sock)
-                .backlog(128);
-            if (auto res = listen.submit_and_wait()) {
-                std::println("Socket is listening");
-            } else {
-                exit_if_function_not_supported(res.error());
-                std::println("Failed to listen on socket: {}", res.error().message());
-                std::abort();
-            }
-            server_started.store(true, std::memory_order_release);
-        }();
-    } else {
-        ::sockaddr_in addr = server_addr.to_system_sockaddr();
-        if (::bind(sock.index(),
-                reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-            std::println("Failed to bind socket: {}", std::strerror(errno));
-            std::abort();
+    [&ring, &sock] {
+        auto listen = ring.make_sync<network::socket_listen_operation>();
+        listen.socket(sock)
+            .backlog(128);
+        if (auto res = listen.submit_and_wait()) {
+            std::println("Socket is listening");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to listen on socket: {}", res.error().message());
+            std::exit(1);
         }
-        if (::listen(sock.index(), 128) < 0) {
-            std::println("Failed to listen on socket: {}", std::strerror(errno));
-            std::abort();
-        }
-        std::println("Socket is listening");
         server_started.store(true, std::memory_order_release);
-    }
+    }();
 
     network::fixed_connection connection = [&ring, &sock] {
         auto accept = ring.make_sync<network::fixed_socket_accept_operation>();
@@ -551,13 +540,13 @@ static void echo_server_fixed() {
             std::println("Peer address: {}", info);
             if (info != client_addr) {
                 std::println("Peer address does not match expected client address");
-                std::abort();
+                std::exit(1);
             }
             return std::move(conn);
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to accept connection: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -579,7 +568,7 @@ static void echo_server_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to receive data: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
 
         std::println("Echoing back...");
@@ -602,7 +591,7 @@ static void echo_server_fixed() {
                 }, *res);
             } else {
                 std::println("Failed to send data: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         });
         send.socket(connection)
@@ -610,7 +599,7 @@ static void echo_server_fixed() {
         if (auto res = send.submit()) {
             exit_if_function_not_supported(res);
             std::println("Failed to submit send operation: {}", res.message());
-            std::abort();
+            std::exit(1);
         } else {
             std::println("Send operation submitted");
         }
@@ -619,7 +608,7 @@ static void echo_server_fixed() {
                 res->callback();
             } else {
                 std::println("Failed to get send result: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         }
     }
@@ -633,7 +622,7 @@ static void echo_server_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to shutdown connection: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -645,13 +634,17 @@ static void echo_server_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to close socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 }
 
 static void echo_client_fixed() {
     ring ring(256);
+    if (std::error_code ec = ring.register_direct_descriptor_table(64)) {
+        std::println("Fail to register direct descriptor table: {}", ec.message());
+        std::exit(1);
+    }
     network::fixed_socket sock = [&ring] {
         auto open = ring.make_sync<network::fixed_socket_open_operation>();
         open.domain(network::socket_config::domain::ipv4)
@@ -663,7 +656,7 @@ static void echo_client_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to create client socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
     
@@ -676,7 +669,7 @@ static void echo_client_fixed() {
             std::println("Socket option SO_REUSEADDR set");
         } else {
             std::println("Failed to set socket option SO_REUSEADDR: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -689,7 +682,7 @@ static void echo_client_fixed() {
             std::println("Client socket bound successfully");
         } else {
             std::println("Failed to bind client socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -703,7 +696,7 @@ static void echo_client_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Connect failed: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -722,7 +715,7 @@ static void echo_client_fixed() {
             } else {
                 exit_if_function_not_supported(res.error());
                 std::println("Send failed: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         }();
         // recv
@@ -738,7 +731,7 @@ static void echo_client_fixed() {
             } else {
                 exit_if_function_not_supported(res.error());
                 std::println("Receive failed: {}", res.error().message());
-                std::abort();
+                std::exit(1);
             }
         }();
     }
@@ -755,7 +748,7 @@ static void echo_client_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Send magic word failed: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -769,7 +762,7 @@ static void echo_client_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Client shutdown failed: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 
@@ -781,7 +774,7 @@ static void echo_client_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to close socket: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
 }
@@ -789,7 +782,7 @@ static void echo_client_fixed() {
 int main() {
     if (network::to_protocol("tcp") == network::socket_config::protocol::unknown) {
         std::println("Protocol database not initialized, aborting");
-        std::abort();
+        std::exit(1);
     }
     {
         std::jthread srv(&echo_server);

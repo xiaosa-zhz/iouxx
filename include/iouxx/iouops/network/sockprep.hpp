@@ -34,9 +34,7 @@ namespace iouxx::details {
 
         template<typename Self>
         Self& type(this Self& self, type type) noexcept {
-            self.t = type
-                | type::cloexec
-                | type::nonblock;
+            self.t = type | type::nonblock;
             return self;
         }
 
@@ -81,7 +79,7 @@ namespace iouxx::inline iouops::network {
             ::io_uring_prep_socket(
                 sqe,
                 std::to_underlying(d),
-                std::to_underlying(t),
+                std::to_underlying(t | type::cloexec),
                 std::to_underlying(p),
                 0
             );
@@ -129,7 +127,7 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_SOCKET;
 
-        fixed_socket_open_operation& index(int index = IORING_FILE_INDEX_ALLOC) & noexcept {
+        fixed_socket_open_operation& index(int index = fileops::alloc_index) & noexcept {
             this->file_index = index;
             return *this;
         }
@@ -155,7 +153,7 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        int file_index = IORING_FILE_INDEX_ALLOC;
+        int file_index = fileops::alloc_index;
         [[no_unique_address]] callback_type callback;
     };
 

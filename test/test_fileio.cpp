@@ -39,7 +39,7 @@ void test_fileops() {
             return *res;
         } else {
             LOG_ERR("Fail to open temporary file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
     std::string_view msg = "Hello, io_uring file!";
@@ -52,7 +52,7 @@ void test_fileops() {
             LOG_INFO("Wrote {} bytes to file", *res);
         } else {
             LOG_ERR("Fail to write to file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }
     {
@@ -65,11 +65,11 @@ void test_fileops() {
             LOG_INFO("Read {} bytes from file: {}", *res, buffer);
         } else {
             LOG_ERR("Fail to read from file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
         if (buffer != msg) {
             LOG_ERR("Data read does not match data written");
-            std::abort();
+            std::exit(1);
         }
     }
     {
@@ -79,7 +79,7 @@ void test_fileops() {
             LOG_INFO("File closed");
         } else {
             LOG_ERR("Fail to close file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }
 }
@@ -89,7 +89,7 @@ void test_fileops_fixed() {
     ring ring(256);
     if (std::error_code ec = ring.register_direct_descriptor_table(64)) {
         LOG_ERR("Fail to register direct descriptor table: {}", ec.message());
-        std::abort();
+        std::exit(1);
     }
     fileops::fixed_file fd = [&] {
         auto open = ring.make_sync<fileops::fixed_file_open_operation>();
@@ -103,7 +103,7 @@ void test_fileops_fixed() {
             return *res;
         } else {
             LOG_ERR("Fail to open temporary file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }();
     std::string_view msg = "Hello, io_uring fixed file!";
@@ -116,7 +116,7 @@ void test_fileops_fixed() {
             LOG_INFO("Wrote {} bytes to fixed file", *res);
         } else {
             LOG_ERR("Fail to write to fixed file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }
     {
@@ -129,11 +129,11 @@ void test_fileops_fixed() {
             LOG_INFO("Read {} bytes from fixed file: {}", *res, buffer);
         } else {
             LOG_ERR("Fail to read from fixed file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
         if (buffer != msg) {
             LOG_ERR("Data read does not match data written: expected '{}', got '{}'", msg, buffer);
-            std::abort();
+            std::exit(1);
         }
     }
     {
@@ -143,7 +143,7 @@ void test_fileops_fixed() {
             LOG_INFO("Fixed file closed");
         } else {
             LOG_ERR("Fail to close fixed file: {}", res.error().message());
-            std::abort();
+            std::exit(1);
         }
     }
 }
