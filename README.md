@@ -43,7 +43,7 @@ A C++26 style thin wrapper around [liburing](https://github.com/axboe/liburing).
 | OS | Linux (support io_uring, recommended >= 6.8) |
 | lib | [liburing](https://github.com/axboe/liburing) >= 2.13 |
 | compiler | -std=c++26（recommended clang >= 20 / gcc >= 15） |
-| building tool | [xmake](https://xmake.io) (>= 3.0.5 if build modules) |
+| building tool | [xmake](https://xmake.io) (>= 3.0.6 if build modules) |
 
 ## 🚀 Build
 
