@@ -1,9 +1,8 @@
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
-import iouxx.ring;
+import iouxx;
 import iouxx.util;
-import iouxx.ops.network.socketio;
 
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
 

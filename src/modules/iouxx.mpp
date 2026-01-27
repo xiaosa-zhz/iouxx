@@ -1,0 +1,5 @@
+// universal module
+export module iouxx;
+export import iouxx.ring;
+export import iouxx.clock;
+export import iouxx.ops;

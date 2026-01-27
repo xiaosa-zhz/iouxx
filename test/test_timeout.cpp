@@ -1,9 +1,7 @@
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
-import iouxx.ring;
-import iouxx.clock;
-import iouxx.ops.timeout;
+import iouxx;
 
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
 
