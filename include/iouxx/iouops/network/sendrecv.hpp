@@ -400,6 +400,13 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::not_tag F>
+    socket_send_zc_operation(iouxx::ring&, F) -> socket_send_zc_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_send_zc_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> socket_send_zc_operation<F>;
+
+    template<utility::not_tag F>
     socket_recv_operation(iouxx::ring&, F) -> socket_recv_operation<std::decay_t<F>>;
 
     template<typename F, typename... Args>
@@ -481,6 +488,13 @@ namespace iouxx::inline iouops::network {
 
         [[no_unique_address]] callback_type callback;
     };
+
+    template<utility::not_tag F>
+    socket_multishot_recv_operation(iouxx::ring&, F) -> socket_multishot_recv_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_multishot_recv_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> socket_multishot_recv_operation<F>;
 
 } // namespace iouxx::iouops::network
 

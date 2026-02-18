@@ -311,6 +311,13 @@ namespace iouxx::inline iouops::fileops {
         [[no_unique_address]] callback_type callback;
     };
 
+    template<utility::not_tag F>
+    file_write_fixed_operation(iouxx::ring&, F) -> file_write_fixed_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    file_write_fixed_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> file_write_fixed_operation<F>;
+
 } // namespace iouxx::iouops::fileops
 
 #endif // IOUXX_OPERATION_FILEIO_H

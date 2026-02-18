@@ -788,6 +788,13 @@ namespace iouxx::inline iouops::network {
 
             [[no_unique_address]] callback_type callback;
         };
+
+        template<utility::not_tag F>
+        operation(iouxx::ring&, F) -> operation<std::decay_t<F>>;
+
+        template<typename F, typename... Args>
+        operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+            -> operation<F>;
     };
 
     template<typename SockOpt>
@@ -844,6 +851,13 @@ namespace iouxx::inline iouops::network {
 
             [[no_unique_address]] callback_type callback;
         };
+
+        template<utility::not_tag F>
+        operation(iouxx::ring&, F) -> operation<std::decay_t<F>>;
+
+        template<typename F, typename... Args>
+        operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+            -> operation<F>;
     };
 
 } // namespace iouxx::iouops::network

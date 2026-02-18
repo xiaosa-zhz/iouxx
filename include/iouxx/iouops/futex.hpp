@@ -257,6 +257,14 @@ namespace iouxx::inline iouops {
         [[no_unique_address]] callback_type callback;
     };
 
+    template<utility::not_tag F>
+    futex_waitv_operation(iouxx::ring&, F)
+        -> futex_waitv_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    futex_waitv_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> futex_waitv_operation<F>;
+
 } // namespace iouxx::iouops
 
 #endif // FUTEX2_SIZE_U32
