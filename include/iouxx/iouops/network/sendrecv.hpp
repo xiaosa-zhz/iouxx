@@ -86,6 +86,29 @@ namespace iouxx::inline iouops::network {
         return lhs;
     }
 
+    enum class msg_flag {
+        none      = 0,
+        confirm   = MSG_CONFIRM,
+        dontroute = MSG_DONTROUTE,
+        dontwait  = MSG_DONTWAIT,
+        eor       = MSG_EOR,
+        more      = MSG_MORE,
+        nosignal  = MSG_NOSIGNAL,
+        oob       = MSG_OOB,
+        fastopen  = MSG_FASTOPEN,
+    };
+
+    constexpr msg_flag operator|(msg_flag lhs, msg_flag rhs) noexcept {
+        return static_cast<msg_flag>(
+            std::to_underlying(lhs) | std::to_underlying(rhs)
+        );
+    }
+
+    constexpr msg_flag& operator|=(msg_flag& lhs, msg_flag rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
 } // namespace iouxx::iouops::network
 
 namespace iouxx::details {
@@ -186,6 +209,28 @@ namespace iouxx::details {
         std::size_t len = 0;
         int buf_index = -1;
         recv_flag flags = recv_flag::none;
+    };
+
+    class sendmsg_base
+    {
+    public:
+        using msg_flag = iouops::network::msg_flag;
+
+        template<typename Self>
+        Self& message(this Self& self, const ::msghdr& hdr) noexcept {
+            self.msg = hdr;
+            return self;
+        }
+
+        template<typename Self>
+        Self& options(this Self& self, msg_flag flags) noexcept {
+            self.flags = flags;
+            return self;
+        }
+
+    protected:
+        ::msghdr msg = {};
+        msg_flag flags = msg_flag::none;
     };
 
 } // namespace iouxx::details
@@ -312,7 +357,7 @@ namespace iouxx::inline iouops::network {
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                // Send ZC may produce two CQEs, one for bytes sent,
+                // send ZC may produce two CQEs, one for bytes sent,
                 // and one for notification of buffer is free to reuse.
                 const bool more = (cqe_flags & IORING_CQE_F_MORE) != 0;
                 if (more) {
@@ -338,6 +383,144 @@ namespace iouxx::inline iouops::network {
 
         [[no_unique_address]] callback_type callback;
     };
+
+    template<utility::not_tag F>
+    socket_send_zc_operation(iouxx::ring&, F) -> socket_send_zc_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_send_zc_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> socket_send_zc_operation<F>;
+
+    template<utility::eligible_callback<std::size_t> Callback>
+    class socket_sendmsg_operation : public operation_base,
+        public details::send_recv_socket_base,
+        public details::sendmsg_base
+    {
+    public:
+        template<utility::not_tag F>
+        explicit socket_sendmsg_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<socket_sendmsg_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_sendmsg_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_sendmsg_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = std::size_t;
+
+        static constexpr std::uint8_t opcode = IORING_OP_SENDMSG;
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_sendmsg(sqe, fd, &msg, std::to_underlying(flags));
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, static_cast<std::size_t>(ev));
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::not_tag F>
+    socket_sendmsg_operation(iouxx::ring&, F) -> socket_sendmsg_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_sendmsg_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> socket_sendmsg_operation<F>;
+
+    using sendmsg_zc_result =
+        std::variant<buffer_free_notification, send_result_more, send_result_nomore>;
+
+    template<utility::eligible_callback<sendmsg_zc_result> Callback>
+    class socket_sendmsg_zc_operation : public operation_base,
+        public details::send_recv_socket_base,
+        public details::sendmsg_base
+    {
+        static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
+            "SendMsg ZC is naturally forked, does not support syncronous wait.");
+        static_assert(!utility::is_specialization_of_v<awaiter_callback, Callback>,
+            "SendMsg ZC is naturally forked, does not support coroutine await.");
+    public:
+        template<utility::not_tag F>
+        explicit socket_sendmsg_zc_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<socket_sendmsg_zc_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_sendmsg_zc_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_sendmsg_zc_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = sendmsg_zc_result;
+
+        static constexpr std::uint8_t opcode = IORING_OP_SENDMSG_ZC;
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            ::io_uring_prep_sendmsg_zc(sqe, fd, &msg, std::to_underlying(flags));
+            if (is_fixed) {
+                sqe->flags |= IOSQE_FIXED_FILE;
+            }
+        }
+
+        void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                // sendmsg ZC may produce two CQEs, one for bytes sent,
+                // and one for notification of buffer is free to reuse.
+                const bool more = (cqe_flags & IORING_CQE_F_MORE) != 0;
+                if (more) {
+                    std::invoke(callback, sendmsg_zc_result(
+                        send_result_more{ .bytes_sent = static_cast<std::size_t>(ev) }
+                    ));
+                } else {
+                    const bool notify = (cqe_flags & IORING_CQE_F_NOTIF) != 0;
+                    if (notify) {
+                        std::invoke(callback, sendmsg_zc_result(
+                            buffer_free_notification{}
+                        ));
+                    } else {
+                        std::invoke(callback, sendmsg_zc_result(
+                            send_result_nomore{ .bytes_sent = static_cast<std::size_t>(ev) }
+                        ));
+                    }
+                }
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        [[no_unique_address]] callback_type callback;
+    };
+
+    template<utility::not_tag F>
+    socket_sendmsg_zc_operation(iouxx::ring&, F) -> socket_sendmsg_zc_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_sendmsg_zc_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> socket_sendmsg_zc_operation<F>;
 
     template<typename Callback>
         requires utility::eligible_alternative_callback<Callback,
@@ -398,13 +581,6 @@ namespace iouxx::inline iouops::network {
 
         [[no_unique_address]] callback_type callback;
     };
-
-    template<utility::not_tag F>
-    socket_send_zc_operation(iouxx::ring&, F) -> socket_send_zc_operation<std::decay_t<F>>;
-
-    template<typename F, typename... Args>
-    socket_send_zc_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
-        -> socket_send_zc_operation<F>;
 
     template<utility::not_tag F>
     socket_recv_operation(iouxx::ring&, F) -> socket_recv_operation<std::decay_t<F>>;
