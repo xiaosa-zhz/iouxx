@@ -8,12 +8,14 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include <algorithm>
+#include <cstring>
 #include <string_view>
 #include <stdexcept>
+#include <algorithm>
 
 #include "iouxx/cxxmodule_helper.hpp"
 #include "iouxx/util/utility.hpp"
+#include "iouxx/util/assertion.hpp"
 #include "socket.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
@@ -40,10 +42,12 @@ namespace iouxx::inline iouops::network::uds {
             return addr;
         }
 
-        constexpr static uds_info from_system_sockaddr(const ::sockaddr* sockaddr) noexcept {
-            const ::sockaddr_un* un_addr = reinterpret_cast<const ::sockaddr_un*>(sockaddr);
+        static uds_info from_system_sockaddr(
+            const ::sockaddr* sockaddr, const ::socklen_t* addrlen) noexcept {
+            IOUXX_ASSERT(*addrlen == sizeof(::sockaddr_un));
             uds_info info;
-            std::ranges::copy_n(un_addr->sun_path, sizeof(un_addr->sun_path), info.addr.sun_path);
+            std::memcpy(&info.addr, sockaddr, sizeof(::sockaddr_un));
+            IOUXX_ASSERT(info.addr.sun_family == AF_UNIX);
             return info;
         }
 

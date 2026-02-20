@@ -537,7 +537,7 @@ namespace iouxx::inline iouops::network::ip {
             };
         }
 
-        constexpr static socket_v4_info from_system_sockaddr(
+        static socket_v4_info from_system_sockaddr(
             const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
             IOUXX_ASSERT(*addrlen == sizeof(::sockaddr_in));
             ::sockaddr_in addr4;
@@ -652,7 +652,7 @@ namespace iouxx::inline iouops::network::ip {
             };
         }
 
-        constexpr static socket_v6_info from_system_sockaddr(
+        static socket_v6_info from_system_sockaddr(
             const ::sockaddr* addr, const ::socklen_t* addrlen) noexcept {
             IOUXX_ASSERT(*addrlen == sizeof(::sockaddr_in6));
             ::sockaddr_in6 addr6;
