@@ -133,7 +133,7 @@ static void echo_server() {
     // Not until kernel 6.11 do io_uring have op bind and op listen
 
     [&ring, &sock] {
-        auto bind = ring.make_sync<network::socket_bind_operation>();
+        auto bind = ring.make_sync<network::socket_bind<network::ip::socket_v4_info>::operation>();
         bind.socket(sock)
             .socket_info(server_addr);
         if (auto res = bind.submit_and_wait()) {
@@ -180,12 +180,11 @@ static void echo_server() {
     }
 
     network::connection connection = [&ring, &sock] {
-        auto accept = ring.make_sync<network::socket_accept_operation>();
+        auto accept = ring.make_sync<network::socket_accept<network::ip::socket_v4_info>::operation>();
         accept.socket(sock);
         if (auto res = accept.submit_and_wait()) {
-            auto&& [conn, peer] = *res;
+            auto&& [conn, info] = *res;
             std::println("Accepted connection: {}", conn.native_handle());
-            auto& info = std::get<network::ip::socket_v4_info>(peer);
             std::println("Peer address: {}", info);
             if (info != client_addr) {
                 std::println("Peer address does not match expected client address");
@@ -349,7 +348,7 @@ static void echo_client() {
 
     // optional bind client local address (useful to show symmetry)
     [&ring, &sock] {
-        auto bind = ring.make_sync<network::socket_bind_operation>();
+        auto bind = ring.make_sync<network::socket_bind<network::ip::socket_v4_info>::operation>();
         bind.socket(sock)
             .socket_info(client_addr);
         if (auto res = bind.submit_and_wait()) {
@@ -378,7 +377,7 @@ static void echo_client() {
 
     // connect
     [&ring, &sock] {
-        auto connect = ring.make_sync<network::socket_connect_operation>();
+        auto connect = ring.make_sync<network::socket_connect<network::ip::socket_v4_info>::operation>();
         connect.socket(sock)
             .peer_socket_info(server_addr);
         if (auto res = connect.submit_and_wait()) {
@@ -504,7 +503,7 @@ static void echo_server_fixed() {
     }();
 
     [&ring, &sock] {
-        auto bind = ring.make_sync<network::socket_bind_operation>();
+        auto bind = ring.make_sync<network::socket_bind<network::ip::socket_v4_info>::operation>();
         bind.socket(sock)
             .socket_info(server_addr);
         if (auto res = bind.submit_and_wait()) {
@@ -530,12 +529,11 @@ static void echo_server_fixed() {
     }();
 
     network::fixed_connection connection = [&ring, &sock] {
-        auto accept = ring.make_sync<network::fixed_socket_accept_operation>();
+        auto accept = ring.make_sync<network::fixed_socket_accept<network::ip::socket_v4_info>::operation>();
         accept.socket(sock);
         if (auto res = accept.submit_and_wait()) {
-            auto&& [conn, peer] = *res;
+            auto&& [conn, info] = *res;
             std::println("Accepted connection: {}", conn.index());
-            auto& info = std::get<network::ip::socket_v4_info>(peer);
             std::println("Peer address: {}", info);
             if (info != client_addr) {
                 std::println("Peer address does not match expected client address");
@@ -674,7 +672,7 @@ static void echo_client_fixed() {
 
     // optional bind client local address (useful to show symmetry)
     [&ring, &sock] {
-        auto bind = ring.make_sync<network::socket_bind_operation>();
+        auto bind = ring.make_sync<network::socket_bind<network::ip::socket_v4_info>::operation>();
         bind.socket(sock)
             .socket_info(client_addr);
         if (auto res = bind.submit_and_wait()) {
@@ -687,7 +685,7 @@ static void echo_client_fixed() {
 
     // connect
     [&ring, &sock] {
-        auto connect = ring.make_sync<network::socket_connect_operation>();
+        auto connect = ring.make_sync<network::socket_connect<network::ip::socket_v4_info>::operation>();
         connect.socket(sock)
             .peer_socket_info(server_addr);
         if (auto res = connect.submit_and_wait()) {

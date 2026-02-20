@@ -145,7 +145,7 @@ void echo_client() {
 
 static_assert(!iouxx::ring::check_version("2.13"));
 constexpr auto version = iouxx::ring::version();
-static_assert(version.major == 2 && version.minor == 13);
+static_assert(version.major == 2 && version.minor == 14);
 static_assert(iouxx::ring::check_version("asodasd"));
 
 int main() {

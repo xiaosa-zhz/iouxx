@@ -20,7 +20,6 @@ export import iouxx.ops.network.ip;
 
 extern "C++" {
 
-#include "iouxx/iouops/network/supported.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/network/sockprep.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/network/connection.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/network/sendrecv.hpp" // IWYU pragma: keep

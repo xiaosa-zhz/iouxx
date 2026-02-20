@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <utility>
-#include <algorithm>
 #include <variant>
 #include <utility>
 #include <type_traits>
@@ -15,8 +14,6 @@
 #include "iouxx/util/utility.hpp"
 #include "iouxx/util/assertion.hpp"
 #include "socket.hpp"
-#include "ip.hpp"
-#include "supported.hpp"
 #include "iouxx/iouops/file/openclose.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
@@ -187,106 +184,97 @@ namespace iouxx::inline iouops::network {
         void file(const fileops::fixed_file&) & noexcept = delete;
     };
 
-    template<utility::eligible_callback<void> Callback>
-    class socket_bind_operation : public operation_base
+    template<typename SocketInfo>
+    class socket_bind
     {
+        using socket_info_type = SocketInfo;
+        using system_sockaddr_type = decltype(std::declval<const socket_info_type&>().to_system_sockaddr());
     public:
-        template<utility::not_tag F>
-        explicit socket_bind_operation(iouxx::ring& ring, F&& f)
-            noexcept(utility::nothrow_constructible_callback<F>) :
-            operation_base(iouxx::op_tag<socket_bind_operation>, ring),
-            callback(std::forward<F>(f))
-        {}
+        template<utility::eligible_callback<void> Callback>
+        class operation : public operation_base
+        {
+        public:
+            template<utility::not_tag F>
+            explicit operation(iouxx::ring& ring, F&& f)
+                noexcept(utility::nothrow_constructible_callback<F>) :
+                operation_base(iouxx::op_tag<operation>, ring),
+                callback(std::forward<F>(f))
+            {}
 
-        template<typename F, typename... Args>
-        explicit socket_bind_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
-            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
-            operation_base(iouxx::op_tag<socket_bind_operation>, ring),
-            callback(std::forward<Args>(args)...)
-        {}
+            template<typename F, typename... Args>
+            explicit operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+                noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+                operation_base(iouxx::op_tag<operation>, ring),
+                callback(std::forward<Args>(args)...)
+            {}
 
-        using callback_type = Callback;
-        using result_type = void;
+            using callback_type = Callback;
+            using result_type = void;
 
-        static constexpr std::uint8_t opcode = IORING_OP_BIND;
+            static constexpr std::uint8_t opcode = IORING_OP_BIND;
 
-        socket_bind_operation& socket(const socket& s) & noexcept {
-            this->sock = s;
-            return *this;
-        }
-
-        socket_bind_operation& socket(const fixed_socket& s) & noexcept {
-            this->sock = s;
-            return *this;
-        }
-
-        template<typename SocketInfo>
-            requires (std::ranges::contains(supported_domains, ip::get_domain<SocketInfo>()))
-        socket_bind_operation& socket_info(const SocketInfo& addr) & noexcept {
-            this->sock_info = addr;
-            return *this;
-        }
-
-        // User may check the socket is valid before calling this method.
-        // If not, wrong argument will cause error when completed.
-        bool check() const noexcept {
-            socket_config::domain domain = std::visit(
-                [](auto& si) { return si.domain; },
-                sock_info);
-            return domain == sock.visit(
-                [](auto& s) { return s.socket_domain(); }
-            );
-        }
-
-    private:
-        friend operation_base;
-        void build(::io_uring_sqe* sqe) & noexcept {
-            IOUXX_ASSERT(check());
-            auto [addr, addrlen] = sock_info.visit(
-                [this](auto& si) -> utility::system_addrsock_info {
-                    return { .addr = reinterpret_cast<::sockaddr*>(
-                        new (&sockaddr_buf) auto(si.to_system_sockaddr())
-                    ), .addrlen = sizeof(si.to_system_sockaddr()) };
-                }
-            );
-            sock.visit(utility::overloaded{
-                [&, this](const network::socket& s) {
-                    ::io_uring_prep_bind(sqe, s.native_handle(), addr, addrlen);
-                },
-                [&, this](const network::fixed_socket& s) {
-                    ::io_uring_prep_bind(sqe, s.index(), addr, addrlen);
-                    sqe->flags |= IOSQE_FIXED_FILE;
-                }
-            });
-        }
-
-        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_callback<callback_type, result_type>) {
-            if constexpr (utility::stdexpected_callback<callback_type, void>) {
-                if (ev == 0) {
-                    std::invoke(callback, utility::void_success());
-                } else {
-                    std::invoke(callback, utility::fail(-ev));
-                }
-            } else if constexpr (utility::errorcode_callback<callback_type>) {
-                std::invoke(callback, utility::make_system_error_code(-ev));
-            } else {
-                static_assert(false, "Unreachable");
+            operation& socket(const socket& s) & noexcept {
+                IOUXX_ASSERT(socket_info_type::domain == s.socket_domain());
+                this->sock = s;
+                return *this;
             }
-        }
 
-        alignas(std::max_align_t) sockaddr_buffer_type sockaddr_buf{};
-        socket_variant sock;
-        supported_socket_type sock_info;
-        [[no_unique_address]] callback_type callback;
+            operation& socket(const fixed_socket& s) & noexcept {
+                IOUXX_ASSERT(socket_info_type::domain == s.socket_domain());
+                this->sock = s;
+                return *this;
+            }
+
+            operation& socket_info(const socket_info_type& addr) & noexcept {
+                new (&this->sockaddr) system_sockaddr_type(addr.to_system_sockaddr());
+                return *this;
+            }
+
+        private:
+            friend operation_base;
+            void build(::io_uring_sqe* sqe) & noexcept {
+                sock.visit(utility::overloaded{
+                    [&, this](const network::socket& s) {
+                        ::io_uring_prep_bind(sqe, s.native_handle(),
+                            reinterpret_cast<::sockaddr*>(&this->sockaddr),
+                            sizeof(system_sockaddr_type));
+                    },
+                    [&, this](const network::fixed_socket& s) {
+                        ::io_uring_prep_bind(sqe, s.index(),
+                            reinterpret_cast<::sockaddr*>(&this->sockaddr),
+                            sizeof(system_sockaddr_type));
+                        sqe->flags |= IOSQE_FIXED_FILE;
+                    }
+                });
+            }
+
+            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+                utility::eligible_nothrow_callback<callback_type, result_type>) {
+                if constexpr (utility::stdexpected_callback<callback_type, void>) {
+                    if (ev == 0) {
+                        std::invoke(callback, utility::void_success());
+                    } else {
+                        std::invoke(callback, utility::fail(-ev));
+                    }
+                } else if constexpr (utility::errorcode_callback<callback_type>) {
+                    std::invoke(callback, utility::make_system_error_code(-ev));
+                } else {
+                    static_assert(false, "Unreachable");
+                }
+            }
+
+            socket_variant sock;
+            system_sockaddr_type sockaddr = {};
+            [[no_unique_address]] callback_type callback;
+        };
+
+        template<utility::not_tag F>
+        operation(iouxx::ring&, F) -> operation<std::decay_t<F>>;
+        
+        template<typename F, typename... Args>
+        operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+            -> operation<F>;
     };
-
-    template<utility::not_tag F>
-    socket_bind_operation(iouxx::ring&, F) -> socket_bind_operation<std::decay_t<F>>;
-    
-    template<typename F, typename... Args>
-    socket_bind_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
-        -> socket_bind_operation<F>;
 
 } // namespace iouxx::iouops::network
 
