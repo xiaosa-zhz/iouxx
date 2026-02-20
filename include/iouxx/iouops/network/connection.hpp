@@ -15,6 +15,7 @@
 #include "iouxx/iouringxx.hpp"
 #include "iouxx/util/utility.hpp"
 #include "iouxx/macro_config.hpp"
+#include "iouxx/util/assertion.hpp"
 #include "socket.hpp"
 
 #endif // IOUXX_USE_CXX_MODULE
@@ -168,11 +169,13 @@ namespace iouxx::inline iouops::network {
             static constexpr std::uint8_t opcode = IORING_OP_CONNECT;
 
             operation& socket(const network::socket& s) & noexcept {
+                IOUXX_ASSERT(info_type::domain == s.socket_domain());
                 this->sock = s;
                 return *this;
             }
 
             operation& socket(const network::fixed_socket& s) & noexcept {
+                IOUXX_ASSERT(info_type::domain == s.socket_domain());
                 this->sock = s;
                 return *this;
             }
@@ -234,14 +237,10 @@ namespace iouxx::inline iouops::network {
         using accept_result_type = accept_result<info_type>;
     public:
         template<typename Callback>
-            requires utility::eligible_alternative_callback<Callback, accept_result_type, connection>
+            requires utility::eligible_callback<Callback, accept_result_type>
         class operation : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
-            using accept_result = accept_result_type;
-            using chosen_traits = utility::chosen_result<
-                Callback, accept_result, connection
-            >;
         public:
             template<utility::not_tag F>
             explicit operation(iouxx::ring& ring, F&& f)
@@ -258,11 +257,12 @@ namespace iouxx::inline iouops::network {
             {}
 
             using callback_type = Callback;
-            using result_type = chosen_traits::type;
+            using result_type = accept_result_type;
 
             static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
 
             operation& socket(const socket& s) & noexcept {
+                IOUXX_ASSERT(info_type::domain == s.socket_domain());
                 this->sock = s;
                 return *this;
             }
@@ -276,19 +276,16 @@ namespace iouxx::inline iouops::network {
                     this->addrinfo(), &addrlen_out, flags);
             }
 
-            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(chosen_traits::nothrow) {
+            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+                utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev >= 0) {
-                    if constexpr (std::same_as<result_type, accept_result>) {
-                        std::invoke(callback, accept_result{
-                            .conn = connection(sock, ev),
-                            .peer = info_type::from_system_sockaddr(
-                                this->addrinfo(),
-                                &addrlen_out
-                            )
-                        });
-                    } else {
-                        std::invoke(callback, connection(sock, ev));
-                    }
+                    std::invoke(callback, accept_result{
+                        .conn = connection(sock, ev),
+                        .peer = info_type::from_system_sockaddr(
+                            this->addrinfo(),
+                            &addrlen_out
+                        )
+                    });
                 } else {
                     std::invoke(callback, utility::fail(-ev));
                 }
@@ -387,14 +384,10 @@ namespace iouxx::inline iouops::network {
         using accept_result_type = fixed_accept_result<info_type>;
     public:
         template<typename Callback>
-            requires utility::eligible_alternative_callback<Callback, accept_result_type, fixed_connection>
+            requires utility::eligible_callback<Callback, accept_result_type>
         class operation : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
-            using fixed_accept_result = accept_result_type;
-            using chosen_traits = utility::chosen_result<
-                Callback, fixed_accept_result, fixed_connection
-            >;
         public:
             template<utility::not_tag F>
             explicit operation(iouxx::ring& ring, F&& f)
@@ -411,11 +404,12 @@ namespace iouxx::inline iouops::network {
             {}
 
             using callback_type = Callback;
-            using result_type = chosen_traits::type;
+            using result_type = accept_result_type;
 
             static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
 
             operation& socket(const fixed_socket& s) & noexcept {
+                IOUXX_ASSERT(info_type::domain == s.socket_domain());
                 this->sock = s;
                 return *this;
             }
@@ -435,19 +429,16 @@ namespace iouxx::inline iouops::network {
                 sqe->flags |= IOSQE_FIXED_FILE;
             }
 
-            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(chosen_traits::nothrow) {
+            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+                utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev >= 0) {
-                    if constexpr (std::same_as<result_type, fixed_accept_result>) {
-                        std::invoke(callback, fixed_accept_result{
-                            .conn = fixed_connection(sock, ev),
-                            .peer = info_type::from_system_sockaddr(
-                                this->addrinfo(),
-                                &addrlen_out
-                            )
-                        });
-                    } else {
-                        std::invoke(callback, fixed_connection(sock, ev));
-                    }
+                    std::invoke(callback, fixed_accept_result{
+                        .conn = fixed_connection(sock, ev),
+                        .peer = info_type::from_system_sockaddr(
+                            this->addrinfo(),
+                            &addrlen_out
+                        )
+                    });
                 } else {
                     std::invoke(callback, utility::fail(-ev));
                 }
