@@ -51,8 +51,8 @@ namespace iouxx::inline iouops::network::uds {
             return info;
         }
 
-        std::string_view path() const noexcept {
-            return std::string_view(&addr.sun_path[0]);
+        constexpr std::string_view path() const noexcept {
+            return std::string_view(addr.sun_path);
         }
 
     private:
