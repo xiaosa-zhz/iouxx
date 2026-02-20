@@ -78,7 +78,7 @@ namespace iouxx::inline iouops::network {
 
         static constexpr std::uint8_t opcode = IORING_OP_LISTEN;
 
-        static constexpr std::size_t DEFAULT_BACKLOG = 4096;
+        static constexpr std::size_t DEFAULT_BACKLOG = SOMAXCONN;
 
         socket_listen_operation& socket(const network::socket& s) & noexcept {
             this->sock = s;
@@ -91,7 +91,9 @@ namespace iouxx::inline iouops::network {
         }
 
         socket_listen_operation& backlog(std::size_t backlog) & noexcept {
-            this->bl = static_cast<int>(std::min(backlog, DEFAULT_BACKLOG));
+            this->bl = std::clamp(backlog,
+                DEFAULT_BACKLOG,
+                static_cast<std::size_t>(std::numeric_limits<int>::max()));
             return *this;
         }
 
