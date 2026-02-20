@@ -106,7 +106,7 @@ namespace iouxx::inline iouops::fileops {
     {
     public:
         template<typename Self, typename Path>
-        Self& path(this Self& self, Path&& path) noexcept {
+        Self& path(this Self& self, Path&& path) {
             self.pathstr = std::forward<Path>(path);
             return self;
         }

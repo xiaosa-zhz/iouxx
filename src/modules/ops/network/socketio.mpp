@@ -3,6 +3,7 @@ module;
 #define IOUXX_CONFIG_USE_CXX_MODULE
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
@@ -24,5 +25,6 @@ extern "C++" {
 #include "iouxx/iouops/network/connection.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/network/sendrecv.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/network/sockcmd.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/network/uds.hpp" // IWYU pragma: keep
 
 }
