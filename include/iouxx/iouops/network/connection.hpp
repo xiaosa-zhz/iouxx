@@ -422,7 +422,7 @@ namespace iouxx::inline iouops::network {
         private:
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
-                int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
+                int flags = SOCK_NONBLOCK;
                 addrlen_out = this->addrlen();
                 ::io_uring_prep_accept_direct(sqe, sock.index(),
                     this->addrinfo(), &addrlen_out, flags, file_index);
@@ -499,7 +499,7 @@ namespace iouxx::inline iouops::network {
         private:
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
-                int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
+                int flags = SOCK_NONBLOCK;
                 ::io_uring_prep_accept_direct(sqe, sock.index(),
                     nullptr, nullptr, flags, file_index);
                 sqe->flags |= IOSQE_FIXED_FILE;
@@ -644,7 +644,7 @@ namespace iouxx::inline iouops::network {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
+            int flags = SOCK_NONBLOCK;
             ::io_uring_prep_multishot_accept_direct(sqe, sock.index(),
                 nullptr, nullptr, flags);
             sqe->flags |= IOSQE_FIXED_FILE;

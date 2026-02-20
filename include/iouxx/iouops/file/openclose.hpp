@@ -172,7 +172,7 @@ namespace iouxx::inline iouops::fileops {
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
-            how.flags |= O_NONBLOCK;
+            how.flags |= (O_NONBLOCK | O_CLOEXEC);
             ::io_uring_prep_openat2(sqe, dirfd,
                 pathstr.c_str(), &how
             );
@@ -230,6 +230,7 @@ namespace iouxx::inline iouops::fileops {
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
             how.flags |= O_NONBLOCK;
+            how.flags &= ~O_CLOEXEC; // O_CLOEXEC is not compatible with fixed file
             ::io_uring_prep_openat2_direct(sqe, dirfd,
                 pathstr.c_str(), &how, file_index
             );
