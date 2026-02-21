@@ -153,6 +153,19 @@ namespace iouxx::details {
         std::array<::iovec, max_iovecs> iovecs = {};
     };
 
+    class fixed_buffer_base
+    {
+    public:
+        template<typename Self>
+        Self& index(this Self& self, int index) noexcept {
+            self.buf_index = index;
+            return self;
+        }
+
+    protected:
+        int buf_index = fileops::alloc_index;
+    };
+
 } // namespace iouxx::details
 
 IOUXX_EXPORT
@@ -213,6 +226,7 @@ namespace iouxx::inline iouops::fileops {
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
     class file_read_fixed_operation final : public operation_base,
         public details::file_read_write_operation_base,
+        public details::fixed_buffer_base,
         public details::file_read_buffer_operation_base
     {
     public:
@@ -235,11 +249,6 @@ namespace iouxx::inline iouops::fileops {
 
         static constexpr std::uint8_t opcode = IORING_OP_READ_FIXED;
 
-        file_read_fixed_operation& index(int index) & noexcept {
-            this->buf_index = index;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -258,7 +267,6 @@ namespace iouxx::inline iouops::fileops {
             }
         }
 
-        int buf_index = alloc_index;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -338,6 +346,7 @@ namespace iouxx::inline iouops::fileops {
         template<utility::eligible_callback<std::ptrdiff_t> Callback>
         class operation final : public operation_base,
             public details::file_read_write_operation_base,
+            public details::fixed_buffer_base,
             public details::rw_flag_base,
             public details::vectored_read_base<max_iovecs>
         {
@@ -361,11 +370,6 @@ namespace iouxx::inline iouops::fileops {
 
             static constexpr std::uint8_t opcode = IORING_OP_READV_FIXED;
 
-            operation& index(int index) & noexcept {
-                this->buf_index = index;
-                return *this;
-            }
-
         private:
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
@@ -387,7 +391,6 @@ namespace iouxx::inline iouops::fileops {
                 }
             }
 
-            int buf_index = alloc_index;
             [[no_unique_address]] callback_type callback;
         };
 
@@ -453,6 +456,7 @@ namespace iouxx::inline iouops::fileops {
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
     class file_write_fixed_operation final : public operation_base,
         public details::file_read_write_operation_base,
+        public details::fixed_buffer_base,
         public details::file_write_buffer_operation_base
     {
     public:
@@ -475,11 +479,6 @@ namespace iouxx::inline iouops::fileops {
 
         static constexpr std::uint8_t opcode = IORING_OP_WRITE_FIXED;
 
-        file_write_fixed_operation& index(int index) & noexcept {
-            this->buf_index = index;
-            return *this;
-        }
-
     private:
         friend operation_base;
         void build(::io_uring_sqe* sqe) & noexcept {
@@ -498,7 +497,6 @@ namespace iouxx::inline iouops::fileops {
             }
         }
 
-        int buf_index = alloc_index;
         [[no_unique_address]] callback_type callback;
     };
 
@@ -578,6 +576,7 @@ namespace iouxx::inline iouops::fileops {
         template<utility::eligible_callback<std::ptrdiff_t> Callback>
         class operation final : public operation_base,
             public details::file_read_write_operation_base,
+            public details::fixed_buffer_base,
             public details::rw_flag_base,
             public details::vectored_write_base<max_iovecs>
         {
@@ -601,11 +600,6 @@ namespace iouxx::inline iouops::fileops {
 
             static constexpr std::uint8_t opcode = IORING_OP_WRITEV_FIXED;
 
-            operation& index(int index) & noexcept {
-                this->buf_index = index;
-                return *this;
-            }
-
         private:
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
@@ -627,7 +621,6 @@ namespace iouxx::inline iouops::fileops {
                 }
             }
 
-            int buf_index = alloc_index;
             [[no_unique_address]] callback_type callback;
         };
 
