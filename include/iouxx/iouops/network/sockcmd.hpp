@@ -480,134 +480,133 @@ namespace iouxx::inline iouops::network {
         namespace udp {
 
 #ifdef UDP_CORK
-    class cork : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_UDP;
-            static constexpr int optname = UDP_CORK;
-        };
+            class cork : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_UDP;
+                static constexpr int optname = UDP_CORK;
+            };
 #endif // UDP_CORK
 
 #ifdef SO_NO_CHECK
-    class no_check : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = SOL_SOCKET;
-            static constexpr int optname = SO_NO_CHECK;
-        };
+            class no_check : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = SOL_SOCKET;
+                static constexpr int optname = SO_NO_CHECK;
+            };
 #endif // SO_NO_CHECK
 
         } // namespace iouxx::iouops::network::sockopts::udp
 
         namespace ipv4 {
 
-
 #ifdef IP_TOS
-        class tos : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_TOS;
-        };
+            class tos : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_TOS;
+            };
 #endif // IP_TOS
 
 #ifdef IP_TTL
-        class ttl : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_TTL;
-        };
+            class ttl : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_TTL;
+            };
 #endif // IP_TTL
 
 #ifdef IP_MTU_DISCOVER
-        class mtu_discover : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_MTU_DISCOVER;
-        };
+            class mtu_discover : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_MTU_DISCOVER;
+            };
 #endif // IP_MTU_DISCOVER
 
 #ifdef IP_FREEBIND
-    class freebind : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_FREEBIND;
-        };
+            class freebind : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_FREEBIND;
+            };
 #endif // IP_FREEBIND
 
 #ifdef IP_TRANSPARENT
-    class transparent : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_TRANSPARENT;
-        };
+            class transparent : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_TRANSPARENT;
+            };
 #endif // IP_TRANSPARENT
 
 #ifdef IP_PKTINFO
-    class pktinfo : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_PKTINFO;
-        };
+            class pktinfo : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_PKTINFO;
+            };
 #endif // IP_PKTINFO
 
 #ifdef IP_RECVTTL
-    class recvttl : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_RECVTTL;
-        };
+            class recvttl : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_RECVTTL;
+            };
 #endif // IP_RECVTTL
 
 #ifdef IP_RECVTOS
-    class recvtos : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_RECVTOS;
-        };
+            class recvtos : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_RECVTOS;
+            };
 #endif // IP_RECVTOS
 
 #ifdef IP_MULTICAST_TTL
-        class multicast_ttl : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_MULTICAST_TTL;
-        };
+            class multicast_ttl : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_MULTICAST_TTL;
+            };
 #endif // IP_MULTICAST_TTL
 
 #ifdef IP_MULTICAST_LOOP
-    class multicast_loop : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_MULTICAST_LOOP;
-        };
+            class multicast_loop : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_MULTICAST_LOOP;
+            };
 #endif // IP_MULTICAST_LOOP
 
 #ifdef IP_ADD_MEMBERSHIP
-        class add_membership : protected details::ip_mreqn_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_ADD_MEMBERSHIP;
-        };
+            class add_membership : protected details::ip_mreqn_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_ADD_MEMBERSHIP;
+            };
 #endif // IP_ADD_MEMBERSHIP
 
 #ifdef IP_DROP_MEMBERSHIP
-        class drop_membership : protected details::ip_mreqn_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IP;
-            static constexpr int optname = IP_DROP_MEMBERSHIP;
-        };
+            class drop_membership : protected details::ip_mreqn_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IP;
+                static constexpr int optname = IP_DROP_MEMBERSHIP;
+            };
 #endif // IP_DROP_MEMBERSHIP
 
         } // namespace iouxx::iouops::network::sockopts::ipv4
@@ -615,120 +614,120 @@ namespace iouxx::inline iouops::network {
         namespace ipv6 {
 
 #ifdef IPV6_V6ONLY
-    class v6only : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_V6ONLY;
-        };
+            class v6only : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_V6ONLY;
+            };
 #endif // IPV6_V6ONLY
 
 #ifdef IPV6_TCLASS
-        class tclass : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_TCLASS;
-        };
+            class tclass : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_TCLASS;
+            };
 #endif // IPV6_TCLASS
 
 #ifdef IPV6_UNICAST_HOPS
-        class unicast_hops : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_UNICAST_HOPS;
-        };
+            class unicast_hops : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_UNICAST_HOPS;
+            };
 #endif // IPV6_UNICAST_HOPS
 
 #ifdef IPV6_RECVERR
-    class recverr : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_RECVERR;
-        };
+            class recverr : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_RECVERR;
+            };
 #endif // IPV6_RECVERR
 
 #ifdef IPV6_PKTINFO
-    class pktinfo : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_PKTINFO;
-        };
+            class pktinfo : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_PKTINFO;
+            };
 #endif // IPV6_PKTINFO
 
 #ifdef IPV6_RECVPKTINFO
-    class recvpktinfo : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_RECVPKTINFO;
-        };
+            class recvpktinfo : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_RECVPKTINFO;
+            };
 #endif // IPV6_RECVPKTINFO
 
 #ifdef IPV6_DONTFRAG
-    class dontfrag : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_DONTFRAG;
-        };
+            class dontfrag : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_DONTFRAG;
+            };
 #endif // IPV6_DONTFRAG
 
 #ifdef IPV6_RECVTCLASS
-    class recvtclass : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_RECVTCLASS;
-        };
+            class recvtclass : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_RECVTCLASS;
+            };
 #endif // IPV6_RECVTCLASS
 
 #ifdef IPV6_MULTICAST_HOPS
-        class multicast_hops : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_MULTICAST_HOPS;
-        };
+            class multicast_hops : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_MULTICAST_HOPS;
+            };
 #endif // IPV6_MULTICAST_HOPS
 
 #ifdef IPV6_MULTICAST_LOOP
-    class multicast_loop : protected details::bool_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_MULTICAST_LOOP;
-        };
+            class multicast_loop : protected details::bool_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_MULTICAST_LOOP;
+            };
 #endif // IPV6_MULTICAST_LOOP
 
 #ifdef IPV6_JOIN_GROUP
-        class join_group : protected details::ipv6_mreq_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_JOIN_GROUP;
-        };
+            class join_group : protected details::ipv6_mreq_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_JOIN_GROUP;
+            };
 #endif // IPV6_JOIN_GROUP
 
 #ifdef IPV6_LEAVE_GROUP
-        class leave_group : protected details::ipv6_mreq_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_LEAVE_GROUP;
-        };
+            class leave_group : protected details::ipv6_mreq_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_LEAVE_GROUP;
+            };
 #endif // IPV6_LEAVE_GROUP
 
 #ifdef IPV6_UNICAST_IF
-        class unicast_if : protected details::int_optval_base
-        {
-        protected:
-            static constexpr int level = IPPROTO_IPV6;
-            static constexpr int optname = IPV6_UNICAST_IF;
-        };
+            class unicast_if : protected details::int_optval_base
+            {
+            protected:
+                static constexpr int level = IPPROTO_IPV6;
+                static constexpr int optname = IPV6_UNICAST_IF;
+            };
 #endif // IPV6_UNICAST_IF
 
         } // namespace iouxx::iouops::network::sockopts::ipv6
