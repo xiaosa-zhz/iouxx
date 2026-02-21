@@ -22,11 +22,6 @@
 
 namespace iouxx::details {
 
-    struct accept_addrinfo {
-        ::sockaddr* addr = nullptr;
-        ::socklen_t* addrlen = nullptr;
-    };
-
     template<typename Info>
     class peer_socket_info_base
     {
@@ -271,7 +266,6 @@ namespace iouxx::inline iouops::network {
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
                 int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
-                addrlen_out = this->addrlen();
                 ::io_uring_prep_accept(sqe, sock.native_handle(),
                     this->addrinfo(), &addrlen_out, flags);
             }
@@ -291,7 +285,7 @@ namespace iouxx::inline iouops::network {
                 }
             }
 
-            ::socklen_t addrlen_out = 0;
+            ::socklen_t addrlen_out = this->addrlen();
             network::socket sock;
             [[no_unique_address]] callback_type callback;
         };
@@ -350,7 +344,6 @@ namespace iouxx::inline iouops::network {
             }
         }
 
-        ::socklen_t addrlen_out = 0;
         network::socket sock;
         [[no_unique_address]] callback_type callback;
     };
@@ -415,7 +408,6 @@ namespace iouxx::inline iouops::network {
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
                 int flags = SOCK_NONBLOCK;
-                addrlen_out = this->addrlen();
                 ::io_uring_prep_accept_direct(sqe, sock.index(),
                     this->addrinfo(), &addrlen_out, flags, file_index);
                 sqe->flags |= IOSQE_FIXED_FILE;
@@ -437,7 +429,7 @@ namespace iouxx::inline iouops::network {
             }
 
             int file_index = IORING_FILE_INDEX_ALLOC;
-            ::socklen_t addrlen_out = 0;
+            ::socklen_t addrlen_out = this->addrlen();
             network::fixed_socket sock;
             [[no_unique_address]] callback_type callback;
         };
@@ -507,7 +499,6 @@ namespace iouxx::inline iouops::network {
             }
 
             int file_index = IORING_FILE_INDEX_ALLOC;
-            ::socklen_t addrlen_out = 0;
             network::fixed_socket sock;
             [[no_unique_address]] callback_type callback;
         };

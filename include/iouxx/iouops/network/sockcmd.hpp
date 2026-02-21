@@ -19,6 +19,7 @@
 
 #include "iouxx/util/utility.hpp"
 #include "iouxx/iouringxx.hpp"
+#include "iouxx/util/assertion.hpp"
 #include "socket.hpp"
 #include "ip.hpp"
 
@@ -245,6 +246,20 @@ namespace iouxx::details {
         template<typename Self>
         Self& socket(this Self& self, const network::fixed_socket& s) noexcept {
             ((sockopt_base&)self).fd = s.index();
+            ((sockopt_base&)self).is_fixed = true;
+            return self;
+        }
+
+        template<typename Self>
+        Self& socket(this Self& self, const network::connection& c) noexcept {
+            ((sockopt_base&)self).fd = c.native_handle();
+            ((sockopt_base&)self).is_fixed = false;
+            return self;
+        }
+
+        template<typename Self>
+        Self& socket(this Self& self, const network::fixed_connection& c) noexcept {
+            ((sockopt_base&)self).fd = c.index();
             ((sockopt_base&)self).is_fixed = true;
             return self;
         }
@@ -848,6 +863,107 @@ namespace iouxx::inline iouops::network {
                 }
             }
 
+            [[no_unique_address]] callback_type callback;
+        };
+
+        template<utility::not_tag F>
+        operation(iouxx::ring&, F) -> operation<std::decay_t<F>>;
+
+        template<typename F, typename... Args>
+        operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+            -> operation<F>;
+    };
+
+    template<typename SockInfo>
+    class socket_getsockname
+    {
+        using info_type = SockInfo;
+        using system_sockaddr_type = decltype(std::declval<const info_type&>().to_system_sockaddr());
+    public:
+        template<utility::eligible_callback<info_type> Callback>
+        class operation : public operation_base
+        {
+        public:
+            template<utility::not_tag F>
+            explicit operation(iouxx::ring& ring, F&& f)
+                noexcept(utility::nothrow_constructible_callback<F>) :
+                operation_base(iouxx::op_tag<operation>, ring),
+                callback(std::forward<F>(f))
+            {}
+
+            template<typename F, typename... Args>
+            explicit operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+                noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+                operation_base(iouxx::op_tag<operation>, ring),
+                callback(std::forward<Args>(args)...)
+            {}
+
+            using callback_type = Callback;
+            using result_type = info_type;
+
+            static constexpr std::uint8_t opcode = IORING_OP_URING_CMD;
+
+            operation& socket(const network::socket& s) & noexcept {
+                IOUXX_ASSERT(info_type::domain == s.socket_domain());
+                this->fd = s.native_handle();
+                this->is_fixed = false;
+                return *this;
+            }
+
+            operation& socket(const network::fixed_socket& s) & noexcept {
+                IOUXX_ASSERT(info_type::domain == s.socket_domain());
+                this->fd = s.index();
+                this->is_fixed = true;
+                return *this;
+            }
+
+            operation& socket(const network::connection& c) & noexcept {
+                IOUXX_ASSERT(info_type::domain == c.socket_domain());
+                this->fd = c.native_handle();
+                this->is_fixed = false;
+                return *this;
+            }
+
+            operation& socket(const network::fixed_connection& c) & noexcept {
+                IOUXX_ASSERT(info_type::domain == c.socket_domain());
+                this->fd = c.index();
+                this->is_fixed = true;
+                return *this;
+            }
+
+            operation& peer(bool is_peer = true) & noexcept {
+                this->is_peer = is_peer;
+                return *this;
+            }
+
+        private:
+            friend operation_base;
+            void build(::io_uring_sqe* sqe) & noexcept {
+                ::io_uring_prep_cmd_getsockname(sqe, this->fd,
+                    reinterpret_cast<::sockaddr*>(&this->sockaddr),
+                    &this->socklen_out,
+                    this->is_peer ? 1 : 0);
+                if (this->is_fixed) {
+                    sqe->flags |= IOSQE_FIXED_FILE;
+                }
+            }
+
+            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+                utility::eligible_nothrow_callback<callback_type, result_type>) {
+                if (ev >= 0) {
+                    std::invoke(callback, info_type::from_system_sockaddr(
+                        reinterpret_cast<::sockaddr*>(&this->sockaddr), &this->socklen_out
+                    ));
+                } else {
+                    std::invoke(callback, utility::fail(-ev));
+                }
+            }
+
+            int fd = -1;
+            ::socklen_t socklen_out = sizeof(system_sockaddr_type);
+            bool is_peer = false;
+            bool is_fixed = false;
+            system_sockaddr_type sockaddr{};
             [[no_unique_address]] callback_type callback;
         };
 
