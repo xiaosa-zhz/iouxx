@@ -304,71 +304,63 @@ namespace iouxx::inline iouops::network {
             -> operation<F>;
     };
 
-    template<>
-    class socket_accept<void>
+    template<typename Callback>
+            requires utility::eligible_callback<Callback, connection>
+    class socket_accept_operation : public operation_base
     {
     public:
-        template<typename Callback>
-            requires utility::eligible_callback<Callback, connection>
-        class operation : public operation_base
-        {
-        public:
-            template<utility::not_tag F>
-            explicit operation(iouxx::ring& ring, F&& f)
-                noexcept(utility::nothrow_constructible_callback<F>) :
-                operation_base(iouxx::op_tag<operation>, ring),
-                callback(std::forward<F>(f))
-            {}
-
-            template<typename F, typename... Args>
-            explicit operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
-                noexcept(std::is_nothrow_constructible_v<F, Args...>) :
-                operation_base(iouxx::op_tag<operation>, ring),
-                callback(std::forward<Args>(args)...)
-            {}
-
-            using callback_type = Callback;
-            using result_type = connection;
-
-            static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
-
-            operation& socket(const socket& s) & noexcept {
-                this->sock = s;
-                return *this;
-            }
-
-        private:
-            friend operation_base;
-            void build(::io_uring_sqe* sqe) & noexcept {
-                int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
-                ::io_uring_prep_accept(sqe, sock.native_handle(),
-                    nullptr, nullptr, flags);
-            }
-
-            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-                utility::eligible_nothrow_callback<callback_type, result_type>) {
-                if (ev >= 0) {
-                    std::invoke(callback, connection(sock, ev));
-                } else {
-                    std::invoke(callback, utility::fail(-ev));
-                }
-            }
-
-            ::socklen_t addrlen_out = 0;
-            network::socket sock;
-            [[no_unique_address]] callback_type callback;
-        };
-
         template<utility::not_tag F>
-        operation(iouxx::ring&, F) -> operation<std::decay_t<F>>;
+        explicit socket_accept_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<socket_accept_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
 
         template<typename F, typename... Args>
-        operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
-            -> operation<F>;
+        explicit socket_accept_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_accept_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = connection;
+
+        static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
+
+        socket_accept_operation& socket(const socket& s) & noexcept {
+            this->sock = s;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            int flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
+            ::io_uring_prep_accept(sqe, sock.native_handle(),
+                nullptr, nullptr, flags);
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke(callback, connection(sock, ev));
+            } else {
+                std::invoke(callback, utility::fail(-ev));
+            }
+        }
+
+        ::socklen_t addrlen_out = 0;
+        network::socket sock;
+        [[no_unique_address]] callback_type callback;
     };
 
-    template<typename Callback>
-    using socket_accept_operation = typename socket_accept<void>::template operation<Callback>;
+    template<utility::not_tag F>
+    socket_accept_operation(iouxx::ring&, F) -> socket_accept_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    socket_accept_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> socket_accept_operation<F>;
 
     template<typename PeerInfo>
     struct fixed_accept_result {
