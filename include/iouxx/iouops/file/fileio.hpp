@@ -85,7 +85,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_read_operation : public operation_base,
+    class file_read_operation final : public operation_base,
         public details::file_read_write_operation_base,
         public details::file_read_buffer_operation_base
     {
@@ -137,7 +137,7 @@ namespace iouxx::inline iouops::fileops {
     file_read_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_read_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_read_fixed_operation : public operation_base,
+    class file_read_fixed_operation final : public operation_base,
         public details::file_read_write_operation_base,
         public details::file_read_buffer_operation_base
     {
@@ -202,7 +202,7 @@ namespace iouxx::inline iouops::fileops {
         -> file_read_fixed_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_write_operation : public operation_base,
+    class file_write_operation final : public operation_base,
         public details::file_read_write_operation_base,
         public details::file_write_buffer_operation_base
     {
@@ -254,7 +254,7 @@ namespace iouxx::inline iouops::fileops {
     file_write_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_write_operation<F>;
 
     template<utility::eligible_callback<std::ptrdiff_t> Callback>
-    class file_write_fixed_operation : public operation_base,
+    class file_write_fixed_operation final : public operation_base,
         public details::file_read_write_operation_base,
         public details::file_write_buffer_operation_base
     {

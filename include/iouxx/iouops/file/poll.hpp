@@ -90,7 +90,7 @@ namespace iouxx::inline iouops::fileops {
     }
 
     template<utility::eligible_callback<poll_event> Callback>
-    class file_poll_add_operation : public operation_base,
+    class file_poll_add_operation final : public operation_base,
         public details::poll_base,
         public details::poll_event_base
     {
@@ -141,7 +141,7 @@ namespace iouxx::inline iouops::fileops {
     };
 
     template<utility::eligible_callback<multishot_poll_result> Callback>
-    class file_poll_multishot_operation : public operation_base,
+    class file_poll_multishot_operation final : public operation_base,
         public details::poll_base,
         public details::poll_event_base
     {
@@ -194,7 +194,7 @@ namespace iouxx::inline iouops::fileops {
     };
 
     template<utility::eligible_callback<void> Callback>
-    class file_poll_remove_operation : public operation_base, public details::poll_target_base
+    class file_poll_remove_operation final : public operation_base, public details::poll_target_base
     {
     public:
         template<utility::not_tag F>
@@ -241,7 +241,7 @@ namespace iouxx::inline iouops::fileops {
     };
 
     template<utility::eligible_callback<void> Callback>
-    class file_poll_update_operation : public operation_base,
+    class file_poll_update_operation final : public operation_base,
         public details::poll_event_base,
         public details::poll_target_base
     {

@@ -48,7 +48,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<socket> Callback>
-    class socket_open_operation : public operation_base, public details::socket_prep_base
+    class socket_open_operation final : public operation_base, public details::socket_prep_base
     {
     public:
         template<utility::not_tag F>
@@ -102,7 +102,7 @@ namespace iouxx::inline iouops::network {
         -> socket_open_operation<F>;
 
     template<utility::eligible_callback<fixed_socket> Callback>
-    class fixed_socket_open_operation : public operation_base, public details::socket_prep_base
+    class fixed_socket_open_operation final : public operation_base, public details::socket_prep_base
     {
     public:
         template<utility::not_tag F>
@@ -162,26 +162,81 @@ namespace iouxx::inline iouops::network {
     fixed_socket_open_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
         -> fixed_socket_open_operation<F>;
 
-    template<typename Callback>
-    class socket_close_operation : public fileops::file_close_operation<Callback>
+    template<utility::eligible_callback<void> Callback>
+    class socket_close_operation final : public operation_base
     {
-        using base = fileops::file_close_operation<Callback>;
     public:
-        using base::base; // Inherit constructors
+        template<utility::not_tag F>
+        explicit socket_close_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<socket_close_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
+
+        template<typename F, typename... Args>
+        explicit socket_close_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<socket_close_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = void;
+
+        static constexpr std::uint8_t opcode = IORING_OP_CLOSE;
 
         socket_close_operation& socket(const socket& s) & noexcept {
-            this->base::file(s);
+            this->fd = s.native_handle();
+            this->is_fixed = false;
             return *this;
         }
 
         socket_close_operation& socket(const fixed_socket& s) & noexcept {
-            this->base::file(s);
+            this->fd = s.index();
+            this->is_fixed = true;
             return *this;
         }
 
-        // Shadow the file_close_operation::file methods to avoid misuse
-        void file(const fileops::file&) & noexcept = delete;
-        void file(const fileops::fixed_file&) & noexcept = delete;
+        socket_close_operation& socket(const connection& c) & noexcept {
+            this->fd = c.native_handle();
+            this->is_fixed = false;
+            return *this;
+        }
+
+        socket_close_operation& socket(const fixed_connection& c) & noexcept {
+            this->fd = c.index();
+            this->is_fixed = true;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            if (is_fixed) {
+                ::io_uring_prep_close_direct(sqe, fd);
+            } else {
+                ::io_uring_prep_close(sqe, fd);
+            }
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if constexpr (utility::stdexpected_callback<callback_type, void>) {
+                if (ev == 0) {
+                    std::invoke(callback, utility::void_success());
+                } else {
+                    std::invoke(callback, utility::fail(-ev));
+                }
+            } else if constexpr (utility::errorcode_callback<callback_type>) {
+                std::invoke(callback, utility::make_system_error_code(-ev));
+            } else {
+                static_assert(false, "Unreachable");
+            }
+        }
+
+        int fd = -1;
+        bool is_fixed = false;
+        [[no_unique_address]] callback_type callback;
     };
 
     template<typename SocketInfo>
@@ -191,7 +246,7 @@ namespace iouxx::inline iouops::network {
         using system_sockaddr_type = decltype(std::declval<const socket_info_type&>().to_system_sockaddr());
     public:
         template<utility::eligible_callback<void> Callback>
-        class operation : public operation_base
+        class operation final : public operation_base
         {
         public:
             template<utility::not_tag F>

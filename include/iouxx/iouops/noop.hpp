@@ -21,7 +21,7 @@ namespace iouxx::inline iouops {
 
     // Noop operation with user-defined callback.
     template<utility::eligible_maybe_void_callback<void> Callback>
-    class noop_operation : public operation_base
+    class noop_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
@@ -97,7 +97,7 @@ namespace iouxx::inline iouops {
     // Pure noop operation, does nothing on completion.
     // Mainly used for waking up the kernel thread or testing.
     template<>
-    class noop_operation<void> : public operation_base
+    class noop_operation<void> final : public operation_base
     {
     public:
         explicit noop_operation(iouxx::ring& ring)

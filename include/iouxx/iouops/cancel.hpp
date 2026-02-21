@@ -80,7 +80,7 @@ namespace iouxx::inline iouops {
     // Cancel operation with user-defined callback by provided identifier.
     // On success, callback receive a number indicating how many operations were cancelled.
     template<utility::eligible_maybe_void_callback<std::size_t> Callback>
-    class cancel_operation : public operation_base,
+    class cancel_operation final : public operation_base,
         public details::cancel_base,
         public details::cancel_id_base
     {
@@ -132,7 +132,7 @@ namespace iouxx::inline iouops {
 
     // Pure cancel operation, does nothing on completion.
     template<>
-    class cancel_operation<void> : public operation_base,
+    class cancel_operation<void> final : public operation_base,
         public details::cancel_base,
         public details::cancel_id_base
     {
@@ -172,7 +172,7 @@ namespace iouxx::inline iouops {
     // Cancel operation with user-defined callback by provided file descriptor.
     // On success, callback receive a number indicating how many operations were cancelled.
     template<utility::eligible_maybe_void_callback<std::size_t> Callback>
-    class cancel_fd_operation : public operation_base,
+    class cancel_fd_operation final : public operation_base,
         public details::cancel_base,
         public details::cancel_fd_base
     {
@@ -224,7 +224,7 @@ namespace iouxx::inline iouops {
 
     // Pure cancel fd operation, does nothing on completion.
     template<>
-    class cancel_fd_operation<void> : public operation_base,
+    class cancel_fd_operation<void> final : public operation_base,
         public details::cancel_base,
         public details::cancel_fd_base
     {

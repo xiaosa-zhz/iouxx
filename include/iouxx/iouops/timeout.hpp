@@ -123,7 +123,7 @@ namespace iouxx::inline iouops {
 
     // Timeout operation with user-defined callback.
     template<utility::eligible_callback<void> Callback>
-    class timeout_operation : public operation_base, public details::timeout_base
+    class timeout_operation final : public operation_base, public details::timeout_base
     {
     public:
         template<utility::not_tag F>
@@ -183,7 +183,7 @@ namespace iouxx::inline iouops {
     // Warning:
     // The operation object must outlive the whole execution of the multishot
     template<utility::eligible_callback<bool> Callback>
-    class multishot_timeout_operation : public operation_base, public details::timeout_base
+    class multishot_timeout_operation final : public operation_base, public details::timeout_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "Multishot operation does not support syncronous wait.");
@@ -257,7 +257,7 @@ namespace iouxx::inline iouops {
 
     // Cancel a previously submitted timeout by its identifier.
     template<utility::eligible_maybe_void_callback<void> Callback>
-    class timeout_cancel_operation : public operation_base
+    class timeout_cancel_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
@@ -310,7 +310,7 @@ namespace iouxx::inline iouops {
 
     // Pure timeout cancel operation, does nothing on completion.
     template<>
-    class timeout_cancel_operation<void> : public operation_base
+    class timeout_cancel_operation<void> final : public operation_base
     {
     public:
         explicit timeout_cancel_operation(iouxx::ring& ring) noexcept :

@@ -147,7 +147,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::fileops {
 
     template<utility::eligible_callback<file> Callback>
-    class file_open_operation : public operation_base, public file_open_operation_base
+    class file_open_operation final : public operation_base, public file_open_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -199,7 +199,7 @@ namespace iouxx::inline iouops::fileops {
     inline constexpr int alloc_index = IORING_FILE_INDEX_ALLOC;
 
     template<utility::eligible_callback<fixed_file> Callback>
-    class fixed_file_open_operation : public operation_base, public file_open_operation_base
+    class fixed_file_open_operation final : public operation_base, public file_open_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -257,7 +257,7 @@ namespace iouxx::inline iouops::fileops {
         -> fixed_file_open_operation<F>;
 
     template<utility::eligible_callback<directory> Callback>
-    class directory_open_operation : public operation_base, public file_open_operation_base
+    class directory_open_operation final : public operation_base, public file_open_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -308,7 +308,7 @@ namespace iouxx::inline iouops::fileops {
         -> directory_open_operation<F>;
 
     template<utility::eligible_callback<void> Callback>
-    class file_close_operation : public operation_base
+    class file_close_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
@@ -379,7 +379,7 @@ namespace iouxx::inline iouops::fileops {
     file_close_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...) -> file_close_operation<F>;
     
     template<utility::eligible_callback<fixed_file> Callback>
-    class fixed_file_register_operation : public operation_base
+    class fixed_file_register_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
@@ -447,7 +447,7 @@ namespace iouxx::inline iouops::fileops {
     };
 
     template<utility::eligible_callback<fixed_file_register_batch_result> Callback>
-    class fixed_file_register_batch_operation : public operation_base
+    class fixed_file_register_batch_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>

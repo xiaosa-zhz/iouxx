@@ -52,7 +52,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<void> Callback>
-    class socket_listen_operation : public operation_base
+    class socket_listen_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
@@ -140,7 +140,7 @@ namespace iouxx::inline iouops::network {
         using info_type = PeerInfo;
     public:
         template<utility::eligible_callback<void> Callback>
-        class operation : public operation_base,
+        class operation final : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
         public:
@@ -233,7 +233,7 @@ namespace iouxx::inline iouops::network {
     public:
         template<typename Callback>
             requires utility::eligible_callback<Callback, accept_result_type>
-        class operation : public operation_base,
+        class operation final : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
         public:
@@ -300,7 +300,7 @@ namespace iouxx::inline iouops::network {
 
     template<typename Callback>
             requires utility::eligible_callback<Callback, connection>
-    class socket_accept_operation : public operation_base
+    class socket_accept_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
@@ -370,7 +370,7 @@ namespace iouxx::inline iouops::network {
     public:
         template<typename Callback>
             requires utility::eligible_callback<Callback, accept_result_type>
-        class operation : public operation_base,
+        class operation final : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
         public:
@@ -448,7 +448,7 @@ namespace iouxx::inline iouops::network {
     public:
         template<typename Callback>
             requires utility::eligible_callback<Callback, fixed_connection>
-        class operation : public operation_base
+        class operation final : public operation_base
         {
         public:
             template<utility::not_tag F>
@@ -520,7 +520,7 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::eligible_callback<multishot_accept_result> Callback>
-    class socket_multishot_accept_operation : public operation_base
+    class socket_multishot_accept_operation final : public operation_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");
@@ -592,7 +592,7 @@ namespace iouxx::inline iouops::network {
     // Note: multishot_accept_direct always allocates all new slots,
     //  so user cannot specify index here.
     template<utility::eligible_callback<multishot_fixed_accept_result> Callback>
-    class fixed_socket_multishot_accept_operation : public operation_base
+    class fixed_socket_multishot_accept_operation final : public operation_base
     {
         static_assert(!utility::is_specialization_of_v<syncwait_callback, Callback>,
             "multishot operation does not support syncronous wait.");
@@ -664,7 +664,7 @@ namespace iouxx::inline iouops::network {
     };
 
     template<utility::eligible_callback<void> Callback>
-    class socket_shutdown_operation : public operation_base
+    class socket_shutdown_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>

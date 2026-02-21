@@ -755,7 +755,7 @@ namespace iouxx::inline iouops::network {
         using base = details::sockopt_base<SockOpt>;
     public:
         template<utility::eligible_callback<void> Callback>
-        class operation : public operation_base, private base
+        class operation final : public operation_base, private base
         {
         public:
             template<utility::not_tag F>
@@ -818,7 +818,7 @@ namespace iouxx::inline iouops::network {
         using result = base::result_type;
     public:
         template<utility::eligible_callback<result> Callback>
-        class operation : public operation_base, private base
+        class operation final : public operation_base, private base
         {
         public:
             template<utility::not_tag F>
@@ -881,7 +881,7 @@ namespace iouxx::inline iouops::network {
         using system_sockaddr_type = decltype(std::declval<const info_type&>().to_system_sockaddr());
     public:
         template<utility::eligible_callback<info_type> Callback>
-        class operation : public operation_base
+        class operation final : public operation_base
         {
         public:
             template<utility::not_tag F>

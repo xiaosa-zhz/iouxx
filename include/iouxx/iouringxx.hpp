@@ -438,7 +438,7 @@ namespace iouxx::inline iouops {
     // Operation for management purpose.
     // Callback will receive an pointer to ring object.
     template<std::invocable<management_info> Callback>
-    class ring_management_operation : public operation_base
+    class ring_management_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>

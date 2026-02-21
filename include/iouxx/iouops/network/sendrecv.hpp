@@ -239,7 +239,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops::network {
 
     template<utility::eligible_callback<std::size_t> Callback>
-    class socket_send_operation : public operation_base,
+    class socket_send_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::send_op_base
     {
@@ -313,7 +313,7 @@ namespace iouxx::inline iouops::network {
     template<typename Callback>
         requires utility::eligible_overloaded_callback<Callback,
             buffer_free_notification, send_result_more, send_result_nomore>
-    class socket_send_zc_operation : public operation_base,
+    class socket_send_zc_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::send_op_base
     {
@@ -393,7 +393,7 @@ namespace iouxx::inline iouops::network {
         -> socket_send_zc_operation<F>;
 
     template<utility::eligible_callback<std::size_t> Callback>
-    class socket_sendmsg_operation : public operation_base,
+    class socket_sendmsg_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::sendmsg_base
     {
@@ -451,7 +451,7 @@ namespace iouxx::inline iouops::network {
     template<typename Callback>
         requires utility::eligible_overloaded_callback<Callback,
             buffer_free_notification, send_result_more, send_result_nomore>
-    class socket_sendmsg_zc_operation : public operation_base,
+    class socket_sendmsg_zc_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::sendmsg_base
     {
@@ -527,7 +527,7 @@ namespace iouxx::inline iouops::network {
     template<typename Callback>
         requires utility::eligible_alternative_callback<Callback,
             std::span<std::byte>, std::span<unsigned char>>
-    class socket_recv_operation : public operation_base,
+    class socket_recv_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::recv_op_base
     {
@@ -602,7 +602,7 @@ namespace iouxx::inline iouops::network {
         requires utility::eligible_alternative_callback<Callback,
             multishot_recv_result<std::byte>,
             multishot_recv_result<unsigned char>>
-    class socket_multishot_recv_operation : public operation_base,
+    class socket_multishot_recv_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::recv_op_base
     {

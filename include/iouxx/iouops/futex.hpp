@@ -68,7 +68,7 @@ IOUXX_EXPORT
 namespace iouxx::inline iouops {
 
     template<utility::eligible_maybe_void_callback<void> Callback>
-    class futex_wait_operation : public operation_base, public details::futex_operation_base
+    class futex_wait_operation final : public operation_base, public details::futex_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -134,7 +134,7 @@ namespace iouxx::inline iouops {
         -> futex_wait_operation<F>;
 
     template<utility::eligible_callback<std::size_t> Callback>
-    class futex_wake_operation : public operation_base, public details::futex_operation_base
+    class futex_wake_operation final : public operation_base, public details::futex_operation_base
     {
     public:
         template<utility::not_tag F>
@@ -208,7 +208,7 @@ namespace iouxx::inline iouops {
     }
 
     template<utility::eligible_callback<std::size_t> Callback>
-    class futex_waitv_operation : public operation_base
+    class futex_waitv_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>

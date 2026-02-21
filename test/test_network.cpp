@@ -219,16 +219,6 @@ static void echo_server() {
         }
 
         std::println("Echoing back...");
-        // auto send = ring.make_sync<network::socket_send_operation>();
-        // send.socket(connection)
-        //     .buffer(std::span(buffer.data(), received));
-        // if (auto res = send.submit_and_wait()) {
-        //     std::println("Echoed back {} bytes", *res);
-        // } else {
-        //     exit_if_function_not_supported(res.error());
-        //     std::println("Failed to send data: {}", res.error().message());
-        //     std::exit(1);
-        // }
         bool is_more = true;
         auto send = ring.make<network::socket_send_zc_operation>(
             [&](std::expected<network::send_zc_result, std::error_code> res) {
@@ -279,6 +269,15 @@ static void echo_server() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to shutdown connection: {}", res.error().message());
+            std::exit(1);
+        }
+        auto close = ring.make_sync<network::socket_close_operation>();
+        close.socket(connection);
+        if (auto res = close.submit_and_wait()) {
+            std::println("Socket closed successfully");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to close socket: {}", res.error().message());
             std::exit(1);
         }
     }();
@@ -619,6 +618,15 @@ static void echo_server_fixed() {
         } else {
             exit_if_function_not_supported(res.error());
             std::println("Failed to shutdown connection: {}", res.error().message());
+            std::exit(1);
+        }
+        auto close = ring.make_sync<network::socket_close_operation>();
+        close.socket(connection);
+        if (auto res = close.submit_and_wait()) {
+            std::println("Socket closed successfully");
+        } else {
+            exit_if_function_not_supported(res.error());
+            std::println("Failed to close socket: {}", res.error().message());
             std::exit(1);
         }
     }();
