@@ -207,13 +207,6 @@ namespace iouxx::utility {
         eligible_alternative_callback<Callback, PossibleResults...>
         && (chosen_result<Callback, PossibleResults...>::nothrow);
 
-    template<typename Callback, typename... AllPossibleResults>
-    concept eligible_overloaded_callback = (eligible_callback<Callback, AllPossibleResults> && ...);
-
-    template<typename Callback, typename... AllPossibleResults>
-    concept eligible_nothrow_overloaded_callback = eligible_overloaded_callback<Callback, AllPossibleResults...>
-        && (eligible_nothrow_callback<Callback, AllPossibleResults> && ...);
-
     template<typename Callback>
     struct chosen_result<Callback> {
         // No eligible result type found.

@@ -1,4 +1,5 @@
 #pragma once
+#include <expected>
 #ifndef IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H
 #define IOUXX_OPERATION_NETWORK_SOCKET_SEND_RECEIVE_H 1
 
@@ -310,9 +311,7 @@ namespace iouxx::inline iouops::network {
     using send_zc_result =
         std::variant<buffer_free_notification, send_result_more, send_result_nomore>;
 
-    template<typename Callback>
-        requires utility::eligible_overloaded_callback<Callback,
-            buffer_free_notification, send_result_more, send_result_nomore>
+    template<utility::eligible_callback<send_zc_result> Callback>
     class socket_send_zc_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::send_op_base
@@ -357,8 +356,7 @@ namespace iouxx::inline iouops::network {
         }
 
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_overloaded_callback<callback_type,
-                buffer_free_notification, send_result_more, send_result_nomore>) {
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 // send ZC may produce two CQEs, one for bytes sent,
                 // and one for notification of buffer is free to reuse.
@@ -449,8 +447,7 @@ namespace iouxx::inline iouops::network {
         std::variant<buffer_free_notification, send_result_more, send_result_nomore>;
 
     template<typename Callback>
-        requires utility::eligible_overloaded_callback<Callback,
-            buffer_free_notification, send_result_more, send_result_nomore>
+        requires utility::eligible_callback<Callback, sendmsg_zc_result>
     class socket_sendmsg_zc_operation final : public operation_base,
         public details::send_recv_socket_base,
         public details::sendmsg_base
@@ -489,8 +486,7 @@ namespace iouxx::inline iouops::network {
         }
 
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
-            utility::eligible_nothrow_overloaded_callback<callback_type,
-                buffer_free_notification, send_result_more, send_result_nomore>) {
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
                 // sendmsg ZC may produce two CQEs, one for bytes sent,
                 // and one for notification of buffer is free to reuse.
