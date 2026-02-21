@@ -181,9 +181,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, file(ev));
+                std::invoke_r<void>(callback, file(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -239,9 +239,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, fixed_file(ev));
+                std::invoke_r<void>(callback, fixed_file(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -291,9 +291,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, fileops::directory(ev));
+                std::invoke_r<void>(callback, fileops::directory(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -356,12 +356,12 @@ namespace iouxx::inline iouops::fileops {
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::stdexpected_callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, utility::void_success());
+                    std::invoke_r<void>(callback, utility::void_success());
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             } else if constexpr (utility::errorcode_callback<callback_type>) {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke_r<void>(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(false, "Unreachable");
             }
@@ -420,11 +420,11 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, fixed_file(
+                std::invoke_r<void>(callback, fixed_file(
                     off == alloc_index ? fd : off
                 ));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -495,12 +495,12 @@ namespace iouxx::inline iouops::fileops {
                         fds[i] = off + i;
                     }
                 }
-                std::invoke(callback, fixed_file_register_batch_result{
+                std::invoke_r<void>(callback, fixed_file_register_batch_result{
                     .allocated = static_cast<std::size_t>(ev),
                     .file_index = fds
                 });
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -562,9 +562,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, fileops::file(ev));
+                std::invoke_r<void>(callback, fileops::file(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 

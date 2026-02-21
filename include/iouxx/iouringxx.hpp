@@ -468,7 +468,7 @@ namespace iouxx::inline iouops {
 
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             std::is_nothrow_invocable_v<callback_type, result_type>) {
-            std::invoke(callback, management_info{
+            std::invoke_r<void>(callback, management_info{
                 ev, cqe_flags, this->ring_ptr
             });
         }

@@ -121,9 +121,9 @@ namespace iouxx::inline iouops {
                 ev = 0;
             }
             if (ev == 0) {
-                std::invoke(callback, cancelled_count);
+                std::invoke_r<void>(callback, cancelled_count);
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -213,9 +213,9 @@ namespace iouxx::inline iouops {
                 ev = 0;
             }
             if (ev == 0) {
-                std::invoke(callback, cancelled_count);
+                std::invoke_r<void>(callback, cancelled_count);
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 

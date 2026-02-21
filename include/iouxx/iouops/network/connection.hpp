@@ -111,12 +111,12 @@ namespace iouxx::inline iouops::network {
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::stdexpected_callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, utility::void_success());
+                    std::invoke_r<void>(callback, utility::void_success());
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             } else if constexpr (utility::errorcode_callback<callback_type>) {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke_r<void>(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(false, "Unreachable");
             }
@@ -195,12 +195,12 @@ namespace iouxx::inline iouops::network {
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if constexpr (utility::stdexpected_callback<callback_type, void>) {
                     if (ev == 0) {
-                        std::invoke(callback, utility::void_success());
+                        std::invoke_r<void>(callback, utility::void_success());
                     } else {
-                        std::invoke(callback, utility::fail(-ev));
+                        std::invoke_r<void>(callback, utility::fail(-ev));
                     }
                 } else if constexpr (utility::errorcode_callback<callback_type>) {
-                    std::invoke(callback, utility::make_system_error_code(-ev));
+                    std::invoke_r<void>(callback, utility::make_system_error_code(-ev));
                 } else {
                     static_assert(false, "Unreachable");
                 }
@@ -273,7 +273,7 @@ namespace iouxx::inline iouops::network {
             void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev >= 0) {
-                    std::invoke(callback, accept_result{
+                    std::invoke_r<void>(callback, accept_result{
                         .conn = connection(sock, ev),
                         .peer = info_type::from_system_sockaddr(
                             this->addrinfo(),
@@ -281,7 +281,7 @@ namespace iouxx::inline iouops::network {
                         )
                     });
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             }
 
@@ -338,9 +338,9 @@ namespace iouxx::inline iouops::network {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, connection(sock, ev));
+                std::invoke_r<void>(callback, connection(sock, ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -416,7 +416,7 @@ namespace iouxx::inline iouops::network {
             void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev >= 0) {
-                    std::invoke(callback, fixed_accept_result{
+                    std::invoke_r<void>(callback, fixed_accept_result{
                         .conn = fixed_connection(sock, ev),
                         .peer = info_type::from_system_sockaddr(
                             this->addrinfo(),
@@ -424,7 +424,7 @@ namespace iouxx::inline iouops::network {
                         )
                     });
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             }
 
@@ -492,9 +492,9 @@ namespace iouxx::inline iouops::network {
             void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev >= 0) {
-                    std::invoke(callback, fixed_connection(sock, ev));
+                    std::invoke_r<void>(callback, fixed_connection(sock, ev));
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             }
 
@@ -563,12 +563,12 @@ namespace iouxx::inline iouops::network {
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, multishot_accept_result{
+                std::invoke_r<void>(callback, multishot_accept_result{
                     .conn = connection(sock, ev),
                     .more = (cqe_flags & IORING_CQE_F_MORE) != 0
                 });
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -636,12 +636,12 @@ namespace iouxx::inline iouops::network {
         void do_callback(int ev, std::uint32_t cqe_flags) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, multishot_fixed_accept_result{
+                std::invoke_r<void>(callback, multishot_fixed_accept_result{
                     .conn = fixed_connection(sock, ev),
                     .more = (cqe_flags & IORING_CQE_F_MORE) != 0
                 });
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -728,12 +728,12 @@ namespace iouxx::inline iouops::network {
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if constexpr (utility::stdexpected_callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, utility::void_success());
+                    std::invoke_r<void>(callback, utility::void_success());
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             } else if constexpr (utility::errorcode_callback<callback_type>) {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke_r<void>(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(false, "Unreachable");
             }

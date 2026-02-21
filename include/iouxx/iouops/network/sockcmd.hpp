@@ -794,9 +794,9 @@ namespace iouxx::inline iouops::network {
              void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev == 0) {
-                    std::invoke(callback, utility::void_success());
+                    std::invoke_r<void>(callback, utility::void_success());
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             }
 
@@ -857,9 +857,9 @@ namespace iouxx::inline iouops::network {
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev > 0) {
                     // updated optlen is in ev, discard it
-                    std::invoke(callback, base::result());
+                    std::invoke_r<void>(callback, base::result());
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             }
 
@@ -951,11 +951,11 @@ namespace iouxx::inline iouops::network {
             void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
                 utility::eligible_nothrow_callback<callback_type, result_type>) {
                 if (ev >= 0) {
-                    std::invoke(callback, info_type::from_system_sockaddr(
+                    std::invoke_r<void>(callback, info_type::from_system_sockaddr(
                         reinterpret_cast<::sockaddr*>(&this->sockaddr), &this->socklen_out
                     ));
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             }
 

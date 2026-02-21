@@ -281,9 +281,9 @@ namespace iouxx::inline iouops::network {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::size_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::size_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             } 
         }
 
@@ -364,21 +364,21 @@ namespace iouxx::inline iouops::network {
                 // and one for notification of buffer is free to reuse.
                 const bool more = (cqe_flags & IORING_CQE_F_MORE) != 0;
                 if (more) {
-                    std::invoke(callback, send_result_more{
+                    std::invoke_r<void>(callback, send_result_more{
                         .bytes_sent = static_cast<std::size_t>(ev)
                     });
                 } else {
                     const bool notify = (cqe_flags & IORING_CQE_F_NOTIF) != 0;
                     if (notify) {
-                        std::invoke(callback, buffer_free_notification{});
+                        std::invoke_r<void>(callback, buffer_free_notification{});
                     } else {
-                        std::invoke(callback, send_result_nomore{
+                        std::invoke_r<void>(callback, send_result_nomore{
                             .bytes_sent = static_cast<std::size_t>(ev)
                         });
                     }
                 }
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -429,9 +429,9 @@ namespace iouxx::inline iouops::network {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::size_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::size_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -496,21 +496,21 @@ namespace iouxx::inline iouops::network {
                 // and one for notification of buffer is free to reuse.
                 const bool more = (cqe_flags & IORING_CQE_F_MORE) != 0;
                 if (more) {
-                    std::invoke(callback, send_result_more{
+                    std::invoke_r<void>(callback, send_result_more{
                         .bytes_sent = static_cast<std::size_t>(ev)
                     });
                 } else {
                     const bool notify = (cqe_flags & IORING_CQE_F_NOTIF) != 0;
                     if (notify) {
-                        std::invoke(callback, buffer_free_notification{});
+                        std::invoke_r<void>(callback, buffer_free_notification{});
                     } else {
-                        std::invoke(callback, send_result_nomore{
+                        std::invoke_r<void>(callback, send_result_nomore{
                             .bytes_sent = static_cast<std::size_t>(ev)
                         });
                     }
                 }
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -572,12 +572,12 @@ namespace iouxx::inline iouops::network {
             if (ev >= 0) {
                 // result_type is a std::span
                 using byte_type = result_type::value_type;
-                std::invoke(callback, result_type(
+                std::invoke_r<void>(callback, result_type(
                     static_cast<byte_type*>(buf),
                     static_cast<std::size_t>(ev)
                 ));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -652,7 +652,7 @@ namespace iouxx::inline iouops::network {
             using byte_type = result_type::value_type;
             if (ev >= 0) {
                 const bool more = cqe_flags & IORING_CQE_F_MORE;
-                std::invoke(callback, result_type{
+                std::invoke_r<void>(callback, result_type{
                     .data = std::span<byte_type>(
                         static_cast<byte_type*>(buf),
                         static_cast<std::size_t>(ev)
@@ -660,7 +660,7 @@ namespace iouxx::inline iouops::network {
                     .more = more
                 });
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 

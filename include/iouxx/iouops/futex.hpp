@@ -110,12 +110,12 @@ namespace iouxx::inline iouops {
             std::is_nothrow_invocable_v<callback_type>) {
             if constexpr (utility::stdexpected_callback<callback_type, void>) {
                 if (ev == 0) {
-                    std::invoke(callback, utility::void_success());
+                    std::invoke_r<void>(callback, utility::void_success());
                 } else {
-                    std::invoke(callback, utility::fail(-ev));
+                    std::invoke_r<void>(callback, utility::fail(-ev));
                 }
             } else if constexpr (utility::errorcode_callback<callback_type>) {
-                std::invoke(callback, utility::make_system_error_code(-ev));
+                std::invoke_r<void>(callback, utility::make_system_error_code(-ev));
             } else {
                 static_assert(false, "Unreachable");
             }
@@ -180,9 +180,9 @@ namespace iouxx::inline iouops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::size_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::size_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -247,9 +247,9 @@ namespace iouxx::inline iouops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::size_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::size_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 

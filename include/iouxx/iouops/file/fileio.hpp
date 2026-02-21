@@ -121,9 +121,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::ptrdiff_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::ptrdiff_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -184,9 +184,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::ptrdiff_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::ptrdiff_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -238,9 +238,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::ptrdiff_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::ptrdiff_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
@@ -301,9 +301,9 @@ namespace iouxx::inline iouops::fileops {
         void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
             utility::eligible_nothrow_callback<callback_type, result_type>) {
             if (ev >= 0) {
-                std::invoke(callback, static_cast<std::ptrdiff_t>(ev));
+                std::invoke_r<void>(callback, static_cast<std::ptrdiff_t>(ev));
             } else {
-                std::invoke(callback, utility::fail(-ev));
+                std::invoke_r<void>(callback, utility::fail(-ev));
             }
         }
 
