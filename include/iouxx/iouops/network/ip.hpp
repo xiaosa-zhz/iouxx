@@ -449,6 +449,20 @@ namespace iouxx::inline iouops::network::ip {
         [[nodiscard]]
         constexpr std::string to_string() const;
 
+        [[nodiscard]]
+        constexpr bool is_ipv4_mapped() const noexcept {
+            return (addr[0] == 0 && addr[1] == 0 && addr[2] == 0 &&
+                    addr[3] == 0 && addr[4] == 0 && addr[5] == 0xffff);
+        }
+
+        [[nodiscard]]
+        constexpr address_v4 to_ipv4_mapped() const noexcept {
+            IOUXX_ASSERT(is_ipv4_mapped());
+            return address_v4(std::bit_cast<v4raw>(
+                std::array<std::uint16_t, 2>{ addr[6], addr[7] }
+            ));
+        }
+
     private:
         v6raw addr{}; // network byte order
     };

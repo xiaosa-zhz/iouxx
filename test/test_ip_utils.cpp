@@ -807,6 +807,10 @@ void ip_parse_test() {
         constexpr address_v6 expected = "2001:db8::1"_ipv6;
         static_assert(s2.address() == expected);
         static_assert(s2.port() == 443);
+        constexpr address_v6 ipv4_mapped = "::ffff:192.168.0.1"_ipv6;
+        static_assert(ipv4_mapped.is_ipv4_mapped());
+        constexpr address_v4 ipv4 = ipv4_mapped.to_ipv4_mapped();
+        static_assert(ipv4 == "192.168.0.1"_ipv4);
     }
 
     std::println("All socket tests passed.");
