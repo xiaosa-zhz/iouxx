@@ -21,7 +21,7 @@
 #endif // IOUXX_USE_CXX_MODULE
 
 IOUXX_EXPORT
-namespace iouxx::inline iouops::network::uds {
+namespace iouxx::inline iouops::network::unix {
 
     class uds_info
     {
@@ -59,6 +59,6 @@ namespace iouxx::inline iouops::network::uds {
         ::sockaddr_un addr = { .sun_family = AF_UNIX, .sun_path = {} };
     };
 
-} // namespace iouxx::iouops::network::uds
+} // namespace iouxx::iouops::network::unix
 
 #endif // IOUXX_OPERATION_NETWORK_UDS_H
