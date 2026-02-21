@@ -10,6 +10,7 @@
 #include "connection.hpp" // IWYU pragma: export
 #include "sendrecv.hpp" // IWYU pragma: export
 #include "sockcmd.hpp" // IWYU pragma: export
+#include "uds.hpp" // IWYU pragma: export
 
 namespace iouxx::details {
 
