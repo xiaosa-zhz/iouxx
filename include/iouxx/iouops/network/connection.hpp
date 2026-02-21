@@ -299,7 +299,7 @@ namespace iouxx::inline iouops::network {
     };
 
     template<typename Callback>
-            requires utility::eligible_callback<Callback, connection>
+        requires utility::eligible_callback<Callback, connection>
     class socket_accept_operation final : public operation_base
     {
     public:
@@ -442,77 +442,69 @@ namespace iouxx::inline iouops::network {
             -> operation<F>;
     };
 
-    template<>
-    class fixed_socket_accept<void>
+    template<typename Callback>
+        requires utility::eligible_callback<Callback, fixed_connection>
+    class fixed_socket_accept_operation final : public operation_base
     {
     public:
-        template<typename Callback>
-            requires utility::eligible_callback<Callback, fixed_connection>
-        class operation final : public operation_base
-        {
-        public:
-            template<utility::not_tag F>
-            explicit operation(iouxx::ring& ring, F&& f)
-                noexcept(utility::nothrow_constructible_callback<F>) :
-                operation_base(iouxx::op_tag<operation>, ring),
-                callback(std::forward<F>(f))
-            {}
-
-            template<typename F, typename... Args>
-            explicit operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
-                noexcept(std::is_nothrow_constructible_v<F, Args...>) :
-                operation_base(iouxx::op_tag<operation>, ring),
-                callback(std::forward<Args>(args)...)
-            {}
-
-            using callback_type = Callback;
-            using result_type = fixed_connection;
-
-            static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
-
-            operation& socket(const fixed_socket& s) & noexcept {
-                this->sock = s;
-                return *this;
-            }
-
-            operation& index(int index = IORING_FILE_INDEX_ALLOC) & noexcept {
-                this->file_index = index;
-                return *this;
-            }
-
-        private:
-            friend operation_base;
-            void build(::io_uring_sqe* sqe) & noexcept {
-                int flags = SOCK_NONBLOCK;
-                ::io_uring_prep_accept_direct(sqe, sock.index(),
-                    nullptr, nullptr, flags, file_index);
-                sqe->flags |= IOSQE_FIXED_FILE;
-            }
-
-            void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
-                utility::eligible_nothrow_callback<callback_type, result_type>) {
-                if (ev >= 0) {
-                    std::invoke_r<void>(callback, fixed_connection(sock, ev));
-                } else {
-                    std::invoke_r<void>(callback, utility::fail(-ev));
-                }
-            }
-
-            int file_index = IORING_FILE_INDEX_ALLOC;
-            network::fixed_socket sock;
-            [[no_unique_address]] callback_type callback;
-        };
-
         template<utility::not_tag F>
-        operation(iouxx::ring&, F) -> operation<std::decay_t<F>>;
+        explicit fixed_socket_accept_operation(iouxx::ring& ring, F&& f)
+            noexcept(utility::nothrow_constructible_callback<F>) :
+            operation_base(iouxx::op_tag<fixed_socket_accept_operation>, ring),
+            callback(std::forward<F>(f))
+        {}
 
         template<typename F, typename... Args>
-        operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
-            -> operation<F>;
+        explicit fixed_socket_accept_operation(iouxx::ring& ring, std::in_place_type_t<F>, Args&&... args)
+            noexcept(std::is_nothrow_constructible_v<F, Args...>) :
+            operation_base(iouxx::op_tag<fixed_socket_accept_operation>, ring),
+            callback(std::forward<Args>(args)...)
+        {}
+
+        using callback_type = Callback;
+        using result_type = fixed_connection;
+
+        static constexpr std::uint8_t opcode = IORING_OP_ACCEPT;
+
+        fixed_socket_accept_operation& socket(const fixed_socket& s) & noexcept {
+            this->sock = s;
+            return *this;
+        }
+
+        fixed_socket_accept_operation& index(int index = IORING_FILE_INDEX_ALLOC) & noexcept {
+            this->file_index = index;
+            return *this;
+        }
+
+    private:
+        friend operation_base;
+        void build(::io_uring_sqe* sqe) & noexcept {
+            int flags = SOCK_NONBLOCK;
+            ::io_uring_prep_accept_direct(sqe, sock.index(),
+                nullptr, nullptr, flags, file_index);
+            sqe->flags |= IOSQE_FIXED_FILE;
+        }
+
+        void do_callback(int ev, std::uint32_t) IOUXX_CALLBACK_NOEXCEPT_IF(
+            utility::eligible_nothrow_callback<callback_type, result_type>) {
+            if (ev >= 0) {
+                std::invoke_r<void>(callback, fixed_connection(sock, ev));
+            } else {
+                std::invoke_r<void>(callback, utility::fail(-ev));
+            }
+        }
+
+        int file_index = IORING_FILE_INDEX_ALLOC;
+        network::fixed_socket sock;
+        [[no_unique_address]] callback_type callback;
     };
 
-    template<typename Callback>
-    using fixed_socket_accept_operation = typename fixed_socket_accept<void>::template operation<Callback>;
+    template<utility::not_tag F>
+    fixed_socket_accept_operation(iouxx::ring&, F) -> fixed_socket_accept_operation<std::decay_t<F>>;
+
+    template<typename F, typename... Args>
+    fixed_socket_accept_operation(iouxx::ring&, std::in_place_type_t<F>, Args&&...)
+        -> fixed_socket_accept_operation<F>;
 
     struct multishot_accept_result {
         connection conn;
