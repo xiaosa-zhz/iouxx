@@ -117,6 +117,42 @@ namespace iouxx::details {
         fileops::rw_flag flags = fileops::rw_flag::none;
     };
 
+    template<std::size_t MaxIOvecs>
+    class vectored_read_base
+    {
+        static constexpr std::size_t max_iovecs = MaxIOvecs;
+    public:
+        template<typename Self, utility::buffer_like Buffer>
+        Self& buffer(this Self& self, std::size_t off, Buffer&& buf) noexcept {
+            auto span = utility::to_buffer(std::forward<Buffer>(buf));
+            self.iovecs[off].iov_base = span.data();
+            self.iovecs[off].iov_len = span.size();
+            return self;
+        }
+
+    protected:
+        std::array<::iovec, max_iovecs> iovecs = {};
+    };
+
+    template<std::size_t MaxIOvecs>
+    class vectored_write_base
+    {
+        static constexpr std::size_t max_iovecs = MaxIOvecs;
+    public:
+        template<typename Self, utility::readonly_buffer_like Buffer>
+        Self& buffer(this Self& self, std::size_t off, Buffer&& buf) noexcept {
+            auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
+            self.iovecs[off].iov_base = const_cast<void*>(
+                static_cast<const void*>(span.data())
+            );
+            self.iovecs[off].iov_len = span.size();
+            return self;
+        }
+
+    protected:
+        std::array<::iovec, max_iovecs> iovecs = {};
+    };
+
 } // namespace iouxx::details
 
 IOUXX_EXPORT
@@ -241,7 +277,8 @@ namespace iouxx::inline iouops::fileops {
         template<utility::eligible_callback<std::ptrdiff_t> Callback>
         class operation final : public operation_base,
             public details::file_read_write_operation_base,
-            public details::rw_flag_base
+            public details::rw_flag_base,
+            public details::vectored_read_base<max_iovecs>
         {
         public:
             template<utility::not_tag F>
@@ -263,19 +300,11 @@ namespace iouxx::inline iouops::fileops {
 
             static constexpr std::uint8_t opcode = IORING_OP_READV;
 
-            template<utility::buffer_like Buffer>
-            operation& buffer(std::size_t off, Buffer&& buf) & noexcept {
-                auto span = utility::to_buffer(std::forward<Buffer>(buf));
-                iovecs[off].iov_base = span.data();
-                iovecs[off].iov_len = span.size();
-                return *this;
-            }
-
         private:
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
                 ::io_uring_prep_readv2(sqe, fd,
-                    iovecs.data(), iovecs.size(),
+                    this->iovecs.data(), this->iovecs.size(),
                     off, std::to_underlying(flags));
                 if (is_fixed) {
                     sqe->flags |= IOSQE_FIXED_FILE;
@@ -291,7 +320,6 @@ namespace iouxx::inline iouops::fileops {
                 }
             }
 
-            std::array<::iovec, max_iovecs> iovecs = {};
             [[no_unique_address]] callback_type callback;
         };
 
@@ -310,7 +338,8 @@ namespace iouxx::inline iouops::fileops {
         template<utility::eligible_callback<std::ptrdiff_t> Callback>
         class operation final : public operation_base,
             public details::file_read_write_operation_base,
-            public details::rw_flag_base
+            public details::rw_flag_base,
+            public details::vectored_read_base<max_iovecs>
         {
         public:
             template<utility::not_tag F>
@@ -332,14 +361,6 @@ namespace iouxx::inline iouops::fileops {
 
             static constexpr std::uint8_t opcode = IORING_OP_READV_FIXED;
 
-            template<utility::buffer_like Buffer>
-            operation& buffer(std::size_t off, Buffer&& buf) & noexcept {
-                auto span = utility::to_buffer(std::forward<Buffer>(buf));
-                iovecs[off].iov_base = span.data();
-                iovecs[off].iov_len = span.size();
-                return *this;
-            }
-
             operation& index(int index) & noexcept {
                 this->buf_index = index;
                 return *this;
@@ -349,7 +370,7 @@ namespace iouxx::inline iouops::fileops {
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
                 ::io_uring_prep_readv_fixed(sqe, fd,
-                    iovecs.data(), iovecs.size(),
+                    this->iovecs.data(), this->iovecs.size(),
                     off, std::to_underlying(flags),
                     buf_index);
                 if (is_fixed) {
@@ -367,7 +388,6 @@ namespace iouxx::inline iouops::fileops {
             }
 
             int buf_index = alloc_index;
-            std::array<::iovec, max_iovecs> iovecs = {};
             [[no_unique_address]] callback_type callback;
         };
 
@@ -497,7 +517,8 @@ namespace iouxx::inline iouops::fileops {
         template<utility::eligible_callback<std::ptrdiff_t> Callback>
         class operation final : public operation_base,
             public details::file_read_write_operation_base,
-            public details::rw_flag_base
+            public details::rw_flag_base,
+            public details::vectored_write_base<max_iovecs>
         {
         public:
             template<utility::not_tag F>
@@ -519,21 +540,11 @@ namespace iouxx::inline iouops::fileops {
 
             static constexpr std::uint8_t opcode = IORING_OP_WRITEV;
 
-            template<utility::readonly_buffer_like Buffer>
-            operation& buffer(std::size_t off, Buffer&& buf) & noexcept {
-                auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
-                iovecs[off].iov_base = const_cast<void*>(
-                    static_cast<const void*>(span.data())
-                );
-                iovecs[off].iov_len = span.size();
-                return *this;
-            }
-
         private:
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
                 ::io_uring_prep_writev2(sqe, fd,
-                    iovecs.data(), iovecs.size(),
+                    this->iovecs.data(), this->iovecs.size(),
                     off, std::to_underlying(flags));
                 if (is_fixed) {
                     sqe->flags |= IOSQE_FIXED_FILE;
@@ -549,7 +560,6 @@ namespace iouxx::inline iouops::fileops {
                 }
             }
 
-            std::array<::iovec, max_iovecs> iovecs = {};
             [[no_unique_address]] callback_type callback;
         };
 
@@ -568,7 +578,8 @@ namespace iouxx::inline iouops::fileops {
         template<utility::eligible_callback<std::ptrdiff_t> Callback>
         class operation final : public operation_base,
             public details::file_read_write_operation_base,
-            public details::rw_flag_base
+            public details::rw_flag_base,
+            public details::vectored_write_base<max_iovecs>
         {
         public:
             template<utility::not_tag F>
@@ -590,16 +601,6 @@ namespace iouxx::inline iouops::fileops {
 
             static constexpr std::uint8_t opcode = IORING_OP_WRITEV_FIXED;
 
-            template<utility::readonly_buffer_like Buffer>
-            operation& buffer(std::size_t off, Buffer&& buf) & noexcept {
-                auto span = utility::to_readonly_buffer(std::forward<Buffer>(buf));
-                iovecs[off].iov_base = const_cast<void*>(
-                    static_cast<const void*>(span.data())
-                );
-                iovecs[off].iov_len = span.size();
-                return *this;
-            }
-
             operation& index(int index) & noexcept {
                 this->buf_index = index;
                 return *this;
@@ -609,7 +610,7 @@ namespace iouxx::inline iouops::fileops {
             friend operation_base;
             void build(::io_uring_sqe* sqe) & noexcept {
                 ::io_uring_prep_writev_fixed(sqe, fd,
-                    iovecs.data(), iovecs.size(),
+                    this->iovecs.data(), this->iovecs.size(),
                     off, std::to_underlying(flags),
                     buf_index);
                 if (is_fixed) {
@@ -627,7 +628,6 @@ namespace iouxx::inline iouops::fileops {
             }
 
             int buf_index = alloc_index;
-            std::array<::iovec, max_iovecs> iovecs = {};
             [[no_unique_address]] callback_type callback;
         };
 
