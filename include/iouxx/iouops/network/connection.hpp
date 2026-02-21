@@ -231,8 +231,7 @@ namespace iouxx::inline iouops::network {
         using info_type = PeerInfo;
         using accept_result_type = accept_result<info_type>;
     public:
-        template<typename Callback>
-            requires utility::eligible_callback<Callback, accept_result_type>
+        template<utility::eligible_callback<accept_result_type> Callback>
         class operation final : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
@@ -298,8 +297,7 @@ namespace iouxx::inline iouops::network {
             -> operation<F>;
     };
 
-    template<typename Callback>
-        requires utility::eligible_callback<Callback, connection>
+    template<utility::eligible_callback<connection> Callback>
     class socket_accept_operation final : public operation_base
     {
     public:
@@ -368,8 +366,7 @@ namespace iouxx::inline iouops::network {
         using info_type = PeerInfo;
         using accept_result_type = fixed_accept_result<info_type>;
     public:
-        template<typename Callback>
-            requires utility::eligible_callback<Callback, accept_result_type>
+        template<utility::eligible_callback<accept_result_type> Callback>
         class operation final : public operation_base,
             public details::peer_socket_info_base<info_type>
         {
@@ -442,8 +439,7 @@ namespace iouxx::inline iouops::network {
             -> operation<F>;
     };
 
-    template<typename Callback>
-        requires utility::eligible_callback<Callback, fixed_connection>
+    template<utility::eligible_callback<fixed_connection> Callback>
     class fixed_socket_accept_operation final : public operation_base
     {
     public:
