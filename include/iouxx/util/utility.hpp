@@ -123,6 +123,10 @@ namespace iouxx::utility {
         return std::span<ByteType>(static_cast<ByteType*>(iov.iov_base), iov.iov_len);
     }
 
+    // Fetch the first result type that Callback is eligible for.
+    template<typename Callback, typename... PossibleResults>
+    struct chosen_result;
+
     template<template<typename...> class TMP, typename T>
     inline constexpr bool is_specialization_of_v = false;
 
@@ -201,11 +205,14 @@ namespace iouxx::utility {
     template<typename Callback, typename... PossibleResults>
     concept eligible_nothrow_alternative_callback =
         eligible_alternative_callback<Callback, PossibleResults...>
-        && (... && eligible_nothrow_callback<Callback, PossibleResults>);
+        && (chosen_result<Callback, PossibleResults...>::nothrow);
 
-    // Fetch the first result type that Callback is eligible for.
-    template<typename Callback, typename... PossibleResults>
-    struct chosen_result;
+    template<typename Callback, typename... AllPossibleResults>
+    concept eligible_overloaded_callback = (eligible_callback<Callback, AllPossibleResults> && ...);
+
+    template<typename Callback, typename... AllPossibleResults>
+    concept eligible_nothrow_overloaded_callback = eligible_overloaded_callback<Callback, AllPossibleResults...>
+        && (eligible_nothrow_callback<Callback, AllPossibleResults> && ...);
 
     template<typename Callback>
     struct chosen_result<Callback> {
