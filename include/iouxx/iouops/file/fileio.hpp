@@ -117,6 +117,19 @@ namespace iouxx::details {
         fileops::rw_flag flags = fileops::rw_flag::none;
     };
 
+    class raw_vectored_io_base
+    {
+    public:
+        template<typename Self>
+        Self& raw_iovecs(this Self& self, std::span<const ::iovec> raw) noexcept {
+            self.iovecs = raw;
+            return self;
+        }
+
+    protected:
+        std::span<const ::iovec> iovecs;
+    };
+
     template<std::size_t MaxIOvecs>
     class vectored_read_base
     {
@@ -133,6 +146,9 @@ namespace iouxx::details {
     protected:
         std::array<::iovec, max_iovecs> iovecs = {};
     };
+
+    template<>
+    class vectored_read_base<0> : public raw_vectored_io_base {};
 
     template<std::size_t MaxIOvecs>
     class vectored_write_base
@@ -152,6 +168,9 @@ namespace iouxx::details {
     protected:
         std::array<::iovec, max_iovecs> iovecs = {};
     };
+
+    template<>
+    class vectored_write_base<0> : public raw_vectored_io_base {};
 
     class fixed_buffer_base
     {
