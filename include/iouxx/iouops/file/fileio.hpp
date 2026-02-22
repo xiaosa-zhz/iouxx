@@ -163,7 +163,7 @@ namespace iouxx::details {
         }
 
     protected:
-        int buf_index = fileops::alloc_index;
+        int buf_index = -1;
     };
 
 } // namespace iouxx::details
