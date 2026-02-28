@@ -19,10 +19,13 @@
 
 #ifndef IOUXX_USE_CXX_MODULE
 
+#include <sys/types.h> // __SYSCALL_SLONG_TYPE
+#include <bits/time.h> // CLOCK_BOOTTIME
+
 #include <chrono>
 #include <ctime>
 #include <cstdlib> // IWYU pragma: keep
-#include <bits/time.h> // CLOCK_BOOTTIME
+
 #include "macro_config.hpp" // IWYU pragma: keep
 #include "cxxmodule_helper.hpp" // IWYU pragma: keep
 
@@ -48,8 +51,7 @@ namespace iouxx {
             return time_point(duration{ns});
         }
 #else // !CLOCK_BOOTTIME
-#warning "CLOCK_BOOTTIME not defined!"
-        static time_point now() noexcept = delete;
+        static time_point now() noexcept = delete("CLOCK_BOOTTIME not defined!");
 #endif // CLOCK_BOOTTIME
     };
 
@@ -58,7 +60,7 @@ namespace iouxx {
         rep total_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(d).count();
         ::timespec ts{};
         ts.tv_sec  = static_cast<time_t>(total_ns / 1'000'000'000);
-        ts.tv_nsec = static_cast<long>(total_ns % 1'000'000'000);
+        ts.tv_nsec = static_cast<__SYSCALL_SLONG_TYPE>(total_ns % 1'000'000'000);
         return ts;
     }
 
@@ -74,10 +76,7 @@ namespace iouxx {
         return boottime_clock::time_point(from_timespec_duration(ts));
     }
 
-    // libcxx has not implemented is_clock_v yet
-#if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
     static_assert(std::chrono::is_clock_v<boottime_clock>, "boottime_clock must satisfy clock requirements");
-#endif
 
 } // namespace iouxx
 
