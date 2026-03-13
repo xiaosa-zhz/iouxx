@@ -41,7 +41,7 @@ int main() {
         wait_op.futex_word(fake_futex)
             .expected_value(0);
         if (auto res = wait_op.submit_and_wait()) {
-            std::println("Futex wait returned: {}", fake_futex);
+            std::println("Futex wait returned: {}", std::atomic_ref(fake_futex).load(std::memory_order_relaxed));
         } else {
             std::println("Futex wait failed: {}", res.error().message());
             std::exit(1);
@@ -49,7 +49,7 @@ int main() {
     });
 
     std::this_thread::sleep_for(100ms);
-    std::atomic_ref(fake_futex).store(1);
+    std::atomic_ref(fake_futex).store(1, std::memory_order_relaxed);
     iouxx::futex_wake_operation wake_op = ring.make_sync<iouxx::futex_wake_operation>();
     wake_op.futex_word(fake_futex);
     if (auto res = wake_op.submit_and_wait()) {
