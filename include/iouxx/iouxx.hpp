@@ -16,6 +16,7 @@
 #include "iouops/futex.hpp" // IWYU pragma: export
 #include "iouops/network/socketio.hpp" // IWYU pragma: export
 #include "iouops/file/fileio.hpp" // IWYU pragma: export
+#include "iouops/file/directory.hpp" // IWYU pragma: export
 #include "iouops/file/poll.hpp" // IWYU pragma: export
 
 namespace iouxx::details {

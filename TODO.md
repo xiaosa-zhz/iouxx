@@ -11,7 +11,6 @@
 ## Medium Priority
 - [ ] Add epoll support
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
-- [ ] Add file system related operations
 
 ## Low Priority
 - [ ] Remove fallback around chrono when libc++ implementation is complete
@@ -19,6 +18,7 @@
 - [ ] Use more start_lifetime_as in buffer related operations when supported
 
 ## Completed
+- [x] ~~Add file system related operations~~
 - [x] ~~Find a suitable environment to really test networking~~
 - [x] ~~Add direct fd tests in network tests~~
 - [x] ~~Add async mutex support~~

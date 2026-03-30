@@ -15,5 +15,6 @@ extern "C++" {
 #include "iouxx/iouops/file/file.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/file/openclose.hpp" // IWYU pragma: keep
 #include "iouxx/iouops/file/fileio.hpp" // IWYU pragma: keep
+#include "iouxx/iouops/file/directory.hpp" // IWYU pragma: keep
 
 }
