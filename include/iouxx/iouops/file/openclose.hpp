@@ -520,7 +520,7 @@ namespace iouxx::inline iouops::fileops {
     // Reverse operation of fixed_file_register_operation
     // Create a normal fd from fixed file index
     template<utility::eligible_callback<file> Callback>
-    class fixed_file_install_operation
+    class fixed_file_install_operation final : public operation_base
     {
     public:
         template<utility::not_tag F>
