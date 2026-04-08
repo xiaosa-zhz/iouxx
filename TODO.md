@@ -5,6 +5,7 @@
 - [ ] Add provided ring buffer and add support in recv/read operations
 
 ## High Priority
+- [ ] Redesign all multishot operations to correctly use IOSQE_BUFFER_SELECT
 - [ ] Add module build for gcc when gcc 16 released
 - [ ] Find a suitable environment to really test fixed fd/buffer
 
