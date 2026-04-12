@@ -6,6 +6,8 @@
 
 ## High Priority
 - [ ] Redesign all multishot operations to correctly use IOSQE_BUFFER_SELECT
+- [ ] Find a way to add IOSQE_IO_LINK support
+- [ ] (with ^^^) Add support for batch submission and completion
 - [ ] Add module build for gcc when gcc 16 released
 - [ ] Find a suitable environment to really test fixed fd/buffer
 
