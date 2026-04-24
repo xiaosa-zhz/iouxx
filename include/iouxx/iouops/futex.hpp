@@ -162,7 +162,7 @@ namespace iouxx::inline iouops {
         }
 
         futex_wake_operation& notify_all() & noexcept {
-            this->wakeups = INT_MAX;
+            this->wakeups = std::numeric_limits<int>::max();
             return *this;
         }
 
