@@ -61,9 +61,18 @@ inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38087"_soc
 #endif
 static std::atomic<bool> server_started = false; // publish after listen is ready
 static bool server_sockcmd_exists = true;
-static bool server_bind_op_exists = true;
 static bool client_sockcmd_exists = true;
+// FIXME: WSL2 works not well with io_uring's bind op since it use a
+//  seccomp filter to notify host OS on bind syscall, but the filter
+//  is not applied to io_uring's bind op. Workaround for now.
+#define IOUXX_TEST_FORCE_SYSCALL_BIND_LISTEN
+#ifdef IOUXX_TEST_FORCE_SYSCALL_BIND_LISTEN
+constexpr static bool server_bind_op_exists = false;
+constexpr static bool client_bind_op_exists = false;
+#else
+static bool server_bind_op_exists = true;
 static bool client_bind_op_exists = true;
+#endif
 
 // If encountered unsupported operation, skip this test
 static void exit_if_function_not_supported(const std::error_code& ec) noexcept {
@@ -132,6 +141,7 @@ static void echo_server() {
 
     // Not until kernel 6.11 do io_uring have op bind and op listen
 
+#ifndef IOUXX_TEST_FORCE_SYSCALL_BIND_LISTEN
     [&ring, &sock] {
         auto bind = ring.make_sync<network::socket_bind<network::ip::socket_v4_info>::operation>();
         bind.socket(sock)
@@ -149,6 +159,7 @@ static void echo_server() {
             std::exit(1);
         }
     }();
+#endif // IOUXX_TEST_FORCE_SYSCALL_BIND_LISTEN
 
     if (server_bind_op_exists) {
         [&ring, &sock] {
@@ -346,6 +357,7 @@ static void echo_client() {
     // Not until kernel 6.11 do io_uring have op bind and op listen
 
     // optional bind client local address (useful to show symmetry)
+#ifndef IOUXX_TEST_FORCE_SYSCALL_BIND_LISTEN
     [&ring, &sock] {
         auto bind = ring.make_sync<network::socket_bind<network::ip::socket_v4_info>::operation>();
         bind.socket(sock)
@@ -363,6 +375,7 @@ static void echo_client() {
             std::exit(1);
         }
     }();
+#endif // IOUXX_TEST_FORCE_SYSCALL_BIND_LISTEN
 
     if (!client_bind_op_exists) {
         ::sockaddr_in addr = client_addr.to_system_sockaddr();
