@@ -15,11 +15,6 @@ local function scan_and_add_tests(testdir)
     end
 end
 
-local function add_linkdir_rpath(dir)
-    add_linkdirs(dir)
-    add_rpathdirs(dir)
-end
-
 local function configure_toolchains(name)
     if name == "clang" then
         set_toolchains("clang")
@@ -30,7 +25,6 @@ local function configure_toolchains(name)
         add_cxxflags("-Wno-interference-size")
         add_cxxflags("-fcontracts")
         add_ldflags("-fcontracts")
-        add_linkdir_rpath("/usr/local/lib/../lib64")
     else
         raise("unknown toolchain: %s", name)
     end
