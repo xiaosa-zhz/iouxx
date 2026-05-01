@@ -22,8 +22,8 @@ local function configure_toolchains(name)
     elseif name == "gcc" then
         set_toolchains("gcc")
         set_runtimes("stdc++_shared")
-        add_cxxflags("-Wno-interference-size")
-        add_cxxflags("-fcontracts")
+        add_cxflags("-Wno-interference-size")
+        add_cxflags("-fcontracts")
         add_ldflags("-fcontracts")
     else
         raise("unknown toolchain: %s", name)
