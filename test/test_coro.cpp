@@ -22,7 +22,13 @@ import iouxx;
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
 
-#include <cassert>
+#define TEST_ASSERT(...) do { \
+    if (!(__VA_ARGS__)) { \
+        std::println("Assertion failed: {}, {}:{}\n", #__VA_ARGS__, \
+        __FILE__, __LINE__); \
+        std::exit(-(__COUNTER__ + 1)); \
+    } \
+} while(0)
 
 // Copy from mylib::task and mylib::detached_task
 
@@ -41,7 +47,7 @@ namespace mylib {
             using storage_type = std::variant<empty_type, DataType, exception_type>;
 
             void throw_if_exception(this auto&& self) {
-                assert(self.storage.index() != empty && "Task result is uninitialized.");
+                TEST_ASSERT(self.storage.index() != empty && "Task result is uninitialized.");
                 if (exception_type* ex = std::get_if<exception>(&self.storage)) {
                     std::rethrow_exception(*ex);
                 }
@@ -194,7 +200,7 @@ namespace mylib {
         // can only be called once
         // once called, detached_task object is not responsible for destroying the coroutine
         void start() && {
-            assert(this->handle && "Task already start!");
+            TEST_ASSERT(this->handle && "Task already start!");
             std::exchange(this->handle, nullptr).resume();
         }
 
