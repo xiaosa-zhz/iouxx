@@ -69,6 +69,7 @@ target("llvm-module")
     add_defines("IOUXX_CONFIG_USE_CXX_MODULE")
     scan_and_add_tests("test")
 
+-- FIXME: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124264
 -- target("gnu-module")
 --     set_kind("binary")
 --     add_files("src/modules/**/*.mpp", { public = true })
