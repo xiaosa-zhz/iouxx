@@ -680,13 +680,14 @@ namespace iouxx::inline iouops::network::ip {
         friend constexpr bool operator==(const socket_v6_info&, const socket_v6_info&) = default;
 
         // Warning: invalid input results in UNDEFINED BEHAVIOR
-        static constexpr socket_v6_info from_string_uncheck(const std::string_view str) noexcept {
+        static constexpr socket_v6_info from_string_uncheck(std::string_view str) noexcept {
             namespace stdr = std::ranges;
             namespace stdv = std::views;
             using namespace std::literals;
             std::string_view sep;
             if (str.contains("]:"sv)) {
                 sep = "]:"sv;
+                str.remove_prefix(1); // remove leading '['
             } else if (str.contains('/')) {
                 sep = "/"sv;
             } else if (str.contains('#')) {
@@ -702,9 +703,6 @@ namespace iouxx::inline iouops::network::ip {
                 ++part_count;
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (part_count == 1) {
-                    if (sub.front() == '[') {
-                        sub.remove_prefix(1); // remove leading '['
-                    }
                     addr = address_v6::from_string_uncheck(sub);
                 } else {
                     p = ip::port::from_string_uncheck(sub);
@@ -713,7 +711,7 @@ namespace iouxx::inline iouops::network::ip {
             return socket_v6_info(addr, p);
         }
 
-        static constexpr auto from_string(const std::string_view str)
+        static constexpr auto from_string(std::string_view str)
             noexcept -> std::expected<socket_v6_info, std::error_code> {
             // [ipv6]:port (RFC 5952 recommended form)
             // ipv6/port
@@ -725,6 +723,8 @@ namespace iouxx::inline iouops::network::ip {
             if (str.contains("]:"sv)) {
                 if (str.front() != '[') {
                     return utility::fail_invalid_argument();
+                } else {
+                    str.remove_prefix(1); // remove leading '['
                 }
                 sep = "]:"sv;
             } else if (str.contains('/')) {
@@ -745,9 +745,6 @@ namespace iouxx::inline iouops::network::ip {
                 }
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 if (part_count == 1) {
-                    if (sep == "]:"sv) {
-                        sub.remove_prefix(1); // remove leading '['
-                    }
                     auto addr_res = address_v6::from_string(sub);
                     if (!addr_res) {
                         return std::unexpected(addr_res.error());
