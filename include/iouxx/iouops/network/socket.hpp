@@ -398,7 +398,6 @@ namespace iouxx::inline iouops::network {
 
 } // namespace iouxx::iouops::network
 
-IOUXX_EXPORT
 template<>
 struct std::formatter<iouxx::iouops::network::unspecified_socket_info>
 {

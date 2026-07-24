@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
@@ -17,9 +20,6 @@ import iouxx;
 #include "iouxx/iouops/file/fileio.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-
-#include <stdio.h>
-#include <stdlib.h>
 
 #define LOG_INFO(fmtstr, ...) \
     std::println("[INFO] " fmtstr __VA_OPT__(,) __VA_ARGS__)

@@ -1,4 +1,5 @@
-#include <system_error>
+#include <stdio.h>
+
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
@@ -6,6 +7,7 @@ import iouxx;
 
 #else // !IOUXX_CONFIG_USE_CXX_MODULE
 
+#include <system_error>
 #include <string_view>
 #include <string>
 #include <span>

@@ -1,3 +1,5 @@
+#include <linux/futex.h> // test for FUTEX2_SIZE_U32
+
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
 import std;
@@ -16,8 +18,6 @@ import iouxx;
 #include "iouxx/iouops/futex.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-
-#include <linux/futex.h> // test for FUTEX2_SIZE_U32
 
 #ifndef FUTEX2_SIZE_U32
 

@@ -1,5 +1,10 @@
 #ifdef IOUXX_CONFIG_USE_CXX_MODULE
 
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <errno.h>
+
 import std;
 import iouxx;
 import iouxx.util;
@@ -29,11 +34,6 @@ import iouxx.util;
 #include "iouxx/iouops/network/socketio.hpp"
 
 #endif // IOUXX_CONFIG_USE_CXX_MODULE
-
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <cerrno>
 
 using namespace iouxx;
 using namespace std::literals;

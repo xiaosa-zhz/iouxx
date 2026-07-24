@@ -23,6 +23,8 @@ local function configure_toolchains(name)
         set_toolchains("gcc")
         set_runtimes("stdc++_shared")
         add_cxflags("-Wno-interference-size")
+-- Note: module build passes with gcc trunk (GCC 17), but it dont work well with contracts.
+-- It could be disabled by defining IOUXX_CONFIG_NOT_USE_CONTRACTS and remove these flags.
         add_cxflags("-fcontracts")
         add_ldflags("-fcontracts")
     else
