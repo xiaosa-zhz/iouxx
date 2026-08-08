@@ -25,8 +25,10 @@ local function configure_toolchains(name)
         add_cxflags("-Wno-interference-size")
 -- Note: module build passes with gcc trunk (GCC 17), but it dont work well with contracts.
 -- It could be disabled by defining IOUXX_CONFIG_NOT_USE_CONTRACTS and remove these flags.
+-- FIXME: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124264
         add_cxflags("-fcontracts")
         add_ldflags("-fcontracts")
+        -- add_defines("IOUXX_CONFIG_NOT_USE_CONTRACTS")
     else
         raise("unknown toolchain: %s", name)
     end
@@ -71,7 +73,7 @@ target("llvm-module")
     add_defines("IOUXX_CONFIG_USE_CXX_MODULE")
     scan_and_add_tests("test")
 
--- FIXME: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124264
+-- TODO: see details in configure_toolchains()
 -- target("gnu-module")
 --     set_kind("binary")
 --     add_files("src/modules/**/*.mpp", { public = true })
