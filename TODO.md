@@ -16,11 +16,11 @@
 - [ ] Add version check for libiouxx itself when 0.1.0 is released
 
 ## Low Priority
-- [ ] Remove fallback around chrono when libc++ implementation is complete
 - [ ] Remove start_lifetime_as in test_network.cpp when supported
 - [ ] Use more start_lifetime_as in buffer related operations when supported
 
 ## Completed
+- [x] Remove fallback around chrono when libc++ implementation is complete
 - [x] ~~Add file system related operations~~
 - [x] ~~Find a suitable environment to really test networking~~
 - [x] ~~Add direct fd tests in network tests~~
