@@ -2,7 +2,7 @@ add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_includedirs("include")
 set_languages("c++26")
 set_encodings("utf-8")
--- Note: If anyone wants to enable -vD flags or to debug building itself, disable CBD gen.
+-- Note: If anyone wants to enable -vD flags or to debug building itself, disable CDB gen.
 --       It is very laggy and will generate a lot of more output.
 add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
 
@@ -52,8 +52,9 @@ local function add_module_test_target(name)
         set_policy("build.c++.modules", true)
         add_files("src/modules/**.mpp", { public = true })
         add_defines("IOUXX_CONFIG_USE_CXX_MODULE", {public = true})
-        set_default(false)
         configure_toolchains(name)
+        set_default(false)
+        set_policy("generator.compile_commands", false)
     target_end()
     target(name .. "-modules")
         set_kind("moduleonly")
@@ -61,6 +62,7 @@ local function add_module_test_target(name)
         configure_toolchains(name)
         scan_and_add_tests("test")
         set_default(false)
+        set_policy("generator.compile_commands", false)
     target_end()
 end
 
@@ -71,6 +73,7 @@ local function add_test_target(name)
         configure_toolchains(name)
         scan_and_add_tests("test")
         set_default(false)
+        -- This target generates CDB
     target_end()
 end
 
@@ -78,6 +81,7 @@ target("iouxx")
     set_kind("headeronly")
     add_packages("liburing")
     add_headerfiles("include/(**.hpp)", {public = true})
+    set_policy("generator.compile_commands", false)
 
 target("iouxx-modules")
     set_kind("moduleonly")
@@ -86,6 +90,7 @@ target("iouxx-modules")
     add_deps("iouxx")
     add_files("src/modules/**.mpp", { public = true })
     add_defines("IOUXX_CONFIG_USE_CXX_MODULE", {public = true})
+    set_policy("generator.compile_commands", false)
 
 add_test_target("llvm")
 add_test_target("gnu")
