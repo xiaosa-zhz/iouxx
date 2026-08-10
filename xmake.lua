@@ -2,6 +2,8 @@ add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_includedirs("include")
 set_languages("c++26")
 set_encodings("utf-8")
+-- Note: If anyone wants to enable -vD flags or to debug building itself, disable CBD gen.
+--       It is very laggy and will generate a lot of more output.
 add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
 
 local liburing_min_version = "2.14" -- config liburing minimum version here
@@ -32,8 +34,8 @@ local function configure_toolchains(name)
         set_toolchains("gcc")
         set_runtimes("stdc++_shared")
         add_cxflags("-Wno-interference-size")
--- Note: module build passes with gcc trunk (GCC 17), but it dont work well with contracts.
--- It could be disabled by defining IOUXX_CONFIG_NOT_USE_CONTRACTS and remove these flags.
+-- Note: Module build passes with gcc trunk (GCC 17), but it dont work well with contracts.
+--       It could be disabled by defining IOUXX_CONFIG_NOT_USE_CONTRACTS and remove these flags.
 -- FIXME: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124264
         -- add_cxflags("-fcontracts")
         -- add_ldflags("-fcontracts")
