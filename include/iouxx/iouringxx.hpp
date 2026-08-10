@@ -741,21 +741,22 @@ namespace iouxx {
             return version_info::current();
         }
 
-        // Input minimum required version.
-        // Returns TRUE if requirement > current version (i.e. NOT supported).
-        static constexpr bool check_version(version_info requirement) noexcept {
+        // Check if current liburing version is compatible with the requirement
+        static constexpr bool version_compat_with(version_info requirement) noexcept {
             auto&& [major, minor] = requirement;
+            // Note: original liburing version check API returns false
+            //  if input version is LARGER than lib version.
+            //  Yes, it is pretty weird.
             if consteval {
-                return IO_URING_CHECK_VERSION(major, minor);
+                return !IO_URING_CHECK_VERSION(major, minor);
             } else {
-                return ::io_uring_check_version(major, minor);
+                return !::io_uring_check_version(major, minor);
             }
         }
 
         // See above, input string in "major.minor" format.
-        // Returns TRUE if NOT supported.
-        static constexpr bool check_version(std::string_view requirement) noexcept {
-            return check_version(version_info::from_string(requirement));
+        static constexpr bool version_compat_with(std::string_view requirement) noexcept {
+            return version_compat_with(version_info::from_string(requirement));
         }
 
         bool valid() const noexcept { return raw_ring.ring_fd >= 0; }
