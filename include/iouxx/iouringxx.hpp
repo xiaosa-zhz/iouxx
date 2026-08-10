@@ -108,11 +108,6 @@ namespace iouxx::details {
         return static_cast<::__u64>(reinterpret_cast<std::uintptr_t>(cb));
     }
 
-    struct resource_tag_helper {
-        std::int32_t res;
-        std::uint32_t cqe_flags;
-    };
-
 } // namespace iouxx::details
 
 IOUXX_EXPORT
