@@ -1,6 +1,5 @@
-add_rules("mode.debug", "mode.release")
+add_rules("mode.debug", "mode.release", "mode.releasedbg")
 add_includedirs("include")
-add_defines("IOUXX_CONFIG_ENABLE_FEATURE_TESTS")
 set_languages("c++26")
 set_encodings("utf-8")
 add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
@@ -19,6 +18,7 @@ local function scan_and_add_tests(testdir)
                 "IOUXX_LIBURING_MIN_VERSION=\"" .. liburing_min_version .. "\"",
                 "IOUXX_LIBURING_MIN_MAJOR=" .. liburing_min_major,
                 "IOUXX_LIBURING_MIN_MINOR=" .. liburing_min_minor,
+                "IOUXX_CONFIG_ENABLE_FEATURE_TESTS"
             }
         })
     end
@@ -75,19 +75,15 @@ end
 target("iouxx")
     set_kind("headeronly")
     add_packages("liburing")
-    add_headerfiles("include/**.hpp", { public = true })
+    add_headerfiles("include/(**.hpp)", {public = true})
 
 target("iouxx-modules")
     set_kind("moduleonly")
     add_packages("liburing", {public = true})
     set_policy("build.c++.modules", true)
+    add_deps("iouxx")
     add_files("src/modules/**.mpp", { public = true })
     add_defines("IOUXX_CONFIG_USE_CXX_MODULE", {public = true})
-    before_package(function (target)
-        local config = import("core.project.config")
-        target:set("installdir", path.join(target:packagedir(), target:plat(), target:arch(), config.mode()))
-        import("rules.c++/modules.install", {rootdir = os.programdir()}).install(target)
-    end)
 
 add_test_target("llvm")
 add_test_target("gnu")
