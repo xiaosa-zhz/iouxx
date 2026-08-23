@@ -119,7 +119,7 @@ namespace iouxx::inline iouops::network::ip {
         static constexpr address_v4 from_string_uncheck(const std::string_view ipv4_str) noexcept {
             namespace stdr = std::ranges;
             namespace stdv = std::views;
-            auto parts = ipv4_str | stdv::split('.');
+            auto parts = stdv::split(ipv4_str, '.');
             std::array<std::uint8_t, 4> part_results{};
             std::size_t count = 0;
             for (auto&& part : parts) {
@@ -145,7 +145,7 @@ namespace iouxx::inline iouops::network::ip {
             }
             namespace stdr = std::ranges;
             namespace stdv = std::views;
-            auto parts = ipv4_str | stdv::split('.');
+            auto parts = stdv::split(ipv4_str, '.');
             std::array<std::uint8_t, 4> part_results{};
             std::size_t count = 0;
             for (auto&& part : parts) {
@@ -263,7 +263,7 @@ namespace iouxx::inline iouops::network::ip {
                 }
             };
 
-            auto parts_by_double_colon = ipv6_str | stdv::split("::"sv);
+            auto parts_by_double_colon = stdv::split(ipv6_str, "::"sv);
             for (auto&& part : parts_by_double_colon) {
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 ++double_colon_count;
@@ -273,7 +273,7 @@ namespace iouxx::inline iouops::network::ip {
                         // Leading "::"
                         continue;
                     }
-                    auto parts_by_colon = sub | stdv::split(':');
+                    auto parts_by_colon = stdv::split(sub, ':');
                     for (auto&& part : parts_by_colon) {
                         std::string_view sub(stdr::data(part), stdr::size(part));
                         parse_one_section(sub);
@@ -285,7 +285,7 @@ namespace iouxx::inline iouops::network::ip {
                         continue;
                     }
                     const std::size_t first_part_count = part_count;
-                    auto parts_by_colon = sub | stdv::split(':');
+                    auto parts_by_colon = stdv::split(sub, ':');
                     for (auto&& part : parts_by_colon) {
                         std::string_view sub(stdr::data(part), stdr::size(part));
                         parse_one_section(sub);
@@ -370,7 +370,7 @@ namespace iouxx::inline iouops::network::ip {
                 return std::errc();
             };
 
-            auto parts_by_double_colon = ipv6_str | stdv::split("::"sv);
+            auto parts_by_double_colon = stdv::split(ipv6_str, "::"sv);
             for (auto&& part : parts_by_double_colon) {
                 std::string_view sub(stdr::data(part), stdr::size(part));
                 ++double_colon_count;
@@ -380,7 +380,7 @@ namespace iouxx::inline iouops::network::ip {
                         // Leading "::"
                         continue;
                     }
-                    auto parts_by_colon = sub | stdv::split(':');
+                    auto parts_by_colon = stdv::split(sub, ':');
                     for (auto&& part : parts_by_colon) {
                         if (seen_ipv4) {
                             // IPv4 part must be at the end
@@ -408,7 +408,7 @@ namespace iouxx::inline iouops::network::ip {
                         continue;
                     }
                     const std::size_t first_part_count = part_count;
-                    auto parts_by_colon = sub | stdv::split(':');
+                    auto parts_by_colon = stdv::split(sub, ':');
                     for (auto&& part : parts_by_colon) {
                         if (seen_ipv4) {
                             // IPv4 part must be at the end
@@ -572,7 +572,7 @@ namespace iouxx::inline iouops::network::ip {
             if (str.contains('/')) {
                 seperator = '/';
             }
-            auto parts = str | stdv::split(seperator);
+            auto parts = stdv::split(str, seperator);
             std::size_t part_count = 0;
             address_v4 addr;
             ip::port p;
@@ -601,7 +601,7 @@ namespace iouxx::inline iouops::network::ip {
             } else {
                 return utility::fail_invalid_argument();
             }
-            auto parts = str | stdv::split(seperator);
+            auto parts = stdv::split(str, seperator);
             std::size_t part_count = 0;
             address_v4 addr;
             ip::port p;
@@ -695,7 +695,7 @@ namespace iouxx::inline iouops::network::ip {
             } else {
                 std::unreachable();
             }
-            auto parts = str | stdv::split(sep);
+            auto parts = stdv::split(str, sep);
             std::size_t part_count = 0;
             address_v6 addr;
             ip::port p;
@@ -734,7 +734,7 @@ namespace iouxx::inline iouops::network::ip {
             } else {
                 return utility::fail_invalid_argument();
             }
-            auto parts = str | stdv::split(sep);
+            auto parts = stdv::split(str, sep);
             std::size_t part_count = 0;
             address_v6 addr;
             ip::port p;

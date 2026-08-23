@@ -4,7 +4,7 @@ set_languages("c++26")
 set_encodings("utf-8")
 -- Note: If anyone wants to enable -vD flags or to debug building itself, disable CDB gen.
 --       It is very laggy and will generate a lot of more output.
-add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
+-- add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
 
 local liburing_min_version = "2.14" -- config liburing minimum version here
 local liburing_min_major, liburing_min_minor = liburing_min_version:match("^(%d+)%.(%d+)$")
@@ -34,12 +34,16 @@ local function configure_toolchains(name)
         set_toolchains("gcc")
         set_runtimes("stdc++_shared")
         add_cxflags("-Wno-interference-size")
--- Note: Module build passes with gcc trunk (GCC 17), but it dont work well with contracts.
+-- Note: Module build passes with latest GCC (16.2), but it dont work well with contracts.
 --       It could be disabled by defining IOUXX_CONFIG_NOT_USE_CONTRACTS and remove these flags.
 -- FIXME: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124264
         -- add_cxflags("-fcontracts")
         -- add_ldflags("-fcontracts")
         add_defines("IOUXX_CONFIG_NOT_USE_CONTRACTS")
+    elseif name == "llvm-dropin" then
+        set_toolchains("clang")
+        set_runtimes("stdc++_shared")
+        add_ldflags("-lgcc_s")
     else
         raise("unknown toolchain: %s", name)
     end
@@ -94,5 +98,7 @@ target("iouxx-modules")
 
 add_test_target("llvm")
 add_test_target("gnu")
+add_test_target("llvm-dropin")
 add_module_test_target("llvm")
 add_module_test_target("gnu") -- TODO: see details in configure_toolchains()
+add_module_test_target("llvm-dropin")
