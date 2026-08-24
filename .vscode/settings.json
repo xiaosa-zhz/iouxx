@@ -1,9 +1,0 @@
-{
-    "clangd.arguments": [
-        "--background-index",
-        "--compile-commands-dir=.vscode",
-        "--pch-storage=memory",
-        "--experimental-modules-support"
-    ],
-    "xmake.debugConfigType": "codelldb"
-}
