@@ -20,7 +20,7 @@
 - [ ] Use more start_lifetime_as in buffer related operations when supported
 
 ## Completed
-- [x] Remove fallback around chrono when libc++ implementation is complete
+- [x] ~~Remove fallback around chrono when libc++ implementation is complete~~
 - [x] ~~Add file system related operations~~
 - [x] ~~Find a suitable environment to really test networking~~
 - [x] ~~Add direct fd tests in network tests~~
