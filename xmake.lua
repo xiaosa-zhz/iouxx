@@ -49,6 +49,12 @@ local function configure_toolchains(name)
     end
 end
 
+local network_test_port_base = {
+    ["llvm"] = 38080,
+    ["gnu"] = 38084,
+    ["llvm-dropin"] = 38088
+}
+
 local function add_module_test_target(name)
     target(name .. "-iouxx-modules")
         set_kind("moduleonly")
@@ -64,6 +70,8 @@ local function add_module_test_target(name)
         set_kind("moduleonly")
         add_deps(name .. "-iouxx-modules")
         configure_toolchains(name)
+        add_defines("IOUXX_TEST_NETWORK_SERVER_PORT=" .. network_test_port_base[name] + 2)
+        add_defines("IOUXX_TEST_NETWORK_CLIENT_PORT=" .. network_test_port_base[name] + 3)
         scan_and_add_tests("test")
         set_default(false)
         set_policy("generator.compile_commands", false)
@@ -75,6 +83,8 @@ local function add_test_target(name)
         set_kind("headeronly")
         add_packages("liburing", {public = true})
         configure_toolchains(name)
+        add_defines("IOUXX_TEST_NETWORK_SERVER_PORT=" .. network_test_port_base[name] + 0)
+        add_defines("IOUXX_TEST_NETWORK_CLIENT_PORT=" .. network_test_port_base[name] + 1)
         scan_and_add_tests("test")
         set_default(false)
         -- This target generates CDB

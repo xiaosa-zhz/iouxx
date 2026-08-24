@@ -41,24 +41,21 @@ using namespace iouxx::literals;
 inline constexpr std::string_view magic_word = "exit"sv;
 inline constexpr std::string_view client_msg = "Hello io_uring!"sv;
 inline constexpr std::size_t client_msg_cnt = 10;
-// Use different port among tests to avoid conflict
-#if defined(__clang__)
-#if defined(IOUXX_CONFIG_USE_CXX_MODULE)
-inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:38080"_sockv4;
-inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38081"_sockv4;
-#else
-inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:38082"_sockv4;
-inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38083"_sockv4;
+#if !defined(IOUXX_TEST_NETWORK_SERVER_PORT) || !defined(IOUXX_TEST_NETWORK_CLIENT_PORT)
+#error "Network test ports must be defined by the test target"
 #endif
-#elif defined(__GNUC__)
-#if defined(IOUXX_CONFIG_USE_CXX_MODULE)
-inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:38084"_sockv4;
-inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38085"_sockv4;
-#else
-inline constexpr network::ip::socket_v4_info server_addr = "127.0.0.1:38086"_sockv4;
-inline constexpr network::ip::socket_v4_info client_addr = "127.0.0.1:38087"_sockv4;
-#endif
-#endif
+#define IOUXX_TEST_STRINGIFY_IMPL(value) #value
+#define IOUXX_TEST_STRINGIFY(value) IOUXX_TEST_STRINGIFY_IMPL(value)
+#define IOUXX_TEST_SOCKET_V4(port) \
+    network::ip::socket_v4_info::from_string( \
+        "127.0.0.1:" IOUXX_TEST_STRINGIFY(port)).value()
+inline constexpr network::ip::socket_v4_info server_addr =
+    IOUXX_TEST_SOCKET_V4(IOUXX_TEST_NETWORK_SERVER_PORT);
+inline constexpr network::ip::socket_v4_info client_addr =
+    IOUXX_TEST_SOCKET_V4(IOUXX_TEST_NETWORK_CLIENT_PORT);
+#undef IOUXX_TEST_SOCKET_V4
+#undef IOUXX_TEST_STRINGIFY
+#undef IOUXX_TEST_STRINGIFY_IMPL
 static std::atomic<bool> server_started = false; // publish after listen is ready
 static bool server_sockcmd_exists = true;
 static bool client_sockcmd_exists = true;
