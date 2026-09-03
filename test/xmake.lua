@@ -36,6 +36,27 @@ local function configure_toolchains(name)
     end
 end
 
+local function configure_liburing(name)
+    local config = {}
+    if name == "llvm" then
+        config.toolchains = "clang"
+        config.runtimes = "c++_shared"
+    elseif name == "gnu" then
+        config.toolchains = "gcc"
+        config.runtimes = "stdc++_shared"
+    elseif name == "llvm-dropin" then
+        config.toolchains = "clang"
+        config.runtimes = "stdc++_shared"
+    else
+        raise("unknown toolchain: %s", name)
+    end
+    add_requires("liburing~" .. name, { configs = config })
+end
+
+local function depends_on_liburing(name)
+    add_packages("liburing~" .. name, { public = true })
+end
+
 local network_test_port_base = {
     ["llvm"] = 38080,
     ["gnu"] = 38084,
@@ -45,7 +66,7 @@ local network_test_port_base = {
 local function add_module_test_target(name)
     target(name .. "-iouxx-modules")
         set_kind("moduleonly")
-        add_packages("liburing", {public = true})
+        depends_on_liburing(name)
         set_policy("build.c++.modules", true)
         add_files("../src/modules/**.mpp", { public = true })
         add_defines("IOUXX_CONFIG_USE_CXX_MODULE", {public = true})
@@ -68,7 +89,7 @@ end
 local function add_test_target(name)
     target(name)
         set_kind("headeronly")
-        add_packages("liburing", {public = true})
+        depends_on_liburing(name)
         configure_toolchains(name)
         add_defines("IOUXX_TEST_NETWORK_SERVER_PORT=" .. network_test_port_base[name] + 0)
         add_defines("IOUXX_TEST_NETWORK_CLIENT_PORT=" .. network_test_port_base[name] + 1)
@@ -78,9 +99,12 @@ local function add_test_target(name)
     target_end()
 end
 
-add_test_target("llvm")
-add_test_target("gnu")
-add_test_target("llvm-dropin")
-add_module_test_target("llvm")
-add_module_test_target("gnu") -- TODO: see details in configure_toolchains()
-add_module_test_target("llvm-dropin")
+local function generate_tests(toolchain)
+    configure_liburing(toolchain)
+    add_test_target(toolchain)
+    add_module_test_target(toolchain)
+end
+
+for _, toolchain in ipairs({"llvm", "gnu", "llvm-dropin"}) do
+    generate_tests(toolchain)
+end
